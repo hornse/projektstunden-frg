@@ -62,6 +62,14 @@ $parts  = explode('/', $path);          // z. B. ['projekte', '5']
 $route  = $parts[0] ?? '';             // 'projekte'
 $id     = isset($parts[1]) ? (int)$parts[1] : null;
 $sub    = $parts[1] ?? '';             // für /auth/login etc.
+// Für verschachtelte Routen: /schuljahre/{id}/aktivieren oder /import/vorschau
+if ($route === 'schuljahre' && isset($parts[2])) {
+    $sub = $parts[2];                  // z. B. 'aktivieren'
+}
+if ($route === 'import') {
+    $sub = $parts[1] ?? '';            // z. B. 'vorschau', 'ausfuehren'
+    $id  = null;
+}
 
 // JSON-Body einlesen (für POST/PUT)
 $body = [];
@@ -84,6 +92,8 @@ try {
         'dashboard'   => handle_dashboard($method),
         'export'      => handle_export($method, $sub),
         'benutzer'    => handle_benutzer($method, $id, $sub, $body),
+        'schuljahre'  => handle_schuljahre($method, $id, $sub, $body),
+        'import'      => handle_import($method, $sub, $body),
         default       => json_error('Unbekannte Route.', 404),
     };
 } catch (PDOException $e) {
@@ -888,4 +898,530 @@ function handle_benutzer(string $method, ?int $id, string $sub, array $body): vo
     }
 
     json_error('Methode nicht erlaubt.', 405);
+}
+
+// ============================================================
+//  SCHULJAHRE
+//  GET    /api/schuljahre          – Liste aller Schuljahre
+//  POST   /api/schuljahre          – Neues Schuljahr anlegen (Admin)
+//  PUT    /api/schuljahre/{id}     – Schuljahr bearbeiten (Admin)
+//  DELETE /api/schuljahre/{id}     – Schuljahr löschen (Admin, nur wenn leer)
+//  POST   /api/schuljahre/{id}/aktivieren – Schuljahr aktivieren (Admin)
+// ============================================================
+function handle_schuljahre(string $method, ?int $id, string $sub, array $body): void {
+    $user = require_auth();
+    $db   = get_db();
+
+    // GET /schuljahre – alle Schuljahre mit Statistik
+    if ($method === 'GET' && !$id) {
+        $stmt = $db->prepare(
+            'SELECT sj.id, sj.name, sj.beginn, sj.ende, sj.status, sj.erstellt_am,
+                    COUNT(DISTINCT k.id) AS klassen_anzahl,
+                    COUNT(DISTINCT s.id) AS schueler_anzahl,
+                    COUNT(DISTINCT p.id) AS projekte_anzahl
+             FROM schuljahre sj
+             LEFT JOIN klassen k  ON k.schuljahr_id  = sj.id
+             LEFT JOIN schueler_schuljahr ss ON ss.schuljahr_id = sj.id
+             LEFT JOIN schueler s  ON s.id = ss.schueler_id AND s.aktiv = 1
+             LEFT JOIN projekte p  ON p.schuljahr_id  = sj.id
+             WHERE sj.schule_id = ?
+             GROUP BY sj.id
+             ORDER BY sj.beginn DESC'
+        );
+        $stmt->execute([$user['schule_id']]);
+        json_response($stmt->fetchAll());
+    }
+
+    // GET /schuljahre/{id} – Einzelnes Schuljahr
+    if ($method === 'GET' && $id) {
+        $stmt = $db->prepare(
+            'SELECT id, name, beginn, ende, status, erstellt_am
+             FROM schuljahre WHERE id = ? AND schule_id = ?'
+        );
+        $stmt->execute([$id, $user['schule_id']]);
+        $row = $stmt->fetch();
+        if (!$row) json_error('Schuljahr nicht gefunden.', 404);
+        json_response($row);
+    }
+
+    // POST /schuljahre – Neues Schuljahr anlegen
+    if ($method === 'POST' && !$id) {
+        require_admin();
+        $name   = clean($body['name']   ?? '');
+        $beginn = $body['beginn'] ?? '';
+        $ende   = $body['ende']   ?? '';
+        $status = in_array($body['status'] ?? '', ['zukuenftig','aktiv','abgeschlossen'])
+                  ? $body['status'] : 'zukuenftig';
+
+        if (!$name || !$beginn || !$ende) {
+            json_error('Name, Beginn und Ende sind Pflichtfelder.');
+        }
+
+        // Nur ein aktives Schuljahr erlaubt
+        if ($status === 'aktiv') {
+            $chk = $db->prepare(
+                'SELECT id FROM schuljahre WHERE schule_id = ? AND status = "aktiv"'
+            );
+            $chk->execute([$user['schule_id']]);
+            if ($chk->fetch()) {
+                json_error('Es gibt bereits ein aktives Schuljahr. Bitte zuerst das aktuelle abschließen.');
+            }
+        }
+
+        $stmt = $db->prepare(
+            'INSERT INTO schuljahre (schule_id, name, beginn, ende, status)
+             VALUES (?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([$user['schule_id'], $name, $beginn, $ende, $status]);
+        $new_id = (int)$db->lastInsertId();
+        audit($user['id'], 'schuljahre', $new_id, 'INSERT', null, $body);
+        json_response(['ok' => true, 'id' => $new_id], 201);
+    }
+
+    // PUT /schuljahre/{id} – Schuljahr bearbeiten
+    if ($method === 'PUT' && $id && $sub !== 'aktivieren') {
+        require_admin();
+        $name   = clean($body['name']   ?? '');
+        $beginn = $body['beginn'] ?? '';
+        $ende   = $body['ende']   ?? '';
+
+        if (!$name || !$beginn || !$ende) {
+            json_error('Name, Beginn und Ende sind Pflichtfelder.');
+        }
+
+        // Abgeschlossene Schuljahre nicht mehr bearbeiten
+        $chk = $db->prepare('SELECT status FROM schuljahre WHERE id = ? AND schule_id = ?');
+        $chk->execute([$id, $user['schule_id']]);
+        $sj = $chk->fetch();
+        if (!$sj) json_error('Schuljahr nicht gefunden.', 404);
+        if ($sj['status'] === 'abgeschlossen') {
+            json_error('Abgeschlossene Schuljahre können nicht bearbeitet werden.');
+        }
+
+        $stmt = $db->prepare(
+            'UPDATE schuljahre SET name = ?, beginn = ?, ende = ?
+             WHERE id = ? AND schule_id = ?'
+        );
+        $stmt->execute([$name, $beginn, $ende, $id, $user['schule_id']]);
+        audit($user['id'], 'schuljahre', $id, 'UPDATE', null, $body);
+        json_response(['ok' => true]);
+    }
+
+    // POST /schuljahre/{id}/aktivieren – Schuljahr aktivieren
+    if ($method === 'POST' && $id && $sub === 'aktivieren') {
+        require_admin();
+
+        // Prüfen ob das Schuljahr existiert
+        $chk = $db->prepare('SELECT id, status FROM schuljahre WHERE id = ? AND schule_id = ?');
+        $chk->execute([$id, $user['schule_id']]);
+        $sj = $chk->fetch();
+        if (!$sj) json_error('Schuljahr nicht gefunden.', 404);
+        if ($sj['status'] === 'abgeschlossen') {
+            json_error('Abgeschlossene Schuljahre können nicht aktiviert werden.');
+        }
+
+        $db->beginTransaction();
+        try {
+            // Aktuell aktives Schuljahr abschließen
+            $db->prepare(
+                'UPDATE schuljahre SET status = "abgeschlossen"
+                 WHERE schule_id = ? AND status = "aktiv"'
+            )->execute([$user['schule_id']]);
+
+            // Neues Schuljahr aktivieren
+            $db->prepare(
+                'UPDATE schuljahre SET status = "aktiv" WHERE id = ?'
+            )->execute([$id]);
+
+            $db->commit();
+            audit($user['id'], 'schuljahre', $id, 'UPDATE', null, ['aktion' => 'aktiviert']);
+            json_response(['ok' => true]);
+        } catch (Throwable $e) {
+            $db->rollBack();
+            throw $e;
+        }
+    }
+
+    // DELETE /schuljahre/{id} – Schuljahr löschen (nur wenn leer)
+    if ($method === 'DELETE' && $id) {
+        require_admin();
+
+        // Aktives Schuljahr nicht löschbar
+        $chk = $db->prepare('SELECT status FROM schuljahre WHERE id = ? AND schule_id = ?');
+        $chk->execute([$id, $user['schule_id']]);
+        $sj = $chk->fetch();
+        if (!$sj) json_error('Schuljahr nicht gefunden.', 404);
+        if ($sj['status'] === 'aktiv') {
+            json_error('Das aktive Schuljahr kann nicht gelöscht werden.');
+        }
+
+        // Prüfen ob Projekte oder Schüler vorhanden
+        $chk2 = $db->prepare(
+            'SELECT COUNT(*) FROM projekte WHERE schuljahr_id = ?'
+        );
+        $chk2->execute([$id]);
+        if ((int)$chk2->fetchColumn() > 0) {
+            json_error('Schuljahr kann nicht gelöscht werden – es sind noch Projekte zugeordnet.');
+        }
+
+        $chk3 = $db->prepare(
+            'SELECT COUNT(*) FROM schueler_schuljahr WHERE schuljahr_id = ?'
+        );
+        $chk3->execute([$id]);
+        if ((int)$chk3->fetchColumn() > 0) {
+            json_error('Schuljahr kann nicht gelöscht werden – es sind noch Schüler zugeordnet.');
+        }
+
+        $db->prepare('DELETE FROM schuljahre WHERE id = ?')->execute([$id]);
+        audit($user['id'], 'schuljahre', $id, 'DELETE');
+        json_response(['ok' => true]);
+    }
+
+    json_error('Methode nicht erlaubt.', 405);
+}
+
+// ============================================================
+//  SCHÜLER-IMPORT (CSV/TXT aus Schild-NRW)
+//  POST /api/import/vorschau   – Datei hochladen, Vorschau liefern
+//  POST /api/import/ausfuehren – Import bestätigen und ausführen
+// ============================================================
+function handle_import(string $method, string $sub, array $body): void {
+    $user = require_auth();
+    require_admin();
+    $db = get_db();
+
+    // Aktives Schuljahr holen (oder aus Body falls angegeben)
+    $schuljahr_id = (int)($body['schuljahr_id'] ?? 0);
+    if (!$schuljahr_id) {
+        $sj = $db->prepare(
+            'SELECT id FROM schuljahre WHERE schule_id = ? AND status = "aktiv" LIMIT 1'
+        );
+        $sj->execute([$user['schule_id']]);
+        $row = $sj->fetch();
+        if (!$row) json_error('Kein aktives Schuljahr gefunden. Bitte zuerst ein Schuljahr aktivieren.');
+        $schuljahr_id = $row['id'];
+    }
+
+    // POST /api/import/vorschau
+    if ($method === 'POST' && $sub === 'vorschau') {
+        if (empty($_FILES['datei'])) json_error('Keine Datei hochgeladen.');
+        $tmp  = $_FILES['datei']['tmp_name'];
+        $name = $_FILES['datei']['name'];
+
+        $rows = parse_schild_csv($tmp);
+        if (empty($rows)) json_error('Datei konnte nicht gelesen werden oder ist leer.');
+
+        $vorschau = analyse_import($db, $rows, $user['schule_id'], $schuljahr_id);
+        $vorschau['schuljahr_id'] = $schuljahr_id;
+        $vorschau['dateiname']    = $name;
+        json_response($vorschau);
+    }
+
+    // POST /api/import/ausfuehren
+    if ($method === 'POST' && $sub === 'ausfuehren') {
+        if (empty($_FILES['datei'])) json_error('Keine Datei hochgeladen.');
+        $tmp  = $_FILES['datei']['tmp_name'];
+        $name = $_FILES['datei']['name'];
+
+        $rows = parse_schild_csv($tmp);
+        if (empty($rows)) json_error('Datei konnte nicht gelesen werden oder ist leer.');
+
+        $ergebnis = fuehre_import_aus($db, $rows, $user['schule_id'], $schuljahr_id, $user['id'], $name);
+        json_response($ergebnis);
+    }
+
+    json_error('Unbekannte Import-Aktion.', 404);
+}
+
+// ============================================================
+//  HILFSFUNKTIONEN FÜR DEN IMPORT
+// ============================================================
+
+/**
+ * Schild-CSV/TXT parsen (Semikolon-getrennt, UTF-8)
+ * Gibt Array von assoziativen Arrays zurück
+ */
+function parse_schild_csv(string $filepath): array {
+    $rows = [];
+    $handle = fopen($filepath, 'r');
+    if (!$handle) return [];
+
+    // Encoding-Erkennung (UTF-8 mit oder ohne BOM, Latin-1)
+    $bom = fread($handle, 3);
+    if ($bom !== "\xEF\xBB\xBF") {
+        // Kein UTF-8 BOM – zurückspulen
+        rewind($handle);
+    }
+
+    $header = null;
+    while (($line = fgets($handle)) !== false) {
+        $line = rtrim($line, "\r\n");
+        if (empty($line)) continue;
+
+        // Encoding konvertieren falls nötig
+        if (!mb_detect_encoding($line, 'UTF-8', true)) {
+            $line = mb_convert_encoding($line, 'UTF-8', 'ISO-8859-1');
+        }
+
+        $cols = str_getcsv($line, ';', '"');
+
+        if ($header === null) {
+            // Header-Zeile: Anführungszeichen aus Spaltennamen entfernen
+            $header = array_map(fn($h) => trim($h, '"'), $cols);
+            continue;
+        }
+
+        if (count($cols) < count($header)) {
+            // Zu wenige Spalten – überspringen
+            continue;
+        }
+
+        $row = [];
+        foreach ($header as $i => $h) {
+            $row[$h] = trim($cols[$i] ?? '', '"');
+        }
+        $rows[] = $row;
+    }
+
+    fclose($handle);
+    return $rows;
+}
+
+/**
+ * Analysiert die CSV-Zeilen ohne zu schreiben
+ * Liefert Vorschau: neu/aktualisiert/unverändert
+ */
+function analyse_import(PDO $db, array $rows, int $schule_id, int $schuljahr_id): array {
+    $neu          = [];
+    $aktualisiert = [];
+    $unveraendert = [];
+    $fehler       = [];
+
+    foreach ($rows as $i => $row) {
+        $schild_id = (int)($row['Interne ID-Nummer'] ?? 0);
+        $vorname   = trim($row['Vorname']   ?? '');
+        $nachname  = trim($row['Nachname']  ?? '');
+        $klasse    = trim($row['Klasse']    ?? '');
+        $jahrgang  = (int)($row['Jahrgang'] ?? 0);
+        $geschlecht_raw = strtolower(trim($row['Geschlecht'] ?? ''));
+        $klassenlehrer  = trim(($row['Klassenlehrer: Name'] ?? '') . ' ' .
+                               ($row['Klassenlehrer: Vorname'] ?? ''));
+
+        // Pflichtfelder prüfen
+        if (!$schild_id || !$vorname || !$nachname || !$klasse || !$jahrgang) {
+            $fehler[] = [
+                'zeile'  => $i + 2,
+                'grund'  => 'Pflichtfelder fehlen (ID, Name, Klasse oder Jahrgang)',
+                'daten'  => "$vorname $nachname"
+            ];
+            continue;
+        }
+
+        // Geschlecht normalisieren
+        $geschlecht = match(true) {
+            str_starts_with($geschlecht_raw, 'm') => 'm',
+            str_starts_with($geschlecht_raw, 'w') => 'w',
+            str_starts_with($geschlecht_raw, 'd') => 'd',
+            default => 'x'
+        };
+
+        // Schüler in DB suchen
+        $stmt = $db->prepare(
+            'SELECT s.id, s.vorname, s.nachname, s.geschlecht,
+                    k.bezeichnung AS klasse
+             FROM schueler s
+             LEFT JOIN klassen k ON k.id = s.klasse_id
+             WHERE s.schild_id = ?'
+        );
+        $stmt->execute([$schild_id]);
+        $existing = $stmt->fetch();
+
+        $eintrag = [
+            'schild_id'      => $schild_id,
+            'vorname'        => $vorname,
+            'nachname'       => $nachname,
+            'klasse'         => $klasse,
+            'jahrgang'       => $jahrgang,
+            'geschlecht'     => $geschlecht,
+            'klassenlehrer'  => trim($klassenlehrer),
+        ];
+
+        if (!$existing) {
+            $neu[] = $eintrag;
+        } elseif (
+            $existing['vorname']    !== $vorname   ||
+            $existing['nachname']   !== $nachname  ||
+            $existing['klasse']     !== $klasse    ||
+            ($existing['geschlecht'] ?? '') !== $geschlecht
+        ) {
+            $eintrag['id'] = $existing['id'];
+            $aktualisiert[] = $eintrag;
+        } else {
+            $eintrag['id'] = $existing['id'];
+            $unveraendert[] = $eintrag;
+        }
+    }
+
+    return [
+        'neu'          => $neu,
+        'aktualisiert' => $aktualisiert,
+        'unveraendert' => $unveraendert,
+        'fehler'       => $fehler,
+        'statistik'    => [
+            'neu'          => count($neu),
+            'aktualisiert' => count($aktualisiert),
+            'unveraendert' => count($unveraendert),
+            'fehler'       => count($fehler),
+            'gesamt'       => count($rows),
+        ]
+    ];
+}
+
+/**
+ * Führt den Import tatsächlich aus
+ */
+function fuehre_import_aus(
+    PDO $db, array $rows, int $schule_id, int $schuljahr_id,
+    int $benutzer_id, string $dateiname
+): array {
+    $zaehler = ['neu' => 0, 'aktualisiert' => 0, 'unveraendert' => 0,
+                'inaktiviert' => 0, 'fehler' => 0];
+    $importierte_schild_ids = [];
+
+    $db->beginTransaction();
+    try {
+        $now = date('Y-m-d H:i:s');
+
+        foreach ($rows as $row) {
+            $schild_id = (int)($row['Interne ID-Nummer'] ?? 0);
+            $vorname   = trim($row['Vorname']   ?? '');
+            $nachname  = trim($row['Nachname']  ?? '');
+            $klasse_bez = trim($row['Klasse']   ?? '');
+            $jahrgang  = (int)($row['Jahrgang'] ?? 0);
+            $gebdat    = trim($row['Geburtsdatum'] ?? '');
+            $klassenlehrer = trim(($row['Klassenlehrer: Name'] ?? '') . ' ' .
+                                  ($row['Klassenlehrer: Vorname'] ?? ''));
+            $geschlecht_raw = strtolower(trim($row['Geschlecht'] ?? ''));
+
+            if (!$schild_id || !$vorname || !$nachname || !$klasse_bez || !$jahrgang) {
+                $zaehler['fehler']++;
+                continue;
+            }
+
+            $geschlecht = match(true) {
+                str_starts_with($geschlecht_raw, 'm') => 'm',
+                str_starts_with($geschlecht_raw, 'w') => 'w',
+                str_starts_with($geschlecht_raw, 'd') => 'd',
+                default => 'x'
+            };
+
+            // Geburtsdatum parsen (Schild: DD.MM.YYYY → YYYY-MM-DD)
+            $geburtsdatum = null;
+            if ($gebdat && preg_match('/^(\d{2})\.(\d{2})\.(\d{4})$/', $gebdat, $m)) {
+                $geburtsdatum = "{$m[3]}-{$m[2]}-{$m[1]}";
+            }
+
+            // Klasse anlegen falls nicht vorhanden
+            $kl_stmt = $db->prepare(
+                'SELECT id FROM klassen
+                 WHERE schule_id = ? AND bezeichnung = ? AND schuljahr_id = ?'
+            );
+            $kl_stmt->execute([$schule_id, $klasse_bez, $schuljahr_id]);
+            $klasse = $kl_stmt->fetch();
+
+            if (!$klasse) {
+                $ins_kl = $db->prepare(
+                    'INSERT INTO klassen
+                     (schule_id, bezeichnung, jahrgang, schuljahr, schuljahr_id, klassenlehrer_name)
+                     VALUES (?, ?, ?, (SELECT name FROM schuljahre WHERE id = ?), ?, ?)'
+                );
+                $ins_kl->execute([
+                    $schule_id, $klasse_bez, $jahrgang,
+                    $schuljahr_id, $schuljahr_id,
+                    trim($klassenlehrer) ?: null
+                ]);
+                $klasse_id = (int)$db->lastInsertId();
+            } else {
+                $klasse_id = $klasse['id'];
+                // Klassenlehrer aktualisieren
+                if (trim($klassenlehrer)) {
+                    $db->prepare(
+                        'UPDATE klassen SET klassenlehrer_name = ? WHERE id = ?'
+                    )->execute([trim($klassenlehrer), $klasse_id]);
+                }
+            }
+
+            // Schüler suchen
+            $s_stmt = $db->prepare(
+                'SELECT id, vorname, nachname, geschlecht, klasse_id FROM schueler WHERE schild_id = ?'
+            );
+            $s_stmt->execute([$schild_id]);
+            $existing = $s_stmt->fetch();
+
+            if (!$existing) {
+                // Neuen Schüler anlegen
+                $db->prepare(
+                    'INSERT INTO schueler
+                     (schild_id, klasse_id, vorname, nachname, geschlecht, geburtsdatum,
+                      aktiv, zuletzt_importiert)
+                     VALUES (?, ?, ?, ?, ?, ?, 1, ?)'
+                )->execute([
+                    $schild_id, $klasse_id, $vorname, $nachname,
+                    $geschlecht, $geburtsdatum, $now
+                ]);
+                $schueler_id = (int)$db->lastInsertId();
+                $zaehler['neu']++;
+            } else {
+                // Bestehenden Schüler aktualisieren
+                $db->prepare(
+                    'UPDATE schueler SET
+                     klasse_id = ?, vorname = ?, nachname = ?,
+                     geschlecht = ?, geburtsdatum = ?,
+                     aktiv = 1, zuletzt_importiert = ?
+                     WHERE id = ?'
+                )->execute([
+                    $klasse_id, $vorname, $nachname,
+                    $geschlecht, $geburtsdatum, $now,
+                    $existing['id']
+                ]);
+                $schueler_id = $existing['id'];
+
+                if ($existing['vorname'] !== $vorname ||
+                    $existing['nachname'] !== $nachname ||
+                    $existing['klasse_id'] != $klasse_id) {
+                    $zaehler['aktualisiert']++;
+                } else {
+                    $zaehler['unveraendert']++;
+                }
+            }
+
+            // Schuljahr-Zuordnung anlegen/aktualisieren
+            $db->prepare(
+                'INSERT INTO schueler_schuljahr (schueler_id, klasse_id, schuljahr_id)
+                 VALUES (?, ?, ?)
+                 ON DUPLICATE KEY UPDATE klasse_id = VALUES(klasse_id)'
+            )->execute([$schueler_id, $klasse_id, $schuljahr_id]);
+
+            $importierte_schild_ids[] = $schild_id;
+        }
+
+        // Import-Log schreiben
+        $db->prepare(
+            'INSERT INTO import_log
+             (schule_id, schuljahr_id, benutzer_id, dateiname, neu, aktualisiert,
+              unveraendert, inaktiviert, fehler)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        )->execute([
+            $schule_id, $schuljahr_id, $benutzer_id, $dateiname,
+            $zaehler['neu'], $zaehler['aktualisiert'],
+            $zaehler['unveraendert'], $zaehler['inaktiviert'], $zaehler['fehler']
+        ]);
+
+        $db->commit();
+        return ['ok' => true, 'statistik' => $zaehler];
+
+    } catch (Throwable $e) {
+        $db->rollBack();
+        throw $e;
+    }
 }
