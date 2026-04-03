@@ -1,0 +1,47 @@
+# =============================================================================
+# .htaccess – Projektstunden NRW
+# Liegt im DocumentRoot (~/html/ oder ~/html/projektstunden/)
+# =============================================================================
+# Alle Anfragen an /api/* werden an backend/api/index.php weitergeleitet.
+# PATH_INFO wird dabei als Routing-Information übergeben.
+# =============================================================================
+
+Options -Indexes
+Options +FollowSymLinks
+
+RewriteEngine On
+RewriteBase /
+
+# ----- API-Routing -----
+# Beispiel: GET /api/projekte/5
+# → wird zu /backend/api/index.php mit PATH_INFO=/projekte/5
+RewriteRule ^api/(.*)$ backend/api/index.php/$1 [QSA,L]
+
+# ----- Frontend SPA-Fallback -----
+# Alle anderen Anfragen (die keine echte Datei/Verzeichnis sind)
+# landen im Frontend-Index (für spätere Single-Page-App-Nutzung)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(?!api/)(.*)$ index.html [QSA,L]
+
+# ----- Sicherheitsheader -----
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    # HSTS (nur wenn HTTPS sicher konfiguriert)
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# ----- Konfigurationsdateien schützen -----
+<FilesMatch "\.(sql|md|sh|env|json|lock)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# ----- PHP-Fehler nicht ausgeben (in Produktion) -----
+<IfModule mod_php.c>
+    php_flag display_errors Off
+    php_value error_reporting 0
+</IfModule>
