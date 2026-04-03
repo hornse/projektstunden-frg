@@ -1,3 +1,4 @@
 backup_*
 backend/config.php
 .DS_Store
+.idea/
