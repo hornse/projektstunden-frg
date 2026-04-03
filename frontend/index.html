@@ -102,7 +102,7 @@ select[multiple]{height:100px}
 .komp-eltern-row{display:flex;align-items:center;gap:6px;margin-bottom:3px;width:100%}
 .komp-eltern-toggle{background:none;border:none;cursor:pointer;font-size:11px;color:var(--text3);padding:0 2px;line-height:1;flex-shrink:0;transition:color .12s}
 .komp-eltern-toggle:hover{color:var(--accent)}
-.komp-erwartungen{display:none;margin-bottom:4px;flex-direction:column;gap:3px}
+.komp-erwartungen{display:none;padding-left:22px;margin-bottom:6px;flex-wrap:wrap;gap:4px}
 .komp-erwartungen.open{display:flex}
 .komp-pill{display:inline-flex;align-items:center;cursor:pointer;user-select:none}
 .komp-pill input[type=checkbox]{display:none}
@@ -151,12 +151,28 @@ select[multiple]{height:100px}
 .admin-only{display:none}
 .is-admin .admin-only{display:flex}
 @media(max-width:700px){aside{display:none}main{padding:16px}}
+
+/* Schuljahr-Karte */
+.sj-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.sj-badge{padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;letter-spacing:.04em}
+.sj-aktiv{background:var(--accent-bg);color:var(--accent-text)}
+.sj-zukuenftig{background:var(--info-bg);color:var(--info)}
+.sj-abgeschlossen{background:var(--surface2);color:var(--text3)}
+/* Import */
+.imp-row{display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.imp-row:last-child{border-bottom:none}
+.imp-icon{flex-shrink:0;width:16px;height:16px;border-radius:50%;margin-top:1px}
+.imp-neu{background:#3d8b50}
+.imp-upd{background:#d48c00}
+.imp-ok{background:var(--border2)}
+.imp-err{background:#c94040}
+
 </style>
 </head>
 <body>
 
 <!-- LOGIN -->
-<div id="login-view" class="login-wrap" style="display:none">
+<div id="login-view" class="login-wrap" style="display:flex">
   <div class="login-box">
     <h2>Projektstunden NRW</h2>
     <p class="sub">Gymnasium G9 – Kompetenz- und Stunden-Tracking</p>
@@ -166,6 +182,9 @@ select[multiple]{height:100px}
     <input type="password" id="l-pass" autocomplete="current-password">
     <button class="btn btn-p btn-full" onclick="doLogin()">Anmelden</button>
     <div id="l-msg"></div>
+    <div style="margin-top:14px;font-size:12px;color:var(--text3);text-align:center">
+      Demo-Modus: <strong><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="1d7c797074735d6e7e75687178337978">[email&#160;protected]</a> / Admin1234!</strong>
+    </div>
   </div>
 </div>
 
@@ -200,6 +219,14 @@ select[multiple]{height:100px}
     <button class="nv" onclick="go('export')">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10V2M5 7l3 3 3-3"/><path d="M2 11v2a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-2"/></svg>
       Export
+    </button>
+    <button class="nv admin-only" onclick="go('schuljahre')">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="12" rx="1"/><path d="M1 7h14M5 1v4M11 1v4"/></svg>
+      Schuljahre
+    </button>
+    <button class="nv admin-only" onclick="go('import')">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8M5 7l3 3 3-3"/><path d="M2 11v2a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-2"/></svg>
+      Schüler importieren
     </button>
     <button class="nv admin-only" onclick="go('benutzer')">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="2.5"/><path d="M1 14c0-2.761 2.239-4.5 5-4.5"/><circle cx="12" cy="11" r="3"/><path d="M12 9.5v1.5l1 1"/></svg>
@@ -394,10 +421,73 @@ select[multiple]{height:100px}
     </div>
     <div id="bu-msg"></div>
   </div>
+
+  <!-- SCHULJAHRE (nur Admin) -->
+  <div id="s-schuljahre" class="screen" style="position:relative">
+    <h1>Schuljahre verwalten</h1>
+    <p class="sub">Schuljahre anlegen, aktivieren und abschließen</p>
+    <div id="sj-modal" style="display:none"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="sec" style="margin:0">Alle Schuljahre</div>
+      <button class="btn btn-p" onclick="sjNeu()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 1v12M1 7h12"/></svg>
+        Neues Schuljahr
+      </button>
+    </div>
+    <div id="sj-liste"></div>
+    <div id="sj-msg"></div>
+  </div>
+
+  <!-- IMPORT (nur Admin) -->
+  <div id="s-import" class="screen">
+    <h1>Schüler importieren</h1>
+    <p class="sub">CSV/TXT-Export aus Schild-NRW hochladen und synchronisieren</p>
+
+    <div class="card">
+      <h2>Schuljahr wählen</h2>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:10px">
+        Standard: aktives Schuljahr. Du kannst auch ein zukünftiges Schuljahr wählen.
+      </p>
+      <select id="imp-sj"><option value="">– wird geladen –</option></select>
+    </div>
+
+    <div class="card">
+      <h2>Datei hochladen</h2>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:12px">
+        Schild-NRW Export als <strong>.txt</strong> oder <strong>.csv</strong> (Semikolon-getrennt, UTF-8).
+        Benötigte Felder: Interne ID-Nummer, Vorname, Nachname, Klasse, Jahrgang, Geschlecht, Geburtsdatum, Klassenlehrer.
+      </p>
+      <input type="file" id="imp-datei" accept=".txt,.csv" onchange="impVorschau()"
+             style="display:block;margin-bottom:12px;font-size:13px">
+      <div id="imp-ladeinfo" style="font-size:12px;color:var(--text3)"></div>
+    </div>
+
+    <!-- Vorschau -->
+    <div id="imp-vorschau-wrap" style="display:none">
+      <div class="card">
+        <h2>Vorschau</h2>
+        <div class="stats" id="imp-stats"></div>
+        <div id="imp-vorschau-detail"></div>
+        <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn" onclick="impReset()">Abbrechen</button>
+          <button class="btn btn-p" id="imp-btn-ausfuehren" onclick="impAusfuehren()">
+            Import durchführen
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="imp-msg"></div>
+
+    <!-- Import-Verlauf -->
+    <div class="sec" style="margin-top:28px">Letzte Importe</div>
+    <div id="imp-log-liste"><div class="empty">Noch keine Importe durchgeführt.</div></div>
+  </div>
+
 </main>
 </div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // ============================================================
 // KONFIGURATION
 // API_BASE: Im Produktivbetrieb auf Uberspace leer lassen (relativer Pfad).
@@ -450,8 +540,16 @@ async function loadState() {
 // ============================================================
 async function checkAuth() {
   try {
-    const me = await GET('auth/me');
-    if (me) { STATE.user = me; showApp(); }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const r = await fetch(API_BASE + '/api/auth/me', {
+      credentials: 'include',
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if (r.status === 401 || !r.ok) { showLogin(); return; }
+    const me = await r.json().catch(() => null);
+    if (me && me.id) { STATE.user = me; showApp(); }
     else showLogin();
   } catch { showLogin(); }
 }
@@ -475,8 +573,7 @@ async function doLogin() {
   const email = document.getElementById('l-email').value.trim();
   const pass  = document.getElementById('l-pass').value;
   try {
-    const user = await POST('auth/login', { email, passwort: pass });
-    if (user && user.rolle) STATE.user = user;
+    await POST('auth/login', { email, passwort: pass });
     showApp();
   } catch(e) { showMsg('l-msg', e.message, 'err'); }
 }
@@ -496,7 +593,8 @@ function go(id) {
     if ((b.getAttribute('onclick') || '').includes("'" + id + "'")) b.classList.add('on');
   });
   const init = { dashboard: initDash, projekt: initProjekt, schueler: initSchueler,
-                 klassen: initKlassen, katalog: initKatalog, export: initExport, benutzer: initBenutzer };
+                 klassen: initKlassen, katalog: initKatalog, export: initExport,
+                 benutzer: initBenutzer, schuljahre: initSchuljahre, import: initImport };
   if (init[id]) init[id]();
 }
 
@@ -690,63 +788,37 @@ function switchRahmen(rid) {
   renderRahmenTabs();
 }
 
-function renderKompPill(k, erwByEltern, tiefe) {
-  const kinder = erwByEltern[k.id] || [];
-  const hasKinder = kinder.length > 0;
-  const toggleId = 'erw-' + k.id;
-  const istErw = tiefe > 0;
-
-  let html = `<div class="komp-eltern-row" style="${tiefe > 0 ? 'padding-left:' + (tiefe * 16) + 'px' : ''}">
-    <label class="komp-pill${istErw ? ' erw' : ''}">
-      <input type="checkbox" class="komp-cb" value="${k.id}">
-      <span class="pill-label" title="${k.beschreibung || ''}">${k.kurzname}</span>
-    </label>`;
-
-  if (hasKinder) {
-    html += `<button class="komp-eltern-toggle" title="${kinder.length} Erwartungen" onclick="toggleErw('${toggleId}', this)">▸ ${kinder.length}</button>`;
-  }
-  html += `</div>`;
-
-  if (hasKinder) {
-    html += `<div class="komp-erwartungen" id="${toggleId}">` +
-      kinder.map(e => renderKompPill(e, erwByEltern, tiefe + 1)).join('') +
-    `</div>`;
-  }
-  return html;
-}
-
 function renderKompBereichList(rahmen_id, fachIds) {
   const fids = fachIds || getStundenFachIds();
   const r = STATE.rahmen.find(x => x.id === rahmen_id);
   if (!r) return;
 
-  // Alle Kompetenzen dieses Rahmens
-  const alleRahmenKomp = STATE.kompetenzen.filter(k => k.rahmen_kuerzel === r.kuerzel);
-
-  // Index aufbauen: welche IDs haben Kinder?
-  const elternIds = new Set(alleRahmenKomp.filter(k => k.eltern_kompetenz_id).map(k => k.eltern_kompetenz_id));
-
-  // Alle relevanten Kompetenzen filtern (Eltern immer, Blätter nur wenn Fach passt)
-  const komp = alleRahmenKomp.filter(k => {
-    if (elternIds.has(k.id)) return true; // Eltern immer
+  // Kompetenzen für diesen Rahmen filtern
+  const komp = STATE.kompetenzen.filter(k => {
+    if (k.rahmen_kuerzel !== r.kuerzel) return false;
     if (k.fach_kuerzel && fids.length > 0)
       return fids.some(fid => { const f = STATE.faecher.find(x => x.id == fid); return f && f.kuerzel === k.fach_kuerzel; });
     return true;
   });
 
-  // Kinder-Index aufbauen (für alle gefilterten)
+  // Index: id → kompetenz
+  const byId = {};
+  komp.forEach(k => { byId[k.id] = k; });
+
+  // Allgemeine Kompetenzen (eltern=null) und Erwartungen (eltern=id) trennen
+  const allgemeine = komp.filter(k => !k.eltern_kompetenz_id);
+  const erwartungen = komp.filter(k => k.eltern_kompetenz_id);
+
+  // Erwartungen nach eltern_kompetenz_id gruppieren
   const erwByEltern = {};
-  komp.filter(k => k.eltern_kompetenz_id).forEach(e => {
+  erwartungen.forEach(e => {
     const pid = e.eltern_kompetenz_id;
     (erwByEltern[pid] = erwByEltern[pid] || []).push(e);
   });
 
-  // Wurzeln = keine eltern_kompetenz_id
-  const wurzeln = komp.filter(k => !k.eltern_kompetenz_id);
-
   // Nach Bereichen gruppieren
   const bereiche = {};
-  wurzeln.forEach(k => {
+  allgemeine.forEach(k => {
     const b = k.bereich_code + ': ' + k.bereich_name;
     (bereiche[b] = bereiche[b] || []).push(k);
   });
@@ -758,9 +830,40 @@ function renderKompBereichList(rahmen_id, fachIds) {
   }
 
   el.innerHTML = Object.entries(bereiche).map(([b, ks]) => {
+    const items = ks.map(k => {
+      const kinder = erwByEltern[k.id] || [];
+      const hasKinder = kinder.length > 0;
+      const toggleId = 'erw-' + k.id;
+
+      // Allgemeine Kompetenz als wählbares Pill
+      let html = `<div class="komp-eltern-row">
+        <label class="komp-pill">
+          <input type="checkbox" class="komp-cb" value="${k.id}">
+          <span class="pill-label" title="${k.beschreibung || ''}">${k.kurzname}</span>
+        </label>`;
+
+      if (hasKinder) {
+        html += `<button class="komp-eltern-toggle" title="${kinder.length} konkrete Kompetenzerwartungen aufklappen" onclick="toggleErw('${toggleId}', this)">▸ ${kinder.length}</button>`;
+      }
+      html += `</div>`;
+
+      // Konkrete Erwartungen (aufklappbar, ebenfalls wählbar)
+      if (hasKinder) {
+        html += `<div class="komp-erwartungen" id="${toggleId}">` +
+          kinder.map(e =>
+            `<label class="komp-pill erw">
+               <input type="checkbox" class="komp-cb" value="${e.id}">
+               <span class="pill-label" title="${e.beschreibung || ''}">${e.kurzname}</span>
+             </label>`
+          ).join('') +
+        `</div>`;
+      }
+      return html;
+    }).join('');
+
     return `<div class="bereich-block">
       <div class="bereich-title">${b}</div>
-      <div class="komp-grid">${ks.map(k => renderKompPill(k, erwByEltern, 0)).join('')}</div>
+      <div class="komp-grid">${items}</div>
     </div>`;
   }).join('');
 }
@@ -771,7 +874,7 @@ function toggleKatErw(id, triggerEl) {
   const open = el.classList.toggle('open');
   if (triggerEl) {
     const arrow = triggerEl.querySelector('.kat-arrow');
-    if (arrow) arrow.textContent = (open ? '▾ ' : '▸ ') + arrow.textContent.replace(/[▸▾] ?/, '');
+    if (arrow) arrow.textContent = (open ? '▾ ' : '▸ ') + arrow.textContent.replace(/[▸▾]\s*/, '');
   }
 }
 function toggleErw(id, triggerEl) {
@@ -957,60 +1060,22 @@ async function initKatalog() {
   STATE.kompetenzen = all || [];
   renderKatalog();
 }
-function renderKatPill(k, erwByEltern) {
-  const kinder = erwByEltern[k.id] || [];
-  const hasKinder = kinder.length > 0;
-  const kid_id = 'kat-erw-' + k.id;
-  if (!hasKinder) {
-    return `<span class="pill" style="font-size:12px;border-style:dashed;opacity:.85" title="${k.beschreibung || ''}">${k.kurzname}</span>`;
-  }
-  return `<div style="width:100%;margin-bottom:4px">
-    <span class="pill" style="cursor:pointer" onclick="toggleKatErw('${kid_id}', this)" title="${k.beschreibung || ''}">
-      ${k.kurzname} <span class="kat-arrow" style="font-size:10px;opacity:.6">▸ ${kinder.length}</span>
-    </span>
-    <div id="${kid_id}" class="komp-erwartungen" style="margin-top:4px;padding-left:12px;flex-direction:column;gap:3px">
-      ${kinder.map(e => renderKatPill(e, erwByEltern)).join('')}
-    </div>
-  </div>`;
-}
-
 function renderKatalog() {
   const rid = parseInt(document.getElementById('kat-rahmen').value) || 0;
   const fid = parseInt(document.getElementById('kat-fach').value)   || 0;
-
-  // Basis-Filter: Rahmen und Fach
   let komps = STATE.kompetenzen;
   if (rid) komps = komps.filter(k => { const r = STATE.rahmen.find(x => x.id === rid); return r && k.rahmen_kuerzel === r.kuerzel; });
+  if (fid) { const selFach = STATE.faecher.find(x => x.id == fid); komps = komps.filter(k => selFach && k.fach_kuerzel === selFach.kuerzel); }
 
-  // Bei Fach-Filter: alle Eltern-IDs ermitteln und durchlassen
-  if (fid) {
-    const selFach = STATE.faecher.find(x => x.id == fid);
-    const elternIds = new Set(komps.filter(k => k.eltern_kompetenz_id).map(k => k.eltern_kompetenz_id));
-    // Rekursiv alle Vorfahren-IDs ermitteln
-    let changed = true;
-    while (changed) {
-      changed = false;
-      komps.forEach(k => {
-        if (k.eltern_kompetenz_id && elternIds.has(k.id) && !elternIds.has(k.eltern_kompetenz_id)) {
-          elternIds.add(k.eltern_kompetenz_id); changed = true;
-        }
-      });
-    }
-    komps = komps.filter(k => elternIds.has(k.id) || (selFach && k.fach_kuerzel === selFach.kuerzel) || (!k.fach_kuerzel && !k.eltern_kompetenz_id));
-  }
-
-  // Kinder-Index aufbauen
+  // Allgemeine und Erwartungen trennen
+  const allgemeine = komps.filter(k => !k.eltern_kompetenz_id);
+  const erwartungen = komps.filter(k => k.eltern_kompetenz_id);
   const erwByEltern = {};
-  komps.filter(k => k.eltern_kompetenz_id).forEach(e => {
-    (erwByEltern[e.eltern_kompetenz_id] = erwByEltern[e.eltern_kompetenz_id] || []).push(e);
-  });
+  erwartungen.forEach(e => { (erwByEltern[e.eltern_kompetenz_id] = erwByEltern[e.eltern_kompetenz_id] || []).push(e); });
 
-  // Wurzeln = keine eltern_kompetenz_id
-  const wurzeln = komps.filter(k => !k.eltern_kompetenz_id);
-
-  // Nach Bereichen gruppieren
+  // Nach Bereichen gruppieren (nur allgemeine)
   const bereiche = {};
-  wurzeln.forEach(k => {
+  allgemeine.forEach(k => {
     const b = (k.rahmen_kuerzel || '') + '|' + k.bereich_code + '|' + k.bereich_name;
     (bereiche[b] = bereiche[b] || []).push(k);
   });
@@ -1019,10 +1084,25 @@ function renderKatalog() {
   if (!Object.keys(bereiche).length) { el.innerHTML = '<div class="empty">Keine Kompetenzen gefunden.</div>'; return; }
   el.innerHTML = Object.entries(bereiche).map(([b, ks]) => {
     const [rahmen, , bereichName] = b.split('|');
+    const items = ks.map(k => {
+      const kinder = erwByEltern[k.id] || [];
+      if (!kinder.length) {
+        return `<span class="pill" title="${k.beschreibung || ''}">${k.kurzname}</span>`;
+      }
+      const kid_id = 'kat-erw-' + k.id;
+      return `<div style="width:100%;margin-bottom:4px">
+        <span class="pill" style="cursor:pointer" onclick="toggleKatErw('${kid_id}', this)" title="${k.beschreibung || ''}">
+          ${k.kurzname} <span class="kat-arrow" style="font-size:10px;opacity:.6">▸ ${kinder.length}</span>
+        </span>
+        <div id="${kid_id}" class="komp-erwartungen" style="margin-top:6px;padding-left:12px">
+          ${kinder.map(e => `<span class="pill" style="font-size:11px;border-style:dashed;opacity:.9" title="${e.beschreibung || ''}">${e.kurzname}</span>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
     return `<div class="card">
       <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${rahmen}</div>
       <h2>${bereichName}</h2>
-      <div class="k-pills" style="flex-wrap:wrap;gap:6px">${ks.map(k => renderKatPill(k, erwByEltern)).join('')}</div>
+      <div class="k-pills" style="flex-wrap:wrap;gap:6px">${items}</div>
     </div>`;
   }).join('');
 }
@@ -1277,14 +1357,4 @@ async function buAktivieren(id) {
   // Reaktivieren = PUT mit aktiv:1
   try {
     const b = await GET('benutzer/' + id);
-    await api('PUT', 'benutzer/' + id, { ...b, aktiv: 1 });
-    showMsg('bu-msg', `${b.vorname} ${b.nachname} wurde reaktiviert.`, 'ok');
-    initBenutzer();
-  } catch(e) { showMsg('bu-msg', e.message, 'err'); }
-}
-
-// App starten
-checkAuth();
-</script>
-</body>
-</html>
+    await api('PUT', 'benutzer/' + id, { ..
