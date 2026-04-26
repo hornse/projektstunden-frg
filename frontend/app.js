@@ -84,7 +84,10 @@ async function doLogin() {
   const email = document.getElementById('l-email').value.trim();
   const pass  = document.getElementById('l-pass').value;
   try {
-    await POST('auth/login', { email, passwort: pass });
+    // Login-Response direkt in STATE.user speichern, damit showApp()
+    // die Rolle kennt und Admin-UI korrekt ein-/ausblendet.
+    const me = await POST('auth/login', { email, passwort: pass });
+    STATE.user = me;
     showApp();
   } catch(e) { showMsg('l-msg', e.message, 'err'); }
 }
