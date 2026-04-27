@@ -1054,7 +1054,6 @@ async function initImport() {
 }
 
 async function impLogLaden() {
-  // Import-Log über Schuljahre-Liste ermitteln (kein eigener Endpunkt nötig)
   const logEl = document.getElementById('imp-log-liste');
   try {
     const data = await GET('import/log');
@@ -1071,15 +1070,18 @@ async function impLogLaden() {
             <span style="color:var(--ok)">+${e.neu} neu</span> &nbsp;·&nbsp;
             <span style="color:var(--warn,#f59e0b)">${e.aktualisiert} aktualisiert</span> &nbsp;·&nbsp;
             ${e.unveraendert} unverändert
+            ${e.inaktiviert ? `&nbsp;·&nbsp;<span style="color:var(--text3)">${e.inaktiviert} inaktiviert</span>` : ''}
             ${e.fehler ? `&nbsp;·&nbsp;<span style="color:var(--err)">${e.fehler} Fehler</span>` : ''}
           </div>
         </div>`).join('');
+      return data[0]; // neuesten Eintrag zurückgeben für Erfolgsmeldung
     } else {
       logEl.innerHTML = '<div class="empty">Noch keine Importe durchgeführt.</div>';
     }
   } catch {
     logEl.innerHTML = '<div class="empty">Noch keine Importe durchgeführt.</div>';
   }
+  return null;
 }
 
 async function impVorschau() {
@@ -1157,12 +1159,23 @@ async function impAusfuehren() {
       const err = await r.json().catch(() => ({}));
       throw new Error(err.error || 'Fehler beim Import.');
     }
-    const res = await r.json();
-    const s = res.statistik ?? res; // Kompatibilität: Backend gibt res.statistik zurück
+    await r.json(); // Erfolg bestätigt
     impReset();
+    // Erfolgsmeldung aus dem frisch geladenen Log lesen – zuverlässiger als API-Response parsen
+    const letzter = await impLogLaden();
     msgEl.className = 'msg msg-ok';
-    msgEl.textContent = `Import abgeschlossen: ${s.neu ?? 0} neu, ${s.aktualisiert ?? 0} aktualisiert, ${s.unveraendert ?? 0} unverändert${s.fehler ? ', ' + s.fehler + ' Fehler' : ''}.`;
-    impLogLaden();
+    if (letzter) {
+      const teile = [
+        `${letzter.neu} neu`,
+        `${letzter.aktualisiert} aktualisiert`,
+        `${letzter.unveraendert} unverändert`,
+        letzter.inaktiviert ? `${letzter.inaktiviert} inaktiviert` : null,
+        letzter.fehler      ? `${letzter.fehler} Fehler`           : null,
+      ].filter(Boolean).join(', ');
+      msgEl.textContent = `Import abgeschlossen: ${teile}.`;
+    } else {
+      msgEl.textContent = 'Import abgeschlossen.';
+    }
   } catch(e) {
     msgEl.className = 'msg msg-err'; msgEl.textContent = e.message;
   } finally {
