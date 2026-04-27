@@ -1064,7 +1064,14 @@ async function impLogLaden() {
           <div style="font-weight:600">${e.dateiname}</div>
           <div style="color:var(--text3);font-size:12px;margin-top:2px">
             ${new Date(e.erstellt_am).toLocaleString('de-DE')} &nbsp;·&nbsp;
-            ${e.neu} neu &nbsp;·&nbsp; ${e.aktualisiert} aktualisiert &nbsp;·&nbsp; ${e.unveraendert} unverändert
+            ${e.schuljahr_name ?? ''} &nbsp;·&nbsp;
+            ${e.vorname ?? ''} ${e.nachname ?? ''}
+          </div>
+          <div style="margin-top:4px">
+            <span style="color:var(--ok)">+${e.neu} neu</span> &nbsp;·&nbsp;
+            <span style="color:var(--warn,#f59e0b)">${e.aktualisiert} aktualisiert</span> &nbsp;·&nbsp;
+            ${e.unveraendert} unverändert
+            ${e.fehler ? `&nbsp;·&nbsp;<span style="color:var(--err)">${e.fehler} Fehler</span>` : ''}
           </div>
         </div>`).join('');
     } else {
@@ -1151,9 +1158,10 @@ async function impAusfuehren() {
       throw new Error(err.error || 'Fehler beim Import.');
     }
     const res = await r.json();
+    const s = res.statistik ?? res; // Kompatibilität: Backend gibt res.statistik zurück
     impReset();
     msgEl.className = 'msg msg-ok';
-    msgEl.textContent = `Import abgeschlossen: ${res.neu ?? 0} neu, ${res.aktualisiert ?? 0} aktualisiert, ${res.unveraendert ?? 0} unverändert.`;
+    msgEl.textContent = `Import abgeschlossen: ${s.neu ?? 0} neu, ${s.aktualisiert ?? 0} aktualisiert, ${s.unveraendert ?? 0} unverändert${s.fehler ? ', ' + s.fehler + ' Fehler' : ''}.`;
     impLogLaden();
   } catch(e) {
     msgEl.className = 'msg msg-err'; msgEl.textContent = e.message;

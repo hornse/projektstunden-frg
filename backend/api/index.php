@@ -1102,6 +1102,24 @@ function handle_import(string $method, string $sub, array $body): void {
         $schuljahr_id = $row['id'];
     }
 
+    // GET /api/import/log – letzte Importe
+    if ($method === 'GET' && $sub === 'log') {
+        $stmt = $db->prepare(
+            'SELECT il.id, il.dateiname, il.neu, il.aktualisiert, il.unveraendert,
+                    il.inaktiviert, il.fehler, il.erstellt_am,
+                    sj.name AS schuljahr_name,
+                    b.vorname, b.nachname
+             FROM import_log il
+             LEFT JOIN schuljahre sj ON sj.id = il.schuljahr_id
+             LEFT JOIN benutzer   b  ON b.id  = il.benutzer_id
+             WHERE il.schule_id = ?
+             ORDER BY il.erstellt_am DESC
+             LIMIT 20'
+        );
+        $stmt->execute([$user['schule_id']]);
+        json_response($stmt->fetchAll());
+    }
+
     // POST /api/import/vorschau
     if ($method === 'POST' && $sub === 'vorschau') {
         if (empty($_FILES['datei'])) json_error('Keine Datei hochgeladen.');
