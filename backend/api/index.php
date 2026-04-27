@@ -1423,6 +1423,23 @@ function fuehre_import_aus(
             $importierte_schild_ids[] = $schild_id;
         }
 
+        // Schüler die im Schuljahr waren aber NICHT in der neuen Datei → inaktivieren
+        if (!empty($importierte_schild_ids)) {
+            $platzhalter = implode(',', array_fill(0, count($importierte_schild_ids), '?'));
+            $inakt_stmt = $db->prepare(
+                "UPDATE schueler s
+                 INNER JOIN schueler_schuljahr ss ON ss.schueler_id = s.id
+                 SET s.aktiv = 0
+                 WHERE ss.schuljahr_id = ?
+                   AND s.schild_id NOT IN ($platzhalter)"
+            );
+            $inakt_stmt->execute(array_merge(
+                [$schuljahr_id],
+                $importierte_schild_ids
+            ));
+            $zaehler['inaktiviert'] = $inakt_stmt->rowCount();
+        }
+
         // Import-Log schreiben
         $db->prepare(
             'INSERT INTO import_log
