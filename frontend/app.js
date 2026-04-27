@@ -869,5 +869,308 @@ async function buDeaktivieren(id, name) {
 
 
 
+// ============================================================
+// SCHULJAHRE
+// ============================================================
+async function initSchuljahre() {
+  const liste = document.getElementById('sj-liste');
+  liste.innerHTML = '<div class="empty">Wird geladen …</div>';
+  const data = await GET('schuljahre');
+  if (!data || !data.length) {
+    liste.innerHTML = '<div class="empty">Noch keine Schuljahre angelegt.</div>';
+    return;
+  }
+  const statusLabel = { aktiv: 'Aktiv', zukuenftig: 'Geplant', abgeschlossen: 'Abgeschlossen' };
+  const statusCls   = { aktiv: 'pill', zukuenftig: 'pill mkr', abgeschlossen: 'pill ma' };
+  liste.innerHTML = data.map(sj => `
+    <div class="card" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+        <div>
+          <div style="font-weight:600;font-size:15px;margin-bottom:4px">${sj.name}</div>
+          <div style="font-size:12px;color:var(--text3)">
+            ${sj.beginn} – ${sj.ende} &nbsp;·&nbsp;
+            ${sj.klassen_anzahl} Klassen &nbsp;·&nbsp;
+            ${sj.schueler_anzahl} Schüler &nbsp;·&nbsp;
+            ${sj.projekte_anzahl} Projekte
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span class="${statusCls[sj.status] || 'pill'}">${statusLabel[sj.status] || sj.status}</span>
+          ${sj.status !== 'aktiv' && sj.status !== 'abgeschlossen' ? `
+            <button class="btn btn-p" style="padding:4px 10px;font-size:12px"
+              onclick="sjAktivieren(${sj.id}, '${sj.name.replace(/'/g, "\\'")}')">Aktivieren</button>` : ''}
+          ${sj.status !== 'aktiv' ? `
+            <button class="btn" style="padding:4px 10px;font-size:12px;color:var(--err)"
+              onclick="sjLoeschen(${sj.id}, '${sj.name.replace(/'/g, "\\'")}')">Löschen</button>` : ''}
+          ${sj.status !== 'abgeschlossen' ? `
+            <button class="btn" style="padding:4px 10px;font-size:12px"
+              onclick="sjBearbeiten(${sj.id}, '${sj.name.replace(/'/g, "\\'")}', '${sj.beginn}', '${sj.ende}')">Bearbeiten</button>` : ''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function sjNeu() {
+  document.getElementById('sj-modal').style.display = 'block';
+  document.getElementById('sj-modal').innerHTML = `
+    <div class="modal-backdrop" onclick="sjModalClose()"></div>
+    <div class="modal">
+      <div class="modal-header">
+        <span>Neues Schuljahr</span>
+        <button class="modal-close" onclick="sjModalClose()">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;padding:16px">
+        <div>
+          <label>Name *</label>
+          <input id="sj-name" placeholder="z.B. 2025/26" style="margin-top:4px">
+        </div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1"><label>Beginn *</label><input id="sj-beginn" type="date" style="margin-top:4px"></div>
+          <div style="flex:1"><label>Ende *</label><input id="sj-ende" type="date" style="margin-top:4px"></div>
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="sj-status" style="margin-top:4px">
+            <option value="zukuenftig">Geplant (noch nicht aktiv)</option>
+            <option value="aktiv">Sofort aktivieren</option>
+          </select>
+        </div>
+        <div id="sj-modal-msg"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+          <button class="btn" onclick="sjModalClose()">Abbrechen</button>
+          <button class="btn btn-p" onclick="sjSpeichern()">Speichern</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function sjBearbeiten(id, name, beginn, ende) {
+  document.getElementById('sj-modal').style.display = 'block';
+  document.getElementById('sj-modal').innerHTML = `
+    <div class="modal-backdrop" onclick="sjModalClose()"></div>
+    <div class="modal">
+      <div class="modal-header">
+        <span>Schuljahr bearbeiten</span>
+        <button class="modal-close" onclick="sjModalClose()">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;padding:16px">
+        <div>
+          <label>Name *</label>
+          <input id="sj-name" value="${name}" style="margin-top:4px">
+        </div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1"><label>Beginn *</label><input id="sj-beginn" type="date" value="${beginn}" style="margin-top:4px"></div>
+          <div style="flex:1"><label>Ende *</label><input id="sj-ende" type="date" value="${ende}" style="margin-top:4px"></div>
+        </div>
+        <div id="sj-modal-msg"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+          <button class="btn" onclick="sjModalClose()">Abbrechen</button>
+          <button class="btn btn-p" onclick="sjUpdate(${id})">Speichern</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function sjModalClose() {
+  const m = document.getElementById('sj-modal');
+  m.style.display = 'none';
+  m.innerHTML = '';
+}
+
+async function sjSpeichern() {
+  const name   = document.getElementById('sj-name').value.trim();
+  const beginn = document.getElementById('sj-beginn').value;
+  const ende   = document.getElementById('sj-ende').value;
+  const status = document.getElementById('sj-status').value;
+  const msgEl  = document.getElementById('sj-modal-msg');
+  if (!name || !beginn || !ende) {
+    msgEl.className = 'msg msg-err'; msgEl.textContent = 'Bitte alle Pflichtfelder ausfüllen.'; return;
+  }
+  try {
+    await POST('schuljahre', { name, beginn, ende, status });
+    sjModalClose();
+    showMsg('sj-msg', 'Schuljahr wurde angelegt.', 'ok');
+    initSchuljahre();
+  } catch(e) {
+    msgEl.className = 'msg msg-err'; msgEl.textContent = e.message;
+  }
+}
+
+async function sjUpdate(id) {
+  const name   = document.getElementById('sj-name').value.trim();
+  const beginn = document.getElementById('sj-beginn').value;
+  const ende   = document.getElementById('sj-ende').value;
+  const msgEl  = document.getElementById('sj-modal-msg');
+  if (!name || !beginn || !ende) {
+    msgEl.className = 'msg msg-err'; msgEl.textContent = 'Bitte alle Pflichtfelder ausfüllen.'; return;
+  }
+  try {
+    await api('PUT', `schuljahre/${id}`, { name, beginn, ende });
+    sjModalClose();
+    showMsg('sj-msg', 'Schuljahr wurde aktualisiert.', 'ok');
+    initSchuljahre();
+  } catch(e) {
+    msgEl.className = 'msg msg-err'; msgEl.textContent = e.message;
+  }
+}
+
+async function sjAktivieren(id, name) {
+  if (!confirm(`"${name}" wirklich aktivieren? Das aktuell aktive Schuljahr wird dabei abgeschlossen.`)) return;
+  try {
+    await POST(`schuljahre/${id}/aktivieren`, {});
+    showMsg('sj-msg', `"${name}" ist jetzt das aktive Schuljahr.`, 'ok');
+    initSchuljahre();
+  } catch(e) { showMsg('sj-msg', e.message, 'err'); }
+}
+
+async function sjLoeschen(id, name) {
+  if (!confirm(`"${name}" wirklich löschen? Dies ist nur möglich wenn noch keine Schüler oder Projekte zugeordnet sind.`)) return;
+  try {
+    await DELETE(`schuljahre/${id}`);
+    showMsg('sj-msg', `"${name}" wurde gelöscht.`, 'ok');
+    initSchuljahre();
+  } catch(e) { showMsg('sj-msg', e.message, 'err'); }
+}
+
+// ============================================================
+// IMPORT (Schild-NRW)
+// ============================================================
+
+let IMP_DATEI = null; // aktuell gewählte Datei merken
+
+async function initImport() {
+  // Schuljahr-Auswahl befüllen
+  const sel = document.getElementById('imp-sj');
+  const data = await GET('schuljahre');
+  if (data && data.length) {
+    sel.innerHTML = data.map(sj =>
+      `<option value="${sj.id}"${sj.status === 'aktiv' ? ' selected' : ''}>${sj.name}${sj.status === 'aktiv' ? ' (aktiv)' : ''}</option>`
+    ).join('');
+  } else {
+    sel.innerHTML = '<option value="">– Kein Schuljahr vorhanden –</option>';
+  }
+  // Import-Log laden
+  await impLogLaden();
+}
+
+async function impLogLaden() {
+  // Import-Log über Schuljahre-Liste ermitteln (kein eigener Endpunkt nötig)
+  const logEl = document.getElementById('imp-log-liste');
+  try {
+    const data = await GET('import/log');
+    if (data && data.length) {
+      logEl.innerHTML = data.map(e => `
+        <div class="card" style="margin-bottom:8px;font-size:13px">
+          <div style="font-weight:600">${e.dateiname}</div>
+          <div style="color:var(--text3);font-size:12px;margin-top:2px">
+            ${new Date(e.erstellt_am).toLocaleString('de-DE')} &nbsp;·&nbsp;
+            ${e.neu} neu &nbsp;·&nbsp; ${e.aktualisiert} aktualisiert &nbsp;·&nbsp; ${e.unveraendert} unverändert
+          </div>
+        </div>`).join('');
+    } else {
+      logEl.innerHTML = '<div class="empty">Noch keine Importe durchgeführt.</div>';
+    }
+  } catch {
+    logEl.innerHTML = '<div class="empty">Noch keine Importe durchgeführt.</div>';
+  }
+}
+
+async function impVorschau() {
+  const fileInput = document.getElementById('imp-datei');
+  const ladeinfo  = document.getElementById('imp-ladeinfo');
+  const vorschauWrap = document.getElementById('imp-vorschau-wrap');
+  const msgEl = document.getElementById('imp-msg');
+  msgEl.innerHTML = '';
+  vorschauWrap.style.display = 'none';
+
+  if (!fileInput.files.length) return;
+  IMP_DATEI = fileInput.files[0];
+  ladeinfo.textContent = `Datei: ${IMP_DATEI.name} (${Math.round(IMP_DATEI.size / 1024)} KB) – wird analysiert …`;
+
+  const sjId = document.getElementById('imp-sj').value;
+  const fd = new FormData();
+  fd.append('datei', IMP_DATEI);
+  if (sjId) fd.append('schuljahr_id', sjId);
+
+  try {
+    const r = await fetch(API_BASE + '/api/import/vorschau', {
+      method: 'POST', credentials: 'include', body: fd
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.error || 'Fehler beim Analysieren der Datei.');
+    }
+    const v = await r.json();
+
+    document.getElementById('imp-stats').innerHTML = `
+      <div class="stat"><div class="stat-val" style="color:var(--ok)">${v.neu?.length ?? 0}</div><div class="stat-lbl">Neu</div></div>
+      <div class="stat"><div class="stat-val" style="color:var(--warn,#f59e0b)">${v.aktualisiert?.length ?? 0}</div><div class="stat-lbl">Aktualisiert</div></div>
+      <div class="stat"><div class="stat-val">${v.unveraendert?.length ?? 0}</div><div class="stat-lbl">Unverändert</div></div>
+      <div class="stat"><div class="stat-val" style="color:var(--err)">${v.fehler?.length ?? 0}</div><div class="stat-lbl">Fehler</div></div>`;
+
+    let detail = '';
+    if (v.neu?.length)
+      detail += `<div class="sec" style="margin-top:12px">Neue Schüler (${v.neu.length})</div>` +
+        v.neu.slice(0, 10).map(s => `<div style="font-size:13px;padding:3px 0">${s.vorname} ${s.nachname} – Klasse ${s.klasse}</div>`).join('') +
+        (v.neu.length > 10 ? `<div style="font-size:12px;color:var(--text3)">… und ${v.neu.length - 10} weitere</div>` : '');
+    if (v.aktualisiert?.length)
+      detail += `<div class="sec" style="margin-top:12px">Aktualisiert (${v.aktualisiert.length})</div>` +
+        v.aktualisiert.slice(0, 5).map(s => `<div style="font-size:13px;padding:3px 0">${s.vorname} ${s.nachname}</div>`).join('') +
+        (v.aktualisiert.length > 5 ? `<div style="font-size:12px;color:var(--text3)">… und ${v.aktualisiert.length - 5} weitere</div>` : '');
+    if (v.fehler?.length)
+      detail += `<div class="sec" style="margin-top:12px;color:var(--err)">Fehler (${v.fehler.length})</div>` +
+        v.fehler.map(f => `<div style="font-size:12px;color:var(--err);padding:2px 0">${f.zeile ?? ''}: ${f.meldung ?? f}</div>`).join('');
+
+    document.getElementById('imp-vorschau-detail').innerHTML = detail;
+    vorschauWrap.style.display = 'block';
+    ladeinfo.textContent = `${IMP_DATEI.name} analysiert.`;
+  } catch(e) {
+    ladeinfo.textContent = '';
+    msgEl.className = 'msg msg-err'; msgEl.textContent = e.message;
+  }
+}
+
+async function impAusfuehren() {
+  const msgEl = document.getElementById('imp-msg');
+  const btn   = document.getElementById('imp-btn-ausfuehren');
+  if (!IMP_DATEI) { msgEl.className='msg msg-err'; msgEl.textContent='Keine Datei gewählt.'; return; }
+
+  const sjId = document.getElementById('imp-sj').value;
+  const fd = new FormData();
+  fd.append('datei', IMP_DATEI);
+  if (sjId) fd.append('schuljahr_id', sjId);
+
+  btn.disabled = true;
+  btn.textContent = 'Wird importiert …';
+  try {
+    const r = await fetch(API_BASE + '/api/import/ausfuehren', {
+      method: 'POST', credentials: 'include', body: fd
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.error || 'Fehler beim Import.');
+    }
+    const res = await r.json();
+    impReset();
+    msgEl.className = 'msg msg-ok';
+    msgEl.textContent = `Import abgeschlossen: ${res.neu ?? 0} neu, ${res.aktualisiert ?? 0} aktualisiert, ${res.unveraendert ?? 0} unverändert.`;
+    impLogLaden();
+  } catch(e) {
+    msgEl.className = 'msg msg-err'; msgEl.textContent = e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Import durchführen';
+  }
+}
+
+function impReset() {
+  IMP_DATEI = null;
+  document.getElementById('imp-datei').value = '';
+  document.getElementById('imp-ladeinfo').textContent = '';
+  document.getElementById('imp-vorschau-wrap').style.display = 'none';
+  document.getElementById('imp-stats').innerHTML = '';
+  document.getElementById('imp-vorschau-detail').innerHTML = '';
+}
+
 checkAuth();
 
