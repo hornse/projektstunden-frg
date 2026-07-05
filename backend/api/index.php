@@ -349,29 +349,51 @@ function handle_kompetenzen(string $method): void {
 }
 
 // ============================================================
-//  PROJEKTE
+//  PROJEKTE / WERKSTÄTTEN
+//  GET    /api/projekte              – Liste (Lernbegleiter sieht nur eigene)
+//  POST   /api/projekte              – Neue Werkstatt anlegen
+//  GET    /api/projekte/{id}         – Einzelne Werkstatt mit Details
+//  PUT    /api/projekte/{id}         – Werkstatt bearbeiten
+//  DELETE /api/projekte/{id}         – Löschen (nur Admin)
 // ============================================================
 function handle_projekte(string $method, ?int $id, array $body): void {
-    $user = require_auth();
-    $db   = get_db();
+    $user     = require_auth();
+    $db       = get_db();
+    $istAdmin = $user['rolle'] === 'admin';
 
     // ----- GET /projekte oder GET /projekte/{id} -----
     if ($method === 'GET') {
         if ($id) {
-            // Einzelprojekt mit allen Details laden
             $stmt = $db->prepare(
-                'SELECT p.*, k.bezeichnung AS klasse, b.vorname AS lehrer_vorname,
-                        b.nachname AS lehrer_nachname
+                'SELECT p.*, k.bezeichnung AS klasse, sj.name AS schuljahr_name
                  FROM projekte p
-                 JOIN klassen k  ON k.id = p.klasse_id
-                 JOIN benutzer b ON b.id = p.lehrer_id
+                 JOIN klassen k ON k.id = p.klasse_id
+                 LEFT JOIN schuljahre sj ON sj.id = p.schuljahr_id
                  WHERE p.id = ? AND p.schule_id = ?'
             );
             $stmt->execute([$id, $user['schule_id']]);
             $proj = $stmt->fetch();
-            if (!$proj) json_error('Projekt nicht gefunden.', 404);
+            if (!$proj) json_error('Werkstatt nicht gefunden.', 404);
 
-            // Beteiligte Schüler
+            // Zugangskontrolle: Lernbegleiter nur eigene Werkstätten
+            if (!$istAdmin) {
+                $chk = $db->prepare(
+                    'SELECT 1 FROM projekt_lehrer WHERE projekt_id = ? AND benutzer_id = ?'
+                );
+                $chk->execute([$id, $user['id']]);
+                if (!$chk->fetch()) json_error('Keine Berechtigung.', 403);
+            }
+
+            // Lernbegleiter
+            $stmt = $db->prepare(
+                'SELECT b.id, b.vorname, b.nachname, b.kuerzel, pl.rolle
+                 FROM projekt_lehrer pl JOIN benutzer b ON b.id = pl.benutzer_id
+                 WHERE pl.projekt_id = ? ORDER BY pl.rolle ASC'
+            );
+            $stmt->execute([$id]);
+            $proj['lernbegleiter'] = $stmt->fetchAll();
+
+            // Schüler
             $stmt = $db->prepare(
                 'SELECT s.id, s.vorname, s.nachname FROM schueler s
                  JOIN projekt_schueler ps ON ps.schueler_id = s.id
@@ -380,7 +402,7 @@ function handle_projekte(string $method, ?int $id, array $body): void {
             $stmt->execute([$id]);
             $proj['schueler'] = $stmt->fetchAll();
 
-            // Angerechnete Stunden je Fach
+            // Stunden
             $stmt = $db->prepare(
                 'SELECT ps.fach_id, f.name AS fach_name, f.kuerzel, ps.stunden, ps.notiz
                  FROM projekt_stunden ps JOIN faecher f ON f.id = ps.fach_id
@@ -389,11 +411,11 @@ function handle_projekte(string $method, ?int $id, array $body): void {
             $stmt->execute([$id]);
             $proj['stunden'] = $stmt->fetchAll();
 
-            // Kompetenzen (aggregiert: welche Kompetenzen wurden vergeben?)
+            // Kompetenzen
             $stmt = $db->prepare(
                 'SELECT DISTINCT k.id, k.code, k.kurzname, kb.name AS bereich, kr.kuerzel AS rahmen
                  FROM projekt_schueler_kompetenzen psk
-                 JOIN kompetenzen k    ON k.id  = psk.kompetenz_id
+                 JOIN kompetenzen k        ON k.id  = psk.kompetenz_id
                  JOIN kompetenzbereiche kb ON kb.id = k.bereich_id
                  JOIN kompetenzrahmen kr   ON kr.id = kb.rahmen_id
                  WHERE psk.projekt_id = ?'
@@ -404,75 +426,119 @@ function handle_projekte(string $method, ?int $id, array $body): void {
             json_response($proj);
         }
 
-        // Liste mit optionalem Klassen-Filter
-        $klasse_id = (int)($_GET['klasse_id'] ?? 0);
+        // Liste
+        $schuljahr_id = (int)($_GET['schuljahr_id'] ?? 0);
         $sql = '
             SELECT p.id, p.name, p.datum_von, p.datum_bis, p.status,
+                   p.laufzeit, p.max_schueler, p.praesentation_datum,
                    k.bezeichnung AS klasse,
-                   CONCAT(b.vorname, " ", b.nachname) AS lehrer,
+                   sj.name AS schuljahr_name,
                    COUNT(DISTINCT ps.schueler_id) AS schueler_anzahl,
-                   COUNT(DISTINCT psk.kompetenz_id) AS kompetenzen_anzahl
+                   COUNT(DISTINCT psk.kompetenz_id) AS kompetenzen_anzahl,
+                   GROUP_CONCAT(DISTINCT CONCAT(b.vorname, " ", b.nachname)
+                                ORDER BY pl.rolle ASC SEPARATOR ", ") AS lernbegleiter
             FROM projekte p
-            JOIN klassen  k   ON k.id = p.klasse_id
-            JOIN benutzer b   ON b.id = p.lehrer_id
+            JOIN klassen k ON k.id = p.klasse_id
+            LEFT JOIN schuljahre sj ON sj.id = p.schuljahr_id
+            LEFT JOIN projekt_lehrer pl ON pl.projekt_id = p.id
+            LEFT JOIN benutzer b ON b.id = pl.benutzer_id
             LEFT JOIN projekt_schueler ps ON ps.projekt_id = p.id
             LEFT JOIN projekt_schueler_kompetenzen psk ON psk.projekt_id = p.id
             WHERE p.schule_id = ?
         ';
         $params = [$user['schule_id']];
-        if ($klasse_id) { $sql .= ' AND p.klasse_id = ?'; $params[] = $klasse_id; }
+
+        // Lernbegleiter sehen nur eigene Werkstätten
+        if (!$istAdmin) {
+            $sql .= ' AND EXISTS (
+                SELECT 1 FROM projekt_lehrer pl2
+                WHERE pl2.projekt_id = p.id AND pl2.benutzer_id = ?
+            )';
+            $params[] = $user['id'];
+        }
+
+        if ($schuljahr_id) { $sql .= ' AND p.schuljahr_id = ?'; $params[] = $schuljahr_id; }
         $sql .= ' GROUP BY p.id ORDER BY p.datum_von DESC';
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
         json_response($stmt->fetchAll());
     }
 
-    // ----- POST /projekte (Neues Projekt anlegen) -----
+    // ----- POST /projekte -----
     if ($method === 'POST') {
-        $name      = clean($body['name']      ?? '');
-        $klasse_id = (int)($body['klasse_id'] ?? 0);
-        $datum_von = $body['datum_von'] ?? '';
-        $datum_bis = $body['datum_bis'] ?? null;
-        $beschreibung = clean($body['beschreibung'] ?? '');
-        $status    = in_array($body['status'] ?? '', ['geplant','laufend','abgeschlossen'])
-                     ? $body['status'] : 'abgeschlossen';
-        $lehrer_id = (int)($body['lehrer_id'] ?? $user['id']);
+        $name                = clean($body['name']      ?? '');
+        $klasse_id           = (int)($body['klasse_id'] ?? 0);
+        $schuljahr_id        = (int)($body['schuljahr_id'] ?? 0) ?: null;
+        $datum_von           = $body['datum_von'] ?? '';
+        $datum_bis           = $body['datum_bis'] ?? null;
+        $praesentation_datum = $body['praesentation_datum'] ?? null;
+        $laufzeit            = in_array($body['laufzeit'] ?? '', ['halbjahr','jahr'])
+                               ? $body['laufzeit'] : 'jahr';
+        $max_schueler        = isset($body['max_schueler']) && $body['max_schueler'] !== ''
+                               ? (int)$body['max_schueler'] : null;
+        $beschreibung        = clean($body['beschreibung'] ?? '');
+        $status              = in_array($body['status'] ?? '', ['geplant','aktiv','abgeschlossen','abgesagt'])
+                               ? $body['status'] : 'geplant';
+        $lehrer_ids          = array_map('intval', $body['lehrer_ids'] ?? []);
 
-        if (!$name || !$klasse_id || !$datum_von) json_error('Name, Klasse und Datum erforderlich.');
+        if (!$name || !$klasse_id || !$datum_von) {
+            json_error('Werkstattname, Klasse und Startdatum sind Pflichtfelder.');
+        }
+
+        // Eigene ID immer als Lernbegleiter eintragen
+        if (!in_array($user['id'], $lehrer_ids)) {
+            array_unshift($lehrer_ids, $user['id']);
+        }
 
         $db->beginTransaction();
         try {
-            // Projekt anlegen
             $stmt = $db->prepare(
-                'INSERT INTO projekte (schule_id, klasse_id, lehrer_id, name, beschreibung, datum_von, datum_bis, status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+                'INSERT INTO projekte
+                 (schule_id, klasse_id, lehrer_id, schuljahr_id, name, beschreibung,
+                  datum_von, datum_bis, laufzeit, max_schueler, praesentation_datum, status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
-            $stmt->execute([$user['schule_id'], $klasse_id, $lehrer_id,
-                            $name, $beschreibung, $datum_von, $datum_bis ?: null, $status]);
+            $stmt->execute([
+                $user['schule_id'], $klasse_id, $user['id'], $schuljahr_id,
+                $name, $beschreibung, $datum_von,
+                $datum_bis ?: null, $laufzeit, $max_schueler,
+                $praesentation_datum ?: null, $status
+            ]);
             $proj_id = (int)$db->lastInsertId();
 
-            // Schüler zuordnen
+            // Lernbegleiter eintragen (erster = Leitung)
+            $ins_lb = $db->prepare(
+                'INSERT IGNORE INTO projekt_lehrer (projekt_id, benutzer_id, rolle) VALUES (?, ?, ?)'
+            );
+            foreach ($lehrer_ids as $i => $lid) {
+                $ins_lb->execute([$proj_id, $lid, $i === 0 ? 'leitung' : 'begleitung']);
+            }
+
+            // Schüler
             $schueler_ids = array_map('intval', $body['schueler_ids'] ?? []);
             if (!empty($schueler_ids)) {
-                $ins = $db->prepare('INSERT IGNORE INTO projekt_schueler (projekt_id, schueler_id) VALUES (?, ?)');
+                $ins = $db->prepare(
+                    'INSERT IGNORE INTO projekt_schueler (projekt_id, schueler_id) VALUES (?, ?)'
+                );
                 foreach ($schueler_ids as $sid) $ins->execute([$proj_id, $sid]);
             }
 
-            // Stunden je Fach eintragen
-            $stunden = $body['stunden'] ?? []; // [{fach_id: 4, stunden: 2.5, notiz: '...'}]
+            // Stunden
+            $stunden = $body['stunden'] ?? [];
             if (!empty($stunden)) {
                 $ins = $db->prepare(
                     'INSERT INTO projekt_stunden (projekt_id, fach_id, stunden, notiz) VALUES (?, ?, ?, ?)'
                 );
                 foreach ($stunden as $s) {
                     if (empty($s['fach_id']) || empty($s['stunden'])) continue;
-                    $ins->execute([$proj_id, (int)$s['fach_id'],
-                                   round((float)$s['stunden'], 1), clean($s['notiz'] ?? '')]);
+                    $ins->execute([
+                        $proj_id, (int)$s['fach_id'],
+                        round((float)$s['stunden'], 1), clean($s['notiz'] ?? '')
+                    ]);
                 }
             }
 
-            // Kompetenzen je Schüler zuordnen
-            // Format: [{schueler_id: 7, kompetenz_id: 12, notiz: '...'}, ...]
+            // Kompetenzen
             $kompetenzen = $body['kompetenzen'] ?? [];
             if (!empty($kompetenzen)) {
                 $ins = $db->prepare(
@@ -481,8 +547,10 @@ function handle_projekte(string $method, ?int $id, array $body): void {
                 );
                 foreach ($kompetenzen as $kc) {
                     if (empty($kc['schueler_id']) || empty($kc['kompetenz_id'])) continue;
-                    $ins->execute([$proj_id, (int)$kc['schueler_id'],
-                                   (int)$kc['kompetenz_id'], clean($kc['notiz'] ?? '')]);
+                    $ins->execute([
+                        $proj_id, (int)$kc['schueler_id'],
+                        (int)$kc['kompetenz_id'], clean($kc['notiz'] ?? '')
+                    ]);
                 }
             }
 
@@ -496,9 +564,78 @@ function handle_projekte(string $method, ?int $id, array $body): void {
         }
     }
 
+    // ----- PUT /projekte/{id} -----
+    if ($method === 'PUT' && $id) {
+        // Zugangskontrolle: nur Leitung oder Admin
+        if (!$istAdmin) {
+            $chk = $db->prepare(
+                'SELECT rolle FROM projekt_lehrer WHERE projekt_id = ? AND benutzer_id = ?'
+            );
+            $chk->execute([$id, $user['id']]);
+            $pl = $chk->fetch();
+            if (!$pl || $pl['rolle'] !== 'leitung') {
+                json_error('Nur die Leitungsperson darf die Werkstatt bearbeiten.', 403);
+            }
+        }
+
+        $name                = clean($body['name']      ?? '');
+        $klasse_id           = (int)($body['klasse_id'] ?? 0);
+        $schuljahr_id        = (int)($body['schuljahr_id'] ?? 0) ?: null;
+        $datum_von           = $body['datum_von'] ?? '';
+        $datum_bis           = $body['datum_bis'] ?? null;
+        $praesentation_datum = $body['praesentation_datum'] ?? null;
+        $laufzeit            = in_array($body['laufzeit'] ?? '', ['halbjahr','jahr'])
+                               ? $body['laufzeit'] : 'jahr';
+        $max_schueler        = isset($body['max_schueler']) && $body['max_schueler'] !== ''
+                               ? (int)$body['max_schueler'] : null;
+        $beschreibung        = clean($body['beschreibung'] ?? '');
+        $status              = in_array($body['status'] ?? '', ['geplant','aktiv','abgeschlossen','abgesagt'])
+                               ? $body['status'] : 'geplant';
+        $lehrer_ids          = array_map('intval', $body['lehrer_ids'] ?? []);
+
+        if (!$name || !$klasse_id || !$datum_von) {
+            json_error('Werkstattname, Klasse und Startdatum sind Pflichtfelder.');
+        }
+
+        $db->beginTransaction();
+        try {
+            $db->prepare(
+                'UPDATE projekte SET
+                 klasse_id=?, schuljahr_id=?, name=?, beschreibung=?,
+                 datum_von=?, datum_bis=?, laufzeit=?, max_schueler=?,
+                 praesentation_datum=?, status=?
+                 WHERE id=? AND schule_id=?'
+            )->execute([
+                $klasse_id, $schuljahr_id, $name, $beschreibung,
+                $datum_von, $datum_bis ?: null, $laufzeit, $max_schueler,
+                $praesentation_datum ?: null, $status,
+                $id, $user['schule_id']
+            ]);
+
+            // Lernbegleiter neu setzen
+            if (!empty($lehrer_ids)) {
+                $db->prepare('DELETE FROM projekt_lehrer WHERE projekt_id = ?')->execute([$id]);
+                $ins = $db->prepare(
+                    'INSERT IGNORE INTO projekt_lehrer (projekt_id, benutzer_id, rolle) VALUES (?, ?, ?)'
+                );
+                foreach ($lehrer_ids as $i => $lid) {
+                    $ins->execute([$id, $lid, $i === 0 ? 'leitung' : 'begleitung']);
+                }
+            }
+
+            $db->commit();
+            audit($user['id'], 'projekte', $id, 'UPDATE', null, ['name' => $name]);
+            json_response(['ok' => true]);
+
+        } catch (Throwable $e) {
+            $db->rollBack();
+            throw $e;
+        }
+    }
+
     // ----- DELETE /projekte/{id} -----
     if ($method === 'DELETE' && $id) {
-        require_admin(); // Löschen nur für Admins
+        require_admin();
         $stmt = $db->prepare('DELETE FROM projekte WHERE id = ? AND schule_id = ?');
         $stmt->execute([$id, $user['schule_id']]);
         audit($user['id'], 'projekte', $id, 'DELETE');

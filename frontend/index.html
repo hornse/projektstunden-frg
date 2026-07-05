@@ -200,7 +200,7 @@ select[multiple]{height:100px}
     </button>
     <button class="nv" onclick="go('projekt')">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M5 3V2a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M5 8h6M5 11h4"/></svg>
-      Projekt eintragen
+      Werkstatt eintragen
     </button>
     <button class="nv" onclick="go('schueler')">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5"/></svg>
@@ -253,15 +253,32 @@ select[multiple]{height:100px}
 
   <!-- PROJEKT -->
   <div id="s-projekt" class="screen">
-    <h1>Projekt eintragen</h1>
+    <h1>Werkstatt eintragen</h1>
     <p class="sub">Stunden und Kompetenzen fächerübergreifend zuweisen</p>
     <div class="card">
-      <h2>Projektdaten</h2>
-      <label>Projektname *</label>
+      <h2>Werkstattdaten</h2>
+      <label>Werkstattname *</label>
       <input id="p-name" placeholder="z. B. Umweltwerkstatt 7b">
       <div class="g2">
-        <div><label>Datum *</label><input type="date" id="p-von"></div>
-        <div><label>Bis (optional)</label><input type="date" id="p-bis"></div>
+        <div>
+          <label>Schuljahr</label>
+          <select id="p-schuljahr" onchange="renderProjektListe()"><option value="">– kein –</option></select>
+        </div>
+        <div>
+          <label>Laufzeit</label>
+          <select id="p-laufzeit">
+            <option value="jahr">Ganzjährig</option>
+            <option value="halbjahr">Halbjahr</option>
+          </select>
+        </div>
+      </div>
+      <div class="g2">
+        <div><label>Startdatum *</label><input type="date" id="p-von"></div>
+        <div><label>Enddatum (optional)</label><input type="date" id="p-bis"></div>
+      </div>
+      <div class="g2">
+        <div><label>Präsentationsdatum</label><input type="date" id="p-praesentation"></div>
+        <div><label>Max. Teilnehmer</label><input type="number" id="p-max" min="1" max="99" placeholder="unbegrenzt"></div>
       </div>
       <div class="g2">
         <div>
@@ -269,22 +286,23 @@ select[multiple]{height:100px}
           <select id="p-kl" onchange="loadSchuelerForProjekt()"><option value="">– wählen –</option></select>
         </div>
         <div>
-          <label>Verantwortliche Lehrkraft</label>
-          <select id="p-lehrer"><option value="">– wählen –</option></select>
+          <label>Status</label>
+          <select id="p-status">
+            <option value="geplant">Geplant</option>
+            <option value="aktiv">Aktiv</option>
+            <option value="abgeschlossen">Abgeschlossen</option>
+            <option value="abgesagt">Abgesagt</option>
+          </select>
         </div>
       </div>
+      <label>Lernbegleiter * <small style="color:var(--text3);font-weight:normal">(Strg/Cmd für mehrere; erster = Leitung)</small></label>
+      <select id="p-lehrer" multiple size="4"></select>
       <label>Beschreibung</label>
       <textarea id="p-desc" placeholder="Was wird erarbeitet? Warum fächerübergreifend?"></textarea>
-      <label>Status</label>
-      <select id="p-status">
-        <option value="abgeschlossen">Abgeschlossen</option>
-        <option value="laufend">Laufend</option>
-        <option value="geplant">Geplant</option>
-      </select>
     </div>
 
     <div class="card">
-      <h2>Beteiligte Schüler *</h2>
+      <h2>Beteiligte Schüler/innen</h2>
       <p style="font-size:12px;color:var(--text3);margin-bottom:8px">Strg/Cmd für Mehrfachauswahl</p>
       <select id="p-schueler" multiple></select>
     </div>
@@ -294,7 +312,7 @@ select[multiple]{height:100px}
       <p style="font-size:12px;color:var(--text3);margin-bottom:10px">Nur Fächer ausfüllen, die inhaltlich beteiligt sind. Eintrag wird auf das Jahresstundensoll angerechnet.</p>
       <div class="fach-grid" id="p-fach-grid"></div>
       <div style="margin-top:12px;padding:8px 12px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--text2)">
-        Gesamtstunden Projekt: <strong id="p-summe">0</strong> Std.
+        Gesamtstunden Werkstatt: <strong id="p-summe">0</strong> Std.
       </div>
     </div>
 
@@ -307,10 +325,10 @@ select[multiple]{height:100px}
       <div id="komp-bereich-list"></div>
     </div>
 
-    <button class="btn btn-p btn-full" onclick="projektSpeichern()">Projekt speichern</button>
+    <button class="btn btn-p btn-full" onclick="projektSpeichern()">Werkstatt speichern</button>
     <div id="p-msg"></div>
 
-    <div class="sec" style="margin-top:28px">Gespeicherte Projekte</div>
+    <div class="sec" style="margin-top:28px">Gespeicherte Werkstätten</div>
     <div id="proj-liste"></div>
   </div>
 

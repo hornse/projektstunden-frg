@@ -218,21 +218,30 @@ let KOMPETENZEN_CACHE = {}; // { fach_id: [...kompetenzen] }
 let AKTIVER_RAHMEN    = 0;
 
 async function initProjekt() {
+  // Schuljahr-Dropdown
+  const sjData = await GET('schuljahre');
+  const sjEl = document.getElementById('p-schuljahr');
+  sjEl.innerHTML = '<option value="">– kein –</option>' +
+    (sjData || []).map(s =>
+      `<option value="${s.id}" ${s.status === 'aktiv' ? 'selected' : ''}>${s.name}${s.status === 'aktiv' ? ' ✓' : ''}</option>`
+    ).join('');
+
   // Klassen-Dropdown
   const kEl = document.getElementById('p-kl');
   kEl.innerHTML = '<option value="">– wählen –</option>' +
     STATE.klassen.map(k => `<option value="${k.id}">${k.bezeichnung} (${k.schuljahr})</option>`).join('');
 
-  // Lehrer-Dropdown
+  // Lernbegleiter Multi-Select (eigene ID vorausgewählt)
   const lEl = document.getElementById('p-lehrer');
-  lEl.innerHTML = '<option value="">– wählen –</option>' +
-    STATE.lehrer.map(l => `<option value="${l.id}">${l.vorname} ${l.nachname}${l.kuerzel ? ' (' + l.kuerzel + ')' : ''}</option>`).join('');
+  lEl.innerHTML = STATE.lehrer.map(l =>
+    `<option value="${l.id}" ${l.id === STATE.user?.id ? 'selected' : ''}>${l.vorname} ${l.nachname}${l.kuerzel ? ' (' + l.kuerzel + ')' : ''}</option>`
+  ).join('');
 
   // Fach-Grid aufbauen
   buildFachGrid();
-  // Datum: heute
+  // Startdatum: heute
   document.getElementById('p-von').valueAsDate = new Date();
-  // Kompetenzen: alle Rahmen laden (initial fächerübergreifend = MKR)
+  // Kompetenzen laden
   await loadKompetenzenFuerFaecher([]);
   renderRahmenTabs();
   await renderProjektListe();
@@ -418,24 +427,29 @@ function loadSchuelerForProjekt() {
 }
 
 async function projektSpeichern() {
-  const name      = document.getElementById('p-name').value.trim();
-  const klasse_id = parseInt(document.getElementById('p-kl').value);
-  const datum_von = document.getElementById('p-von').value;
-  const datum_bis = document.getElementById('p-bis').value || null;
+  const name        = document.getElementById('p-name').value.trim();
+  const klasse_id   = parseInt(document.getElementById('p-kl').value);
+  const schuljahr_id = parseInt(document.getElementById('p-schuljahr').value) || null;
+  const datum_von   = document.getElementById('p-von').value;
+  const datum_bis   = document.getElementById('p-bis').value || null;
+  const praesentation_datum = document.getElementById('p-praesentation').value || null;
+  const laufzeit    = document.getElementById('p-laufzeit').value;
+  const max_schueler = document.getElementById('p-max').value ? parseInt(document.getElementById('p-max').value) : null;
   const beschreibung = document.getElementById('p-desc').value.trim();
-  const status    = document.getElementById('p-status').value;
-  const lehrer_id = parseInt(document.getElementById('p-lehrer').value) || null;
+  const status      = document.getElementById('p-status').value;
+  const lehrer_ids  = [...document.getElementById('p-lehrer').selectedOptions].map(o => parseInt(o.value));
   const schueler_ids = [...document.getElementById('p-schueler').selectedOptions].map(o => parseInt(o.value));
-  if (!name || !klasse_id || !datum_von || !schueler_ids.length)
-    return showMsg('p-msg', 'Bitte Pflichtfelder füllen und Schüler auswählen.', 'err');
 
-  // Stunden
+  if (!name || !klasse_id || !datum_von)
+    return showMsg('p-msg', 'Werkstattname, Klasse und Startdatum sind Pflichtfelder.', 'err');
+  if (!lehrer_ids.length)
+    return showMsg('p-msg', 'Mindestens einen Lernbegleiter auswählen.', 'err');
+
   const stunden = [...document.querySelectorAll('#p-fach-grid input')]
     .filter(i => parseFloat(i.value) > 0)
     .map(i => ({ fach_id: parseInt(i.dataset.fid), stunden: parseFloat(i.value) }));
   if (!stunden.length) return showMsg('p-msg', 'Mindestens einem Fach Stunden zuweisen.', 'err');
 
-  // Kompetenzen: für alle gewählten Schüler gleich
   const kompIds = [...document.querySelectorAll('.komp-cb:checked')].map(c => parseInt(c.value));
   const kompetenzen = [];
   for (const sid of schueler_ids) {
@@ -443,12 +457,16 @@ async function projektSpeichern() {
   }
 
   try {
-    await POST('projekte', { name, klasse_id, datum_von, datum_bis, beschreibung, status,
-                              lehrer_id, schueler_ids, stunden, kompetenzen });
-    showMsg('p-msg', 'Projekt gespeichert.', 'ok');
-    // Reset
+    await POST('projekte', {
+      name, klasse_id, schuljahr_id, datum_von, datum_bis,
+      praesentation_datum, laufzeit, max_schueler,
+      beschreibung, status, lehrer_ids, schueler_ids, stunden, kompetenzen
+    });
+    showMsg('p-msg', 'Werkstatt gespeichert ✓', 'ok');
     document.getElementById('p-name').value = '';
     document.getElementById('p-desc').value = '';
+    document.getElementById('p-max').value = '';
+    document.getElementById('p-praesentation').value = '';
     document.querySelectorAll('#p-fach-grid input').forEach(i => i.value = '');
     document.querySelectorAll('.komp-cb').forEach(c => c.checked = false);
     document.getElementById('p-summe').textContent = '0';
@@ -457,24 +475,38 @@ async function projektSpeichern() {
 }
 
 async function renderProjektListe() {
-  const kl = document.getElementById('p-kl').value;
-  const data = await GET('projekte' + (kl ? '?klasse_id=' + kl : ''));
-  const el = document.getElementById('proj-liste');
-  if (!data || !data.length) { el.innerHTML = '<div class="empty">Noch keine Projekte eingetragen.</div>'; return; }
-  el.innerHTML = data.map(p =>
-    `<div class="proj-card">
-       <div class="proj-row">
-         <div>
-           <div class="proj-name">${p.name}</div>
-           <div class="proj-meta">${p.datum_von} · Klasse ${p.klasse} · ${p.schueler_anzahl} Schüler · ${p.lehrer}</div>
-           <div class="tags">
-             <span class="tag-f">${p.schueler_anzahl} Schüler</span>
-             <span class="tag-k">${p.kompetenzen_anzahl} Kompetenzen</span>
-             <span class="tag-f">${p.status}</span>
-           </div>
-         </div>
-       </div>
-     </div>`
+  const sjId = document.getElementById('p-schuljahr')?.value;
+  const url  = 'projekte' + (sjId ? '?schuljahr_id=' + sjId : '');
+  const data = await GET(url);
+  const el   = document.getElementById('proj-liste');
+  if (!data || !data.length) {
+    el.innerHTML = '<div class="empty">Noch keine Werkstätten eingetragen.</div>';
+    return;
+  }
+  el.innerHTML = data.map(p => `
+    <div class="proj-card">
+      <div class="proj-row">
+        <div>
+          <div class="proj-name">${p.name}</div>
+          <div class="proj-meta">
+            ${p.datum_von}${p.datum_bis ? ' – ' + p.datum_bis : ''}
+            · Klasse ${p.klasse}
+            ${p.schuljahr_name ? ' · ' + p.schuljahr_name : ''}
+            · ${p.schueler_anzahl} Schüler/innen
+          </div>
+          <div class="proj-meta" style="margin-top:2px">
+            👤 ${p.lernbegleiter || '–'}
+            ${p.praesentation_datum ? ' · 🎤 ' + p.praesentation_datum : ''}
+            ${p.max_schueler ? ' · max. ' + p.max_schueler + ' TN' : ''}
+          </div>
+          <div class="tags">
+            <span class="tag-f">${p.laufzeit === 'halbjahr' ? 'Halbjahr' : 'Ganzjährig'}</span>
+            <span class="tag-k">${p.kompetenzen_anzahl} Kompetenzen</span>
+            <span class="tag-f">${p.status}</span>
+          </div>
+        </div>
+      </div>
+    </div>`
   ).join('');
 }
 
