@@ -226,10 +226,11 @@ async function initProjekt() {
       `<option value="${s.id}" ${s.status === 'aktiv' ? 'selected' : ''}>${s.name}${s.status === 'aktiv' ? ' ✓' : ''}</option>`
     ).join('');
 
-  // Klassen-Dropdown
+  // Klassen Multi-Select
   const kEl = document.getElementById('p-kl');
-  kEl.innerHTML = '<option value="">– wählen –</option>' +
-    STATE.klassen.map(k => `<option value="${k.id}">${k.bezeichnung} (${k.schuljahr})</option>`).join('');
+  kEl.innerHTML = STATE.klassen.map(k =>
+    `<option value="${k.id}">${k.bezeichnung} (${k.schuljahr})</option>`
+  ).join('');
 
   // Lernbegleiter Multi-Select (eigene ID vorausgewählt)
   const lEl = document.getElementById('p-lehrer');
@@ -418,17 +419,18 @@ function toggleErw(id, triggerEl) {
 }
 
 function loadSchuelerForProjekt() {
-  const kl = document.getElementById('p-kl').value;
-  if (!kl) { document.getElementById('p-schueler').innerHTML = ''; return; }
-  GET(`schueler?klasse_id=${kl}`).then(list => {
+  const selected = [...document.getElementById('p-kl').selectedOptions].map(o => o.value);
+  if (!selected.length) { document.getElementById('p-schueler').innerHTML = ''; return; }
+  GET(`schueler?klassen=${selected.join(',')}`).then(list => {
     document.getElementById('p-schueler').innerHTML = (list || [])
-      .map(s => `<option value="${s.id}">${s.vorname} ${s.nachname}</option>`).join('');
+      .map(s => `<option value="${s.id}">${s.nachname}, ${s.vorname} (${s.klasse})</option>`).join('');
   });
 }
 
 async function projektSpeichern() {
   const name        = document.getElementById('p-name').value.trim();
-  const klasse_id   = parseInt(document.getElementById('p-kl').value);
+  const klasse_ids  = [...document.getElementById('p-kl').selectedOptions].map(o => parseInt(o.value));
+  const klasse_id   = klasse_ids[0] || 0; // Erste Klasse als Haupt-FK
   const schuljahr_id = parseInt(document.getElementById('p-schuljahr').value) || null;
   const datum_von   = document.getElementById('p-von').value;
   const datum_bis   = document.getElementById('p-bis').value || null;
@@ -440,8 +442,8 @@ async function projektSpeichern() {
   const lehrer_ids  = [...document.getElementById('p-lehrer').selectedOptions].map(o => parseInt(o.value));
   const schueler_ids = [...document.getElementById('p-schueler').selectedOptions].map(o => parseInt(o.value));
 
-  if (!name || !klasse_id || !datum_von)
-    return showMsg('p-msg', 'Werkstattname, Klasse und Startdatum sind Pflichtfelder.', 'err');
+  if (!name || !klasse_ids.length || !datum_von)
+    return showMsg('p-msg', 'Werkstattname, mind. eine Klasse und Startdatum sind Pflichtfelder.', 'err');
   if (!lehrer_ids.length)
     return showMsg('p-msg', 'Mindestens einen Lernbegleiter auswählen.', 'err');
 
@@ -458,7 +460,7 @@ async function projektSpeichern() {
 
   try {
     await POST('projekte', {
-      name, klasse_id, schuljahr_id, datum_von, datum_bis,
+      name, klasse_id, klasse_ids, schuljahr_id, datum_von, datum_bis,
       praesentation_datum, laufzeit, max_schueler,
       beschreibung, status, lehrer_ids, schueler_ids, stunden, kompetenzen
     });
@@ -484,13 +486,13 @@ async function renderProjektListe() {
     return;
   }
   el.innerHTML = data.map(p => `
-    <div class="proj-card">
+    <div class="proj-card" onclick="openWerkstattDetail(${p.id})" style="cursor:pointer">
       <div class="proj-row">
-        <div>
+        <div style="flex:1">
           <div class="proj-name">${p.name}</div>
           <div class="proj-meta">
             ${p.datum_von}${p.datum_bis ? ' – ' + p.datum_bis : ''}
-            · Klasse ${p.klasse}
+            ${p.klassen ? ' · ' + p.klassen : ''}
             ${p.schuljahr_name ? ' · ' + p.schuljahr_name : ''}
             · ${p.schueler_anzahl} Schüler/innen
           </div>
@@ -502,12 +504,176 @@ async function renderProjektListe() {
           <div class="tags">
             <span class="tag-f">${p.laufzeit === 'halbjahr' ? 'Halbjahr' : 'Ganzjährig'}</span>
             <span class="tag-k">${p.kompetenzen_anzahl} Kompetenzen</span>
-            <span class="tag-f">${p.status}</span>
+            <span class="tag-f status-${p.status}">${p.status}</span>
           </div>
         </div>
+        <div style="font-size:18px;color:var(--text3);align-self:center">›</div>
       </div>
     </div>`
   ).join('');
+}
+
+// ============================================================
+// WERKSTATT-DETAIL MODAL
+// ============================================================
+async function openWerkstattDetail(id) {
+  const modal = document.getElementById('ws-modal');
+  modal.style.display = 'block';
+  modal.innerHTML = `<div class="modal-wrap"><div class="modal" style="width:560px;max-height:85vh;overflow-y:auto">
+    <button class="modal-close" onclick="closeWsModal()">✕</button>
+    <div style="color:var(--text3);font-size:13px;padding:40px 0;text-align:center">Lade…</div>
+  </div></div>`;
+
+  try {
+    const [proj, schueler] = await Promise.all([
+      GET(`projekte/${id}`),
+      GET(`werkstatt/${id}/schueler`)
+    ]);
+    renderWerkstattDetail(proj, schueler || []);
+  } catch(e) {
+    modal.innerHTML = `<div class="modal-wrap"><div class="modal">
+      <button class="modal-close" onclick="closeWsModal()">✕</button>
+      <p style="color:var(--danger)">${e.message}</p>
+    </div></div>`;
+  }
+}
+
+function closeWsModal() {
+  const modal = document.getElementById('ws-modal');
+  modal.style.display = 'none';
+  modal.innerHTML = '';
+  renderProjektListe();
+}
+
+function renderWerkstattDetail(p, schueler) {
+  const modal = document.getElementById('ws-modal');
+  const lb = (p.lernbegleiter || []).map(l =>
+    `<span class="tag-k">${l.vorname} ${l.nachname} (${l.rolle})</span>`
+  ).join(' ');
+
+  const schuelerRows = schueler.map(s => `
+    <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <input type="checkbox" id="abs-${s.id}" ${s.abgeschlossen ? 'checked' : ''}
+             onchange="toggleAbschluss(${p.id}, ${s.id}, this.checked)"
+             title="Erfolgreich absolviert">
+      <label for="abs-${s.id}" style="flex:1;cursor:pointer;font-size:13px">
+        ${s.nachname}, ${s.vorname}
+        <span style="color:var(--text3);font-size:11px">(${s.klasse})</span>
+      </label>
+      ${s.abgeschlossen ? '<span style="color:var(--ok);font-size:11px">✓ absolviert</span>' : ''}
+    </div>`
+  ).join('');
+
+  const statusOptionen = ['geplant','aktiv','abgeschlossen','abgesagt']
+    .map(s => `<option value="${s}" ${s === p.status ? 'selected' : ''}>${s}</option>`).join('');
+
+  modal.innerHTML = `
+  <div class="modal-wrap" onclick="if(event.target===this)closeWsModal()">
+    <div class="modal" style="width:560px;max-height:85vh;overflow-y:auto">
+      <button class="modal-close" onclick="closeWsModal()">✕</button>
+      <h2>${p.name}</h2>
+      <p class="modal-sub">
+        ${p.datum_von}${p.datum_bis ? ' – ' + p.datum_bis : ''}
+        ${p.schuljahr_name ? ' · ' + p.schuljahr_name : ''}
+      </p>
+
+      <div style="margin-bottom:12px">${lb}</div>
+
+      <div class="g2" style="margin-bottom:14px">
+        <div>
+          <label style="font-size:12px;color:var(--text3)">Status</label>
+          <select id="ws-status" style="width:100%">${statusOptionen}</select>
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn btn-p" style="width:100%" onclick="saveWsStatus(${p.id})">Status speichern</button>
+        </div>
+      </div>
+
+      <div class="sec" style="margin:14px 0 8px">Teilnehmer/innen</div>
+      <div style="margin-bottom:8px;display:flex;gap:8px">
+        <button class="btn" style="font-size:12px" onclick="alleAbschliessen(${p.id}, true)">Alle ✓</button>
+        <button class="btn" style="font-size:12px" onclick="alleAbschliessen(${p.id}, false)">Alle zurücksetzen</button>
+      </div>
+      <div id="ws-schueler-liste">${schuelerRows || '<p style="color:var(--text3);font-size:13px">Keine Teilnehmer zugeordnet.</p>'}</div>
+
+      ${p.beschreibung ? `<div class="sec" style="margin:14px 0 6px">Beschreibung</div>
+        <p style="font-size:13px;color:var(--text2)">${p.beschreibung}</p>` : ''}
+
+      <div class="modal-footer">
+        <button class="btn" onclick="closeWsModal()">Schließen</button>
+        <button class="btn btn-danger" onclick="werkstattLoeschen(${p.id})">Löschen</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function saveWsStatus(id) {
+  const status = document.getElementById('ws-status').value;
+  try {
+    // Minimaler PUT mit nur dem Status-Feld
+    const proj = await GET(`projekte/${id}`);
+    const lehrer_ids = (proj.lernbegleiter || []).map(l => l.id);
+    await fetch('/api/projekte/' + id, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: proj.name,
+        klasse_id: proj.klasse_id,
+        datum_von: proj.datum_von,
+        status,
+        laufzeit: proj.laufzeit || 'jahr',
+        lehrer_ids
+      })
+    });
+    showMsg('p-msg', 'Status gespeichert ✓', 'ok');
+  } catch(e) { alert(e.message); }
+}
+
+async function toggleAbschluss(proj_id, schueler_id, abgeschlossen) {
+  try {
+    await fetch(`/api/werkstatt/${proj_id}/abschluss`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ schueler_id, abgeschlossen })
+    });
+    // Label aktualisieren
+    const lbl = document.querySelector(`label[for="abs-${schueler_id}"]`);
+    if (lbl) {
+      const span = lbl.nextElementSibling;
+      if (abgeschlossen) {
+        if (!span || !span.textContent.includes('absolviert')) {
+          lbl.insertAdjacentHTML('afterend', '<span style="color:var(--ok);font-size:11px">✓ absolviert</span>');
+        }
+      } else if (span) span.remove();
+    }
+  } catch(e) { alert(e.message); }
+}
+
+async function alleAbschliessen(proj_id, abgeschlossen) {
+  try {
+    await fetch(`/api/werkstatt/${proj_id}/abschluss`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alle: true, abgeschlossen })
+    });
+    // Modal neu laden
+    const [proj, schueler] = await Promise.all([
+      GET(`projekte/${proj_id}`),
+      GET(`werkstatt/${proj_id}/schueler`)
+    ]);
+    renderWerkstattDetail(proj, schueler || []);
+  } catch(e) { alert(e.message); }
+}
+
+async function werkstattLoeschen(id) {
+  if (!confirm('Werkstatt wirklich löschen? Alle Daten (Stunden, Kompetenzen) werden entfernt.')) return;
+  try {
+    await DELETE(`projekte/${id}`);
+    closeWsModal();
+  } catch(e) { alert(e.message); }
 }
 
 // ============================================================

@@ -70,6 +70,9 @@ if ($route === 'import') {
     $sub = $parts[1] ?? '';            // z. B. 'vorschau', 'ausfuehren'
     $id  = null;
 }
+if ($route === 'werkstatt' && isset($parts[2])) {
+    $sub = $parts[2];                  // z. B. 'abschluss', 'schueler'
+}
 
 // JSON-Body einlesen (für POST/PUT)
 $body = [];
@@ -89,6 +92,7 @@ try {
         'kompetenzen' => handle_kompetenzen($method),
         'kompetenzrahmen' => handle_kompetenzrahmen($method),
         'projekte'    => handle_projekte($method, $id, $body),
+        'werkstatt'   => handle_werkstatt($method, $id, $sub, $body),
         'dashboard'   => handle_dashboard($method),
         'export'      => handle_export($method, $sub),
         'benutzer'    => handle_benutzer($method, $id, $sub, $body),
@@ -161,16 +165,28 @@ function handle_schueler(string $method, ?int $id, array $body): void {
     $db   = get_db();
 
     if ($method === 'GET') {
-        // Optional: Filter nach Klasse
-        $klasse_id = (int)($_GET['klasse_id'] ?? 0);
+        $klasse_id  = (int)($_GET['klasse_id'] ?? 0);
+        // Multi-Klassen: ?klassen=1,2,3
+        $klassen_raw = $_GET['klassen'] ?? '';
+        $klasse_ids  = array_filter(array_map('intval', explode(',', $klassen_raw)));
+
         $sql = 'SELECT s.id, s.vorname, s.nachname, s.aktiv,
                        k.bezeichnung AS klasse, k.id AS klasse_id, k.jahrgang
                 FROM schueler s
                 JOIN klassen k ON k.id = s.klasse_id
-                WHERE k.schule_id = ?';
+                WHERE k.schule_id = ? AND s.aktiv = 1';
         $params = [$user['schule_id']];
-        if ($klasse_id) { $sql .= ' AND s.klasse_id = ?'; $params[] = $klasse_id; }
-        $sql .= ' AND s.aktiv = 1 ORDER BY k.bezeichnung, s.nachname, s.vorname';
+
+        if (!empty($klasse_ids)) {
+            $plh = implode(',', array_fill(0, count($klasse_ids), '?'));
+            $sql .= " AND s.klasse_id IN ($plh)";
+            $params = array_merge($params, $klasse_ids);
+        } elseif ($klasse_id) {
+            $sql .= ' AND s.klasse_id = ?';
+            $params[] = $klasse_id;
+        }
+
+        $sql .= ' ORDER BY k.bezeichnung, s.nachname, s.vorname';
         $stmt = $db->prepare($sql);
         $stmt->execute($params);
         json_response($stmt->fetchAll());
@@ -431,17 +447,19 @@ function handle_projekte(string $method, ?int $id, array $body): void {
         $sql = '
             SELECT p.id, p.name, p.datum_von, p.datum_bis, p.status,
                    p.laufzeit, p.max_schueler, p.praesentation_datum,
-                   k.bezeichnung AS klasse,
                    sj.name AS schuljahr_name,
                    COUNT(DISTINCT ps.schueler_id) AS schueler_anzahl,
                    COUNT(DISTINCT psk.kompetenz_id) AS kompetenzen_anzahl,
-                   GROUP_CONCAT(DISTINCT CONCAT(b.vorname, " ", b.nachname)
-                                ORDER BY pl.rolle ASC SEPARATOR ", ") AS lernbegleiter
+                   GROUP_CONCAT(DISTINCT CONCAT(bl.vorname, " ", bl.nachname)
+                                ORDER BY pl.rolle ASC SEPARATOR ", ") AS lernbegleiter,
+                   GROUP_CONCAT(DISTINCT k.bezeichnung
+                                ORDER BY k.jahrgang, k.bezeichnung SEPARATOR ", ") AS klassen
             FROM projekte p
-            JOIN klassen k ON k.id = p.klasse_id
             LEFT JOIN schuljahre sj ON sj.id = p.schuljahr_id
+            LEFT JOIN projekt_klassen pk ON pk.projekt_id = p.id
+            LEFT JOIN klassen k ON k.id = pk.klasse_id
             LEFT JOIN projekt_lehrer pl ON pl.projekt_id = p.id
-            LEFT JOIN benutzer b ON b.id = pl.benutzer_id
+            LEFT JOIN benutzer bl ON bl.id = pl.benutzer_id
             LEFT JOIN projekt_schueler ps ON ps.projekt_id = p.id
             LEFT JOIN projekt_schueler_kompetenzen psk ON psk.projekt_id = p.id
             WHERE p.schule_id = ?
@@ -514,6 +532,16 @@ function handle_projekte(string $method, ?int $id, array $body): void {
                 $ins_lb->execute([$proj_id, $lid, $i === 0 ? 'leitung' : 'begleitung']);
             }
 
+            // Klassen eintragen (Multi-Klassen)
+            $klasse_ids = array_map('intval', $body['klasse_ids'] ?? [$klasse_id]);
+            if (empty($klasse_ids) && $klasse_id) $klasse_ids = [$klasse_id];
+            $ins_kl = $db->prepare(
+                'INSERT IGNORE INTO projekt_klassen (projekt_id, klasse_id) VALUES (?, ?)'
+            );
+            foreach ($klasse_ids as $kid) {
+                if ($kid) $ins_kl->execute([$proj_id, $kid]);
+            }
+
             // Schüler
             $schueler_ids = array_map('intval', $body['schueler_ids'] ?? []);
             if (!empty($schueler_ids)) {
@@ -579,8 +607,8 @@ function handle_projekte(string $method, ?int $id, array $body): void {
         }
 
         $name                = clean($body['name']      ?? '');
-        $klasse_id           = (int)($body['klasse_id'] ?? 0);
-        $schuljahr_id        = (int)($body['schuljahr_id'] ?? 0) ?: null;
+        $klasse_ids_put      = array_map('intval', $body['klasse_ids'] ?? []);
+        $klasse_id           = (int)($body['klasse_id'] ?? ($klasse_ids_put[0] ?? 0));
         $datum_von           = $body['datum_von'] ?? '';
         $datum_bis           = $body['datum_bis'] ?? null;
         $praesentation_datum = $body['praesentation_datum'] ?? null;
@@ -593,8 +621,8 @@ function handle_projekte(string $method, ?int $id, array $body): void {
                                ? $body['status'] : 'geplant';
         $lehrer_ids          = array_map('intval', $body['lehrer_ids'] ?? []);
 
-        if (!$name || !$klasse_id || !$datum_von) {
-            json_error('Werkstattname, Klasse und Startdatum sind Pflichtfelder.');
+        if (!$name || !$datum_von) {
+            json_error('Werkstattname und Startdatum sind Pflichtfelder.');
         }
 
         $db->beginTransaction();
@@ -1596,4 +1624,82 @@ function fuehre_import_aus(
         $db->rollBack();
         throw $e;
     }
+}
+
+// ============================================================
+//  WERKSTATT-DETAIL
+//  GET  /api/werkstatt/{id}/schueler   – Schüler aus mehreren Klassen laden
+//  PUT  /api/werkstatt/{id}/abschluss  – Abschluss je Schüler markieren
+//  GET  /api/schueler?klassen=1,2,3    – wird in handle_schueler ergänzt
+// ============================================================
+function handle_werkstatt(string $method, ?int $id, string $sub, array $body): void {
+    $user     = require_auth();
+    $db       = get_db();
+    $istAdmin = $user['rolle'] === 'admin';
+
+    if (!$id) json_error('Werkstatt-ID fehlt.', 400);
+
+    // Zugangskontrolle
+    if (!$istAdmin) {
+        $chk = $db->prepare(
+            'SELECT 1 FROM projekt_lehrer WHERE projekt_id = ? AND benutzer_id = ?'
+        );
+        $chk->execute([$id, $user['id']]);
+        if (!$chk->fetch()) json_error('Keine Berechtigung.', 403);
+    }
+
+    // ----- GET /api/werkstatt/{id}/schueler -----
+    // Alle Schüler der zugeordneten Klassen laden (für Teilnehmer-Auswahl)
+    if ($method === 'GET' && $sub === 'schueler') {
+        $stmt = $db->prepare(
+            'SELECT DISTINCT s.id, s.vorname, s.nachname,
+                    k.bezeichnung AS klasse, k.jahrgang,
+                    ps.abgeschlossen
+             FROM projekt_klassen pk
+             JOIN klassen k ON k.id = pk.klasse_id
+             JOIN schueler s ON s.klasse_id = k.id AND s.aktiv = 1
+             LEFT JOIN projekt_schueler ps ON ps.projekt_id = ? AND ps.schueler_id = s.id
+             WHERE pk.projekt_id = ?
+             ORDER BY k.jahrgang, k.bezeichnung, s.nachname, s.vorname'
+        );
+        $stmt->execute([$id, $id]);
+        json_response($stmt->fetchAll());
+    }
+
+    // ----- PUT /api/werkstatt/{id}/abschluss -----
+    // Body: { schueler_id: 7, abgeschlossen: true }
+    //   oder { alle: true, abgeschlossen: true }
+    if ($method === 'PUT' && $sub === 'abschluss') {
+        $abgeschlossen = (bool)($body['abgeschlossen'] ?? false);
+        $now = $abgeschlossen ? date('Y-m-d H:i:s') : null;
+
+        // Alle Teilnehmer auf einmal?
+        if (!empty($body['alle'])) {
+            $stmt = $db->prepare(
+                'UPDATE projekt_schueler
+                 SET abgeschlossen = ?, abgeschlossen_am = ?
+                 WHERE projekt_id = ?'
+            );
+            $stmt->execute([(int)$abgeschlossen, $now, $id]);
+            audit($user['id'], 'projekt_schueler', $id, 'UPDATE', null,
+                  ['alle_abgeschlossen' => $abgeschlossen]);
+            json_response(['ok' => true, 'aktualisiert' => $stmt->rowCount()]);
+        }
+
+        // Einzelner Schüler
+        $schueler_id = (int)($body['schueler_id'] ?? 0);
+        if (!$schueler_id) json_error('schueler_id fehlt.', 400);
+
+        $stmt = $db->prepare(
+            'UPDATE projekt_schueler
+             SET abgeschlossen = ?, abgeschlossen_am = ?
+             WHERE projekt_id = ? AND schueler_id = ?'
+        );
+        $stmt->execute([(int)$abgeschlossen, $now, $id, $schueler_id]);
+        audit($user['id'], 'projekt_schueler', $schueler_id, 'UPDATE', null,
+              ['abgeschlossen' => $abgeschlossen]);
+        json_response(['ok' => true]);
+    }
+
+    json_error('Unbekannte Werkstatt-Aktion.', 404);
 }
