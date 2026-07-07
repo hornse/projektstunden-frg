@@ -505,6 +505,12 @@ function handle_projekte(string $method, ?int $id, array $body): void {
             json_error('Werkstattname, Klasse und Startdatum sind Pflichtfelder.');
         }
 
+        // Max-Teilnehmer prüfen
+        $schueler_ids = array_map('intval', $body['schueler_ids'] ?? []);
+        if ($max_schueler !== null && count($schueler_ids) > $max_schueler) {
+            json_error("Zu viele Teilnehmer: max. {$max_schueler} erlaubt, " . count($schueler_ids) . " ausgewählt.");
+        }
+
         // Eigene ID immer als Lernbegleiter eintragen
         if (!in_array($user['id'], $lehrer_ids)) {
             array_unshift($lehrer_ids, $user['id']);
@@ -545,7 +551,6 @@ function handle_projekte(string $method, ?int $id, array $body): void {
             }
 
             // Schüler
-            $schueler_ids = array_map('intval', $body['schueler_ids'] ?? []);
             if (!empty($schueler_ids)) {
                 $ins = $db->prepare(
                     'INSERT IGNORE INTO projekt_schueler (projekt_id, schueler_id) VALUES (?, ?)'

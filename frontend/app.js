@@ -109,7 +109,8 @@ function go(id) {
   const init = { dashboard: initDash, projekt: initProjekt, schueler: initSchueler,
                  klassen: initKlassen, katalog: initKatalog, export: initExport,
                  benutzer: initBenutzer, schuljahre: initSchuljahre, import: initImport,
-                 'werkstatt-edit': () => {} }; // initWerkstattEdit wird manuell aufgerufen
+                 bewertung: initBewertung,
+                 'werkstatt-edit': () => {} };
   if (init[id]) init[id]();
 }
 
@@ -310,11 +311,16 @@ async function loadKompetenzenFuerFaecher(fachIds) {
 
 function renderRahmenTabs() {
   const fids  = getStundenFachIds();
-  // Rahmen, die relevant sind: fächerübergreifende immer + Fach-Rahmen für beteiligte Fächer
-  const relRahmen = STATE.rahmen.filter(r => !r.fach_kuerzel || fids.some(fid => {
-    const f = STATE.faecher.find(x => x.id == fid);
-    return f && f.kuerzel === r.fach_kuerzel;
-  }));
+  // Wenn kein Fach gewählt: nur fächerübergreifende Rahmen (MKR)
+  // Wenn Fach gewählt: auch fachspezifische Rahmen für diese Fächer
+  const relRahmen = STATE.rahmen.filter(r => {
+    if (!r.fach_kuerzel) return true; // MKR immer anzeigen
+    if (!fids.length) return false;   // Kein Fach → keine KLPs
+    return fids.some(fid => {
+      const f = STATE.faecher.find(x => x.id == fid);
+      return f && f.kuerzel === r.fach_kuerzel;
+    });
+  });
 
   const tabEl = document.getElementById('rahmen-tabs');
   if (!relRahmen.length) { tabEl.innerHTML = ''; document.getElementById('komp-bereich-list').innerHTML = ''; return; }
@@ -468,6 +474,8 @@ async function projektSpeichern() {
     return showMsg('p-msg', 'Werkstattname, mind. eine Klasse und Startdatum sind Pflichtfelder.', 'err');
   if (!lehrer_ids.length)
     return showMsg('p-msg', 'Mindestens einen Lernbegleiter auswählen.', 'err');
+  if (max_schueler && schueler_ids.length > max_schueler)
+    return showMsg('p-msg', `Zu viele Teilnehmer: max. ${max_schueler} erlaubt, ${schueler_ids.length} ausgewählt.`, 'err');
 
   const stunden = [...document.querySelectorAll('#p-fach-grid input')]
     .filter(i => parseFloat(i.value) > 0)
@@ -698,17 +706,13 @@ async function openWerkstattBearbeiten(id) {
   await loadKompetenzenFuerFaecherWe([]);
   renderRahmenTabsWe();
 
-  // Vorhandene Kompetenzen markieren (nach kurzem Delay damit DOM fertig ist)
+  // Vorhandene Kompetenzen markieren
   const vorhandeneKompIds = (proj.kompetenzen || []).map(k => k.id);
   setTimeout(() => {
     document.querySelectorAll('#we-komp-bereich-list .komp-cb').forEach(cb => {
       cb.checked = vorhandeneKompIds.includes(parseInt(cb.value));
     });
   }, 200);
-
-  // Bewertungen und Rückmeldungen laden
-  ladeBewertungen(id);
-  ladeRueckmeldungen(id);
 }
 
 function onWeStundenChange() {
@@ -728,10 +732,14 @@ async function loadKompetenzenFuerFaecherWe(fachIds) {
 function renderRahmenTabsWe() {
   const fids = [...document.querySelectorAll('#we-fach-grid input')]
     .filter(i => parseFloat(i.value) > 0).map(i => parseInt(i.dataset.fid));
-  const relRahmen = STATE.rahmen.filter(r => !r.fach_kuerzel || fids.some(fid => {
-    const f = STATE.faecher.find(x => x.id == fid);
-    return f && f.kuerzel === r.fach_kuerzel;
-  }));
+  const relRahmen = STATE.rahmen.filter(r => {
+    if (!r.fach_kuerzel) return true;
+    if (!fids.length) return false;
+    return fids.some(fid => {
+      const f = STATE.faecher.find(x => x.id == fid);
+      return f && f.kuerzel === r.fach_kuerzel;
+    });
+  });
   const tabEl = document.getElementById('we-rahmen-tabs');
   if (!relRahmen.length) { tabEl.innerHTML = ''; return; }
   if (!WS_EDIT_AKTIVER_RAHMEN || !relRahmen.find(r => r.id === WS_EDIT_AKTIVER_RAHMEN)) {
@@ -1614,23 +1622,43 @@ checkAuth();
 
 
 // ============================================================
-// BEWERTUNGEN
+// BEWERTUNGEN & RÜCKMELDUNGEN – eigener Screen
 // ============================================================
-async function ladeBewertungen(projekt_id) {
-  const [bewertungen, schuelerListe] = await Promise.all([
-    GET(`bewertung?projekt_id=${projekt_id}`),
-    GET(`werkstatt/${projekt_id}/schueler`)
-  ]);
+let BEW_PROJEKT_ID = null;
 
-  const el = document.getElementById('we-bewertung-tabelle');
+async function initBewertung() {
+  const data = await GET('projekte');
+  const sel  = document.getElementById('bew-werkstatt');
+  sel.innerHTML = '<option value="">– Werkstatt auswählen –</option>' +
+    (data || []).map(p =>
+      `<option value="${p.id}">${p.name}${p.schuljahr_name ? ' · ' + p.schuljahr_name : ''} (${p.status})</option>`
+    ).join('');
+  document.getElementById('bew-inhalt').style.display = 'none';
+  BEW_PROJEKT_ID = null;
+}
+
+async function bewertungWerkstattGewaehlt() {
+  const id = parseInt(document.getElementById('bew-werkstatt').value);
+  if (!id) { document.getElementById('bew-inhalt').style.display = 'none'; return; }
+  BEW_PROJEKT_ID = id;
+  document.getElementById('bew-inhalt').style.display = 'block';
+  await Promise.all([
+    ladeBewertungTabelle(id),
+    ladeBewRueckmeldungen(id)
+  ]);
+}
+
+async function ladeBewertungTabelle(projekt_id) {
+  const bewertungen = await GET(`bewertung?projekt_id=${projekt_id}`);
+  const el = document.getElementById('bew-tabelle');
   if (!el) return;
 
   if (!bewertungen || !bewertungen.length) {
-    el.innerHTML = '<p style="font-size:13px;color:var(--text3)">Noch keine Kompetenzen zugewiesen. Zuerst Kompetenzen im Abschnitt oben wählen und speichern.</p>';
+    el.innerHTML = '<p style="font-size:13px;color:var(--text3)">Noch keine Kompetenzen für diese Werkstatt zugewiesen. Bitte zuerst unter „Werkstätten" → Bearbeiten Kompetenzen auswählen und speichern.</p>';
     return;
   }
 
-  // Eindeutige Kompetenzen und Schüler ermitteln
+  // Eindeutige Kompetenzen und Schüler
   const kompMap = {};
   const schuelerMap = {};
   bewertungen.forEach(b => {
@@ -1640,22 +1668,21 @@ async function ladeBewertungen(projekt_id) {
   const komps    = Object.values(kompMap);
   const schueler = Object.values(schuelerMap).sort((a,b) => a.nachname.localeCompare(b.nachname));
 
-  // Index: schueler_id → kompetenz_id → bewertung
+  // Index
   const idx = {};
   bewertungen.forEach(b => {
     if (!idx[b.schueler_id]) idx[b.schueler_id] = {};
     idx[b.schueler_id][b.kompetenz_id] = b;
   });
 
-  const STUFEN = ['','1','2','3','4'];
   const header = `<tr>
-    <th class="name-col">Schüler/in</th>
-    ${komps.map(k => `<th title="${k.bereich}">${k.code || k.name.substring(0,12)}</th>`).join('')}
+    <th class="name-col" style="min-width:160px">Schüler/in</th>
+    ${komps.map(k => `<th title="${k.bereich}: ${k.name}" style="max-width:80px;font-size:11px">${k.code || k.name.substring(0,10)}</th>`).join('')}
   </tr>`;
 
   const rows = schueler.map(s => {
     const zellen = komps.map(k => {
-      const bew = idx[s.id]?.[k.id];
+      const bew   = idx[s.id]?.[k.id];
       const stufe = bew?.fremd_stufe || 0;
       const chips = [1,2,3,4].map(n =>
         `<span class="bew-chip bew-${n}${stufe===n?' on':''}"
@@ -1670,18 +1697,28 @@ async function ladeBewertungen(projekt_id) {
   }).join('');
 
   el.innerHTML = `<table class="bew-table"><thead>${header}</thead><tbody>${rows}</tbody></table>`;
+
+  // Empfänger-Liste für Rückmeldungen befüllen
+  const empfEl = document.getElementById('bew-empfaenger');
+  if (empfEl) {
+    empfEl.innerHTML = schueler.map(s => `
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+        <input type="checkbox" class="bew-emp-cb" value="${s.id}"
+               id="be-${s.id}" style="flex-shrink:0;width:16px;height:16px;cursor:pointer">
+        <label for="be-${s.id}" style="flex:1;cursor:pointer;font-size:13px">
+          ${s.nachname}, ${s.vorname}
+        </label>
+      </div>`
+    ).join('');
+  }
 }
 
 async function setBewertung(projekt_id, schueler_id, kompetenz_id, stufe, chipEl) {
-  // Aktuelle Stufe auslesen (toggle: gleiche Stufe → auf null setzen)
-  const row = chipEl.closest('div');
-  const aktiv = chipEl.classList.contains('on');
+  const row    = chipEl.closest('div');
+  const aktiv  = chipEl.classList.contains('on');
   const neue_stufe = aktiv ? null : stufe;
-
-  // Chips in dieser Zelle aktualisieren
   row.querySelectorAll('.bew-chip').forEach(c => c.classList.remove('on'));
   if (!aktiv) chipEl.classList.add('on');
-
   try {
     await fetch(`/api/bewertung/${projekt_id}`, {
       method: 'PUT',
@@ -1692,38 +1729,11 @@ async function setBewertung(projekt_id, schueler_id, kompetenz_id, stufe, chipEl
   } catch(e) { alert('Bewertung konnte nicht gespeichert werden: ' + e.message); }
 }
 
-// ============================================================
-// RÜCKMELDUNGEN
-// ============================================================
-async function ladeRueckmeldungen(projekt_id) {
-  const [rueckmeldungen, schuelerListe] = await Promise.all([
-    GET(`rueckmeldung?projekt_id=${projekt_id}`),
-    GET(`werkstatt/${projekt_id}/schueler`)
-  ]);
-
-  // Empfänger-Checkboxen aufbauen
-  const empfEl = document.getElementById('we-rueck-empfaenger');
-  if (empfEl && schuelerListe) {
-    // Nur zugeordnete Teilnehmer (nicht alle Klassenschüler)
-    const teilnehmer = schuelerListe.filter(s => {
-      // Schüler ist Teilnehmer wenn er in projekt_schueler ist
-      return true; // wird vom /werkstatt/{id}/schueler Endpunkt gefiltert
-    });
-    empfEl.innerHTML = teilnehmer.map(s => `
-      <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)">
-        <input type="checkbox" class="rueck-emp-cb" value="${s.id}"
-               id="re-${s.id}" style="flex-shrink:0;width:16px;height:16px;cursor:pointer">
-        <label for="re-${s.id}" style="flex:1;cursor:pointer;font-size:13px">
-          ${s.nachname}, ${s.vorname}
-          <span style="color:var(--text3);font-size:11px">(${s.klasse})</span>
-        </label>
-      </div>`
-    ).join('');
-  }
-
-  // Vorhandene Rückmeldungen anzeigen
-  const listeEl = document.getElementById('we-rueckmeldung-liste');
+async function ladeBewRueckmeldungen(projekt_id) {
+  const rueckmeldungen = await GET(`rueckmeldung?projekt_id=${projekt_id}`);
+  const listeEl = document.getElementById('bew-rueckmeldung-liste');
   if (!listeEl) return;
+
   if (!rueckmeldungen || !rueckmeldungen.length) {
     listeEl.innerHTML = '<p style="font-size:13px;color:var(--text3);margin-bottom:10px">Noch keine Rückmeldungen vorhanden.</p>';
     return;
@@ -1737,37 +1747,37 @@ async function ladeRueckmeldungen(projekt_id) {
           <strong style="font-size:13px">${r.nachname}, ${r.vorname}</strong>
           ${r.bewertung_stufe ? `<span class="bew-chip bew-${r.bewertung_stufe}" style="margin-left:6px">${STUFEN[r.bewertung_stufe]}</span>` : ''}
         </div>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;white-space:nowrap">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0">
           <input type="checkbox" ${r.sichtbar ? 'checked' : ''}
-                 onchange="toggleRueckSichtbar(${projekt_id}, ${r.schueler_id}, this.checked)">
-          für Schüler sichtbar
+                 onchange="toggleBewRueckSichtbar(${projekt_id}, ${r.schueler_id}, this.checked)">
+          sichtbar
         </label>
       </div>
       ${r.freitext ? `<p style="font-size:13px;color:var(--text2);margin:6px 0 0">${r.freitext}</p>` : ''}
       <p style="font-size:11px;color:var(--text3);margin:4px 0 0">
-        ${r.lb_vorname} ${r.lb_nachname} · ${r.geaendert_am?.substring(0,10) || r.erstellt_am?.substring(0,10)}
+        ${r.lb_vorname} ${r.lb_nachname} · ${(r.geaendert_am || r.erstellt_am || '').substring(0,10)}
       </p>
     </div>`
   ).join('');
 }
 
-function alleRueckEmpfaenger(checked) {
-  document.querySelectorAll('.rueck-emp-cb').forEach(cb => cb.checked = checked);
+function alleBewEmpfaenger(checked) {
+  document.querySelectorAll('.bew-emp-cb').forEach(cb => cb.checked = checked);
 }
 
-async function rueckmeldungSpeichern() {
-  const projekt_id = parseInt(document.getElementById('we-id').value) || WS_EDIT_ID;
-  if (!projekt_id) return showMsg('we-rueck-msg', 'Fehler: Werkstatt-ID fehlt.', 'err');
+async function bewRueckmeldungSpeichern() {
+  const projekt_id = BEW_PROJEKT_ID;
+  if (!projekt_id) return showMsg('bew-rueck-msg', 'Bitte zuerst eine Werkstatt wählen.', 'err');
 
-  const schueler_ids = [...document.querySelectorAll('.rueck-emp-cb:checked')].map(c => parseInt(c.value));
-  if (!schueler_ids.length) return showMsg('we-rueck-msg', 'Mindestens einen Schüler auswählen.', 'err');
+  const schueler_ids    = [...document.querySelectorAll('.bew-emp-cb:checked')].map(c => parseInt(c.value));
+  if (!schueler_ids.length) return showMsg('bew-rueck-msg', 'Mindestens einen Schüler auswählen.', 'err');
 
-  const bewertung_stufe = document.getElementById('we-rueck-stufe').value || null;
-  const freitext        = document.getElementById('we-rueck-text').value.trim();
-  const sichtbar        = document.getElementById('we-rueck-sichtbar').checked ? 1 : 0;
+  const bewertung_stufe = document.getElementById('bew-rueck-stufe').value || null;
+  const freitext        = document.getElementById('bew-rueck-text').value.trim();
+  const sichtbar        = document.getElementById('bew-rueck-sichtbar').checked ? 1 : 0;
 
   if (!freitext && !bewertung_stufe) {
-    return showMsg('we-rueck-msg', 'Bitte Bewertungsstufe oder Freitext angeben.', 'err');
+    return showMsg('bew-rueck-msg', 'Bitte Bewertungsstufe oder Freitext angeben.', 'err');
   }
 
   try {
@@ -1779,18 +1789,16 @@ async function rueckmeldungSpeichern() {
     });
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || 'Fehler');
-    showMsg('we-rueck-msg', `${data.anzahl} Rückmeldung(en) gespeichert ✓`, 'ok');
-    // Felder zurücksetzen
-    document.getElementById('we-rueck-stufe').value = '';
-    document.getElementById('we-rueck-text').value  = '';
-    document.getElementById('we-rueck-sichtbar').checked = false;
-    alleRueckEmpfaenger(false);
-    // Liste neu laden
-    ladeRueckmeldungen(projekt_id);
-  } catch(e) { showMsg('we-rueck-msg', e.message, 'err'); }
+    showMsg('bew-rueck-msg', `${data.anzahl} Rückmeldung(en) gespeichert ✓`, 'ok');
+    document.getElementById('bew-rueck-stufe').value = '';
+    document.getElementById('bew-rueck-text').value  = '';
+    document.getElementById('bew-rueck-sichtbar').checked = false;
+    alleBewEmpfaenger(false);
+    ladeBewRueckmeldungen(projekt_id);
+  } catch(e) { showMsg('bew-rueck-msg', e.message, 'err'); }
 }
 
-async function toggleRueckSichtbar(projekt_id, schueler_id, sichtbar) {
+async function toggleBewRueckSichtbar(projekt_id, schueler_id, sichtbar) {
   try {
     await fetch(`/api/rueckmeldung/${projekt_id}`, {
       method: 'PUT',
