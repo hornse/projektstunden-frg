@@ -1,4 +1,28 @@
+# Datenbank-Backups
 backup_*
+backups/
+
+# Serverseitige Konfiguration (enthält Passwörter – NIE in git!)
 backend/config.php
+
+# Datenbankdatei (wird nicht genutzt, aber sicherheitshalber ausschließen)
+backend/datenbank.sqlite
+*.sqlite
+*.db
+
+# macOS
 .DS_Store
+**/.DS_Store
+
+# IDEs
 .idea/
+.vscode/
+*.swp
+*.swo
+
+# PHP-Fehlerlog
+error_log
+*.log
+
+# Node (falls je genutzt)
+node_modules/
