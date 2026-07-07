@@ -109,7 +109,7 @@ function go(id) {
   const init = { dashboard: initDash, projekt: initProjekt, schueler: initSchueler,
                  klassen: initKlassen, katalog: initKatalog, export: initExport,
                  benutzer: initBenutzer, schuljahre: initSchuljahre, import: initImport,
-                 bewertung: initBewertung,
+                 bewertung: initBewertung, hilfe: initHilfe,
                  'werkstatt-edit': () => {} };
   if (init[id]) init[id]();
 }
@@ -1807,4 +1807,250 @@ async function toggleBewRueckSichtbar(projekt_id, schueler_id, sichtbar) {
       body: JSON.stringify({ schueler_id, sichtbar: sichtbar ? 1 : 0 })
     });
   } catch(e) { alert(e.message); }
+}
+
+// ============================================================
+// HILFE-SEITE
+// ============================================================
+function initHilfe() {
+  hilfeTab('schnellstart', document.querySelector('#hilfe-tabs .rtab'));
+}
+
+function hilfeTab(id, btn) {
+  document.querySelectorAll('#hilfe-tabs .rtab').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  const el = document.getElementById('hilfe-inhalt');
+  el.innerHTML = '';
+  if (id === 'schnellstart') el.innerHTML = hilfeSchnellstart();
+  else if (id === 'faq')     el.innerHTML = hilfeFaq();
+  else                       el.innerHTML = hilfeHandbuch();
+  // FAQ-Aufklapp-Logik
+  el.querySelectorAll('.faq-frage').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const antwort = btn.nextElementSibling;
+      const offen = antwort.classList.toggle('open');
+      btn.querySelector('.faq-chev').textContent = offen ? '▾' : '▸';
+    });
+  });
+}
+
+function hilfeSchnellstart() {
+  const karten = [
+    { icon: '📋', titel: 'Was ist Projektstunden NRW?',
+      text: 'Eine Web-App zur Verwaltung von Projektstunden an NRW-Schulen. Werkstätten anlegen, Schüler zuordnen, Stunden auf Fächer anrechnen, Kompetenzen aus KLPs und MKR dokumentieren und Rückmeldungen schreiben.' },
+    { icon: '🔑', titel: 'Wie melde ich mich an?',
+      text: 'E-Mail-Adresse und Passwort eingeben. Bei Problemen an den Administrator wenden – dieser kann Konten anlegen und Passwörter zurücksetzen.' },
+    { icon: '🏗️', titel: 'Erste Werkstatt anlegen',
+      text: 'Navigation → <strong>Werkstätten</strong> → <strong>+ Neue Werkstatt</strong>. Pflichtfelder: Name, mind. eine Klasse, Startdatum, mind. ein Lernbegleiter. Dann Stunden je Fach eintragen und Kompetenzen wählen.' },
+    { icon: '👥', titel: 'Schüler zuweisen',
+      text: 'Im Formular Klasse(n) wählen (Strg/Cmd für mehrere) → Schüler erscheinen → mit Strg/Cmd mehrere auswählen. Max-Teilnehmerzahl wird beim Speichern geprüft.' },
+    { icon: '⭐', titel: 'Bewertungen vergeben',
+      text: 'Navigation → <strong>Bewertungen</strong> → Werkstatt wählen. Tabelle zeigt alle Schüler × alle Kompetenzen. Stufe 1–4 per Klick setzen (nochmal klicken = entfernen).' },
+    { icon: '✉️', titel: 'Rückmeldungen schreiben',
+      text: 'Im Bewertungs-Screen unten: Empfänger auswählen (einzeln, alle oder Teilmenge), Bewertungsstufe optional, Freitext eingeben. Sichtbarkeit für Schüler separat steuerbar.' },
+    { icon: '📊', titel: 'Dashboard auswerten',
+      text: 'Zeigt Stunden und Kompetenzen je Schüler – aber nur für abgeschlossene Werkstätten (Status = abgeschlossen) oder individuell als absolviert markierte Schüler.' },
+    { icon: '📥', titel: 'CSV importieren (Admin)',
+      text: 'Navigation → <strong>Schüler importieren</strong>. CSV-Datei aus Schild-NRW hochladen, Vorschau prüfen, Import durchführen. Klassen werden automatisch angelegt.' },
+  ];
+  return `
+    <div class="hilfe-grid">
+      ${karten.map(k => `
+        <div class="hilfe-karte">
+          <div class="hilfe-karte-icon">${k.icon}</div>
+          <div>
+            <h4>${k.titel}</h4>
+            <p>${k.text}</p>
+          </div>
+        </div>`).join('')}
+    </div>
+    <div class="card" style="margin-top:8px">
+      <h3 style="font-size:14px;font-weight:600;margin-bottom:12px">Typischer Workflow</h3>
+      <ol style="font-size:13px;color:var(--text2);line-height:2;padding-left:18px;margin:0">
+        <li>Schuljahr anlegen und aktivieren <span style="color:var(--text3)">(Admin)</span></li>
+        <li>Schüler per CSV importieren <span style="color:var(--text3)">(Admin)</span></li>
+        <li>Werkstatt anlegen – Klassen, Lernbegleiter, Stunden, Kompetenzen</li>
+        <li>Schüler der Werkstatt zuweisen</li>
+        <li>Werkstatt durchführen → Status auf „aktiv" setzen</li>
+        <li>Bewertungen (1–4) pro Schüler und Kompetenz vergeben</li>
+        <li>Rückmeldungen schreiben und für Schüler freischalten</li>
+        <li>Abschluss: Schüler als „absolviert" markieren, Status → „abgeschlossen"</li>
+        <li>Dashboard zeigt angerechnete Stunden und Kompetenzen</li>
+      </ol>
+    </div>`;
+}
+
+function hilfeFaq() {
+  const fragen = [
+    { f: 'Warum sehe ich keine Stunden im Dashboard?',
+      a: 'Die Werkstatt muss den Status „abgeschlossen" haben oder der Schüler muss individuell als „absolviert" markiert sein (Details-Modal → Teilnehmer).' },
+    { f: 'Warum erscheinen KLP-Tabs nicht beim Anlegen?',
+      a: 'KLP-Tabs erscheinen erst wenn beim zugehörigen Fach Stunden eingetragen wurden. Der MKR ist immer verfügbar.' },
+    { f: 'Warum sehe ich die Werkstatt eines Kollegen nicht?',
+      a: 'Lernbegleiter sehen nur Werkstätten bei denen sie als Lernbegleiter eingetragen sind. Admins sehen alle Werkstätten.' },
+    { f: 'Wie setze ich den Status einer Werkstatt?',
+      a: 'Details-Button auf der Werkstattkarte → Status-Dropdown → Speichern.' },
+    { f: 'Kann ich mehr Schüler zuweisen als das Maximum erlaubt?',
+      a: 'Nein – die App prüft beim Speichern ob das Limit überschritten wird und zeigt eine Fehlermeldung.' },
+    { f: 'Wie weise ich Schüler aus mehreren Klassen zu?',
+      a: 'Im Klassen-Feld Strg/Cmd gedrückt halten und mehrere Klassen anklicken. Die Schülerliste zeigt dann alle Schüler aus allen gewählten Klassen.' },
+    { f: 'Warum sieht ein Schüler seine Rückmeldung nicht?',
+      a: 'Die Rückmeldung muss als „sichtbar" markiert sein. Im Bewertungs-Screen die Checkbox „sichtbar" neben der Rückmeldung aktivieren.' },
+    { f: 'Kann ich eine Rückmeldung nachträglich ändern?',
+      a: 'Ja – einfach erneut für denselben Schüler speichern. Pro Schüler pro Werkstatt gibt es eine Rückmeldung; erneutes Speichern überschreibt sie.' },
+    { f: 'Was bedeutet die Bewertungsskala 1–4?',
+      a: '1 = Mit Unterstützung · 2 = Teilweise selbstständig · 3 = Weitgehend sicher · 4 = Sicher und reflektiert. Die Skala folgt dem NRW-Kompetenzkonzept.' },
+    { f: 'Was passiert wenn ich eine Werkstatt lösche?',
+      a: 'Alle zugehörigen Daten werden unwiderruflich gelöscht: Schülerzuordnungen, Stunden, Kompetenzen, Bewertungen und Rückmeldungen. Nur Admins können löschen.' },
+    { f: 'Wie importiere ich Schüler aus Schild-NRW?',
+      a: 'Navigation → Schüler importieren → Schuljahr wählen → CSV-Datei hochladen → Vorschau prüfen → Import durchführen. Klassen werden automatisch angelegt. Schüler die nicht mehr in der CSV stehen werden inaktiviert.' },
+    { f: 'Kann ich die App auf dem Smartphone nutzen?',
+      a: 'Ja – die App ist responsiv. Einfach die URL im Smartphone-Browser aufrufen, keine separate App nötig.' },
+  ];
+  return `<div>${fragen.map((f,i) => `
+    <div class="faq-item">
+      <button class="faq-frage">
+        <span>${f.f}</span>
+        <span class="faq-chev">▸</span>
+      </button>
+      <div class="faq-antwort">${f.a}</div>
+    </div>`).join('')}</div>`;
+}
+
+function hilfeHandbuch() {
+  return `
+  <div>
+    <div class="hb-section">
+      <h3>1. Dashboard</h3>
+      <p>Das Dashboard zeigt für jeden Schüler das Stundenkontingent je Fach sowie erworbene Kompetenzen.</p>
+      <h4>Stundenkontingent</h4>
+      <p>Jede Fachzeile zeigt Ist-Stunden / Soll-Stunden mit Fortschrittsbalken und Prozentzahl.
+      Farben: <span style="color:#065f46">grün ≥ 100%</span> ·
+      <span style="color:#b45309">gelb ≥ 40%</span> ·
+      <span style="color:#b91c1c">rot &lt; 40%</span>.</p>
+      <h4>Erworbene Kompetenzen</h4>
+      <p>Farbige Pillen zeigen MKR- und KLP-Kompetenzen. Nur Kompetenzen aus
+      abgeschlossenen Werkstätten oder individuell absolvierten Teilnahmen erscheinen hier.</p>
+      <h4>Filter</h4>
+      <p>Klasse und Schüler über Dropdowns einschränken.</p>
+    </div>
+
+    <div class="hb-section">
+      <h3>2. Werkstätten</h3>
+      <h4>Übersicht</h4>
+      <p>Listet alle zugänglichen Werkstätten. Schuljahr-Filter oben. Admins sehen alle,
+      Lernbegleiter nur eigene.</p>
+      <h4>Neue Werkstatt anlegen</h4>
+      <ul>
+        <li><strong>Pflichtfelder:</strong> Name, mind. eine Klasse, Startdatum, mind. ein Lernbegleiter</li>
+        <li><strong>Klassen:</strong> Strg/Cmd für Mehrfachauswahl (jahrgangsübergreifend)</li>
+        <li><strong>Lernbegleiter:</strong> Erster Eintrag = Leitung (kann bearbeiten),
+        weitere = Begleitung</li>
+        <li><strong>Max. Teilnehmer:</strong> Optional; wird beim Speichern geprüft</li>
+        <li><strong>Kompetenzen:</strong> Erst Fächer mit Stunden eintragen → passende
+        KLP-Tabs erscheinen; MKR immer verfügbar</li>
+      </ul>
+      <h4>Details-Modal</h4>
+      <p>Klick auf „Details" öffnet ein Modal mit Statusänderung, Teilnehmerliste
+      zum Abhaken (absolviert), Bearbeiten-Button und Löschen (nur Admin).</p>
+      <h4>Werkstatt bearbeiten</h4>
+      <p>Vollständige Bearbeiten-Seite mit allen Feldern vorausgefüllt. Stunden und
+      Kompetenzen aktualisierbar. „← Zurück" führt zur Werkstattliste.</p>
+    </div>
+
+    <div class="hb-section">
+      <h3>3. Bewertungen &amp; Rückmeldungen</h3>
+      <h4>Werkstatt wählen</h4>
+      <p>Dropdown oben → Bewertungstabelle und Rückmeldungsbereich erscheinen.</p>
+      <h4>Bewertungstabelle</h4>
+      <p>Schüler in Zeilen, Kompetenzen in Spalten. Horizontaler Scroll bei vielen
+      Kompetenzen; Schülernamen bleiben links fixiert.</p>
+      <table class="hb-table">
+        <tr><th>Chip</th><th>Stufe</th><th>Bedeutung</th></tr>
+        <tr><td><span class="bew-chip bew-1">1</span></td><td>1</td><td>Mit Unterstützung</td></tr>
+        <tr><td><span class="bew-chip bew-2">2</span></td><td>2</td><td>Teilweise selbstständig</td></tr>
+        <tr><td><span class="bew-chip bew-3">3</span></td><td>3</td><td>Weitgehend sicher</td></tr>
+        <tr><td><span class="bew-chip bew-4">4</span></td><td>4</td><td>Sicher und reflektiert</td></tr>
+      </table>
+      <p>Klick auf Chip setzt Stufe; nochmal klicken entfernt sie. Wird sofort gespeichert.</p>
+      <h4>Rückmeldungen</h4>
+      <ul>
+        <li>Empfänger per Checkbox wählen (einzeln, alle, Teilmenge)</li>
+        <li>Bewertungsstufe optional (Gesamteinschätzung)</li>
+        <li>Freitext – individuelle Rückmeldung</li>
+        <li>„Für Schüler sichtbar" – sofort oder später aktivieren</li>
+        <li>Pro Schüler pro Werkstatt eine Rückmeldung (erneutes Speichern überschreibt)</li>
+      </ul>
+    </div>
+
+    <div class="hb-section">
+      <h3>4. Schüler importieren (Admin)</h3>
+      <ol>
+        <li>Schuljahr wählen (aktives Schuljahr vorausgewählt)</li>
+        <li>CSV-Datei aus Schild-NRW hochladen</li>
+        <li>Vorschau prüfen: neu / aktualisiert / unverändert / Fehler</li>
+        <li>Import durchführen</li>
+      </ol>
+      <p><strong>Benötigte Felder:</strong> Interne ID-Nummer, Vorname, Nachname, Klasse,
+      Jahrgang, Geschlecht, Geburtsdatum, Klassenlehrer: Name, Klassenlehrer: Vorname.</p>
+      <p>Schüler die nicht mehr in der CSV erscheinen werden automatisch inaktiviert.
+      Das Import-Log zeigt die letzten 20 Importe mit Statistik.</p>
+    </div>
+
+    <div class="hb-section">
+      <h3>5. Schuljahre (Admin)</h3>
+      <table class="hb-table">
+        <tr><th>Aktion</th><th>Bedingung</th></tr>
+        <tr><td>Anlegen</td><td>Name (z. B. 2026/27), Beginn, Ende, Status</td></tr>
+        <tr><td>Aktivieren</td><td>Nur ein aktives Schuljahr; vorheriges wird abgeschlossen</td></tr>
+        <tr><td>Löschen</td><td>Nur wenn keine Werkstätten oder Schüler zugeordnet</td></tr>
+      </table>
+    </div>
+
+    <div class="hb-section">
+      <h3>6. Benutzerverwaltung (Admin)</h3>
+      <table class="hb-table">
+        <tr><th>Rolle</th><th>Rechte</th></tr>
+        <tr><td>Admin</td><td>Alle Funktionen inkl. Schülerimport, Schuljahre, alle Werkstätten</td></tr>
+        <tr><td>Lernbegleiter</td><td>Eigene Werkstätten anlegen/bearbeiten, Bewertungen, Rückmeldungen</td></tr>
+      </table>
+      <p><strong>Passwort-Anforderungen:</strong> Mind. 8 Zeichen, 1 Großbuchstabe, 1 Zahl.</p>
+      <p>Admins können alle Passwörter ändern, Lernbegleiter nur ihr eigenes
+      (altes Passwort erforderlich).</p>
+    </div>
+
+    <div class="hb-section">
+      <h3>7. Export</h3>
+      <ul>
+        <li><strong>Stundenkontingent</strong> – alle Schüler, Stunden je Fach, Gesamtsumme</li>
+        <li><strong>Kompetenzen</strong> – alle Schüler, Kompetenzen je Werkstatt</li>
+      </ul>
+      <p>Beide Formate: CSV, UTF-8 mit BOM (Excel-kompatibel), Semikolon-getrennt.
+      Optional nach Klasse filtern.</p>
+    </div>
+
+    <div class="hb-section">
+      <h3>8. Berechtigungsmodell</h3>
+      <table class="hb-table">
+        <tr><th>Aktion</th><th>Admin</th><th>Lernbegleiter</th></tr>
+        <tr><td>Schuljahr verwalten</td><td>✓</td><td>–</td></tr>
+        <tr><td>Schüler importieren</td><td>✓</td><td>–</td></tr>
+        <tr><td>Benutzer verwalten</td><td>✓</td><td>–</td></tr>
+        <tr><td>Alle Werkstätten sehen</td><td>✓</td><td>– (nur eigene)</td></tr>
+        <tr><td>Werkstatt anlegen</td><td>✓</td><td>✓</td></tr>
+        <tr><td>Werkstatt bearbeiten</td><td>✓</td><td>✓ (Leitung)</td></tr>
+        <tr><td>Werkstatt löschen</td><td>✓</td><td>–</td></tr>
+        <tr><td>Bewertungen vergeben</td><td>✓</td><td>✓ (eigene WS)</td></tr>
+        <tr><td>Rückmeldungen schreiben</td><td>✓</td><td>✓ (eigene WS)</td></tr>
+        <tr><td>Dashboard / Export</td><td>✓</td><td>✓</td></tr>
+      </table>
+    </div>
+
+    <div class="hb-section">
+      <h3>9. Datenschutz</h3>
+      <p>Gespeichert werden ausschließlich schulbezogene Koordinationsdaten:
+      Schülernamen, Klassen, Projektstunden, Kompetenzen, Bewertungen, Rückmeldungen.
+      Kein Tracking. Alle Daten verbleiben auf dem Schulserver.</p>
+    </div>
+  </div>`;
 }

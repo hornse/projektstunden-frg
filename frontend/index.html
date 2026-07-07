@@ -160,6 +160,25 @@ select[multiple]{height:100px}
 .bew-table .name-col{position:sticky;left:0;background:var(--surface);z-index:1;white-space:nowrap;min-width:140px}
 .rueck-row{padding:10px 0;border-bottom:1px solid var(--border)}
 .rueck-row:last-child{border-bottom:none}
+.hilfe-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:24px}
+.hilfe-karte{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:20px;display:flex;gap:14px;align-items:flex-start}
+.hilfe-karte-icon{font-size:28px;flex-shrink:0;line-height:1}
+.hilfe-karte h4{font-size:14px;font-weight:600;margin-bottom:6px;color:var(--text)}
+.hilfe-karte p{font-size:13px;color:var(--text2);line-height:1.6;margin:0}
+.faq-item{border-bottom:1px solid var(--border)}
+.faq-item:last-child{border-bottom:none}
+.faq-frage{width:100%;text-align:left;padding:14px 0;font-size:14px;font-weight:500;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:none;border:none;color:var(--text)}
+.faq-antwort{font-size:13px;color:var(--text2);line-height:1.7;padding:0 0 14px;display:none}
+.faq-antwort.open{display:block}
+.hb-section{margin-bottom:28px}
+.hb-section h3{font-size:15px;font-weight:600;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--accent-bg);color:var(--text)}
+.hb-section h4{font-size:13px;font-weight:600;margin:12px 0 4px;color:var(--text)}
+.hb-section p,.hb-section li{font-size:13px;color:var(--text2);line-height:1.7}
+.hb-section ul,.hb-section ol{padding-left:18px;margin:6px 0}
+.hb-table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
+.hb-table th{background:var(--surface2);padding:6px 10px;text-align:left;font-weight:600}
+.hb-table td{padding:6px 10px;border-bottom:1px solid var(--border)}
+.hb-table tr:last-child td{border-bottom:none}
 .admin-only{display:none}
 .is-admin .admin-only{display:flex}
 @media(max-width:700px){aside{display:none}main{padding:16px}}
@@ -249,6 +268,10 @@ select[multiple]{height:100px}
     <button class="nv" onclick="doLogout()" style="margin-top:20px;color:var(--danger)">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3M10 11l3-3-3-3M13 8H6"/></svg>
       Abmelden
+    </button>
+    <button class="nv" onclick="go('hilfe')" style="margin-top:8px">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="7"/><path d="M8 11v1M8 5a2 2 0 0 1 2 2c0 1.5-2 2-2 3"/></svg>
+      Hilfe
     </button>
   </nav>
   <div class="aside-foot">Daten werden serverseitig in MariaDB gespeichert.</div>
@@ -686,6 +709,18 @@ select[multiple]{height:100px}
     <!-- Import-Verlauf -->
     <div class="sec" style="margin-top:28px">Letzte Importe</div>
     <div id="imp-log-liste"><div class="empty">Noch keine Importe durchgeführt.</div></div>
+  </div>
+
+  <!-- HILFE (ohne Login zugänglich) -->
+  <div id="s-hilfe" class="screen">
+    <h1>Hilfe &amp; Dokumentation</h1>
+    <p class="sub">Schnellstart, FAQ und vollständiges Handbuch</p>
+    <div class="rahmen-tabs" id="hilfe-tabs" style="margin-bottom:20px">
+      <button class="rtab on" onclick="hilfeTab('schnellstart',this)">🚀 Schnellstart</button>
+      <button class="rtab" onclick="hilfeTab('faq',this)">❓ FAQ</button>
+      <button class="rtab" onclick="hilfeTab('handbuch',this)">📖 Handbuch</button>
+    </div>
+    <div id="hilfe-inhalt"></div>
   </div>
 
 </main>
