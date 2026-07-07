@@ -588,14 +588,12 @@ function renderWerkstattDetail(p, schueler) {
       <input type="checkbox" id="abs-${s.id}"
              ${s.abgeschlossen ? 'checked' : ''}
              onchange="toggleAbschluss(${p.id}, ${s.id}, this.checked)"
-             style="flex-shrink:0">
-      <label for="abs-${s.id}" style="flex:1;cursor:pointer;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+             style="flex-shrink:0;margin-top:1px;align-self:flex-start">
+      <label for="abs-${s.id}" style="flex:1;cursor:pointer;font-size:13px;line-height:1.4">
         ${s.nachname}, ${s.vorname}
         <span style="color:var(--text3);font-size:11px">(${s.klasse})</span>
+        ${s.abgeschlossen ? '<span style="color:var(--ok);font-size:11px;margin-left:4px">✓</span>' : ''}
       </label>
-      ${s.abgeschlossen
-        ? '<span style="color:var(--ok);font-size:11px;white-space:nowrap;flex-shrink:0">✓</span>'
-        : '<span style="flex-shrink:0;width:12px"></span>'}
     </div>`
   ).join('');
 
@@ -858,12 +856,13 @@ async function toggleAbschluss(proj_id, schueler_id, abgeschlossen) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ schueler_id, abgeschlossen })
     });
-    const row = document.getElementById('abs-' + schueler_id)?.closest('div');
-    if (row) {
-      const span = row.querySelector('span:last-child');
-      if (span) {
-        span.textContent = abgeschlossen ? '✓' : '';
-        span.style.color = 'var(--ok)';
+    const lbl = document.querySelector(`label[for="abs-${schueler_id}"]`);
+    if (lbl) {
+      const haken = lbl.querySelector('span:last-child');
+      if (abgeschlossen && !haken?.textContent.includes('✓')) {
+        lbl.insertAdjacentHTML('beforeend', '<span style="color:var(--ok);font-size:11px;margin-left:4px">✓</span>');
+      } else if (!abgeschlossen && haken) {
+        haken.remove();
       }
     }
   } catch(e) { alert(e.message); }
