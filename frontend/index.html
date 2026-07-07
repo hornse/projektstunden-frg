@@ -354,6 +354,80 @@ select[multiple]{height:100px}
     <div id="ws-modal" style="display:none"></div>
   </div>
 
+  <!-- WERKSTATT BEARBEITEN (eigene Seite) -->
+  <div id="s-werkstatt-edit" class="screen">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
+      <button class="btn" onclick="go('projekt')" style="font-size:12px">← Zurück</button>
+      <h1 style="margin:0">Werkstatt bearbeiten</h1>
+    </div>
+    <p class="sub" id="we-sub">Änderungen an der Werkstatt vornehmen</p>
+
+    <div class="card">
+      <h2>Werkstattdaten</h2>
+      <label>Werkstattname *</label>
+      <input id="we-name" placeholder="z. B. Umweltwerkstatt 7b">
+      <div class="g2">
+        <div>
+          <label>Schuljahr</label>
+          <select id="we-schuljahr"><option value="">– kein –</option></select>
+        </div>
+        <div>
+          <label>Laufzeit</label>
+          <select id="we-laufzeit">
+            <option value="jahr">Ganzjährig</option>
+            <option value="halbjahr">Halbjahr</option>
+          </select>
+        </div>
+      </div>
+      <div class="g2">
+        <div><label>Startdatum *</label><input type="date" id="we-von"></div>
+        <div><label>Enddatum (optional)</label><input type="date" id="we-bis"></div>
+      </div>
+      <div class="g2">
+        <div><label>Präsentationsdatum</label><input type="date" id="we-praesentation"></div>
+        <div><label>Max. Teilnehmer</label><input type="number" id="we-max" min="1" max="99" placeholder="unbegrenzt"></div>
+      </div>
+      <div class="g2">
+        <div>
+          <label>Status</label>
+          <select id="we-status">
+            <option value="geplant">Geplant</option>
+            <option value="aktiv">Aktiv</option>
+            <option value="abgeschlossen">Abgeschlossen</option>
+            <option value="abgesagt">Abgesagt</option>
+          </select>
+        </div>
+        <div>
+          <label>Lernbegleiter * <small style="color:var(--text3);font-weight:normal">(Strg/Cmd)</small></label>
+          <select id="we-lehrer" multiple size="4"></select>
+        </div>
+      </div>
+      <label>Beschreibung</label>
+      <textarea id="we-desc" placeholder="Was wird erarbeitet?"></textarea>
+    </div>
+
+    <div class="card">
+      <h2>Stunden je Fach</h2>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:10px">Nur Fächer ausfüllen, die inhaltlich beteiligt sind.</p>
+      <div class="fach-grid" id="we-fach-grid"></div>
+      <div style="margin-top:12px;padding:8px 12px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--text2)">
+        Gesamtstunden: <strong id="we-summe">0</strong> Std.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Kompetenzen</h2>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:12px">
+        Kompetenzen sind fächerbezogen gefiltert. Wähle zuerst beteiligte Fächer (oben).
+      </p>
+      <div class="rahmen-tabs" id="we-rahmen-tabs"></div>
+      <div id="we-komp-bereich-list"></div>
+    </div>
+
+    <button class="btn btn-p btn-full" onclick="werkstattEditSpeichern()">Änderungen speichern</button>
+    <div id="we-msg"></div>
+  </div>
+
   <!-- SCHÜLER -->
   <div id="s-schueler" class="screen">
     <h1>Schüler verwalten</h1>

@@ -667,6 +667,33 @@ function handle_projekte(string $method, ?int $id, array $body): void {
                 }
             }
 
+            // Kompetenzen aktualisieren (falls mitgeschickt)
+            // Alle Schüler der Werkstatt bekommen die neuen Kompetenzen
+            $kompetenz_ids = array_map('intval', $body['kompetenz_ids'] ?? []);
+            if (isset($body['kompetenz_ids'])) {
+                // Alle bisherigen Kompetenzen dieser Werkstatt löschen
+                $db->prepare('DELETE FROM projekt_schueler_kompetenzen WHERE projekt_id = ?')->execute([$id]);
+                // Neue Kompetenzen für alle Teilnehmer eintragen
+                if (!empty($kompetenz_ids)) {
+                    $schueler_stmt = $db->prepare(
+                        'SELECT schueler_id FROM projekt_schueler WHERE projekt_id = ?'
+                    );
+                    $schueler_stmt->execute([$id]);
+                    $teilnehmer = $schueler_stmt->fetchAll(PDO::FETCH_COLUMN);
+                    if (!empty($teilnehmer)) {
+                        $ins_k = $db->prepare(
+                            'INSERT IGNORE INTO projekt_schueler_kompetenzen
+                             (projekt_id, schueler_id, kompetenz_id) VALUES (?, ?, ?)'
+                        );
+                        foreach ($teilnehmer as $sid) {
+                            foreach ($kompetenz_ids as $kid) {
+                                $ins_k->execute([$id, $sid, $kid]);
+                            }
+                        }
+                    }
+                }
+            }
+
             $db->commit();
             audit($user['id'], 'projekte', $id, 'UPDATE', null, ['name' => $name]);
             json_response(['ok' => true]);
