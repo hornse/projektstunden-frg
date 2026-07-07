@@ -1710,11 +1710,14 @@ async function ladeRueckmeldungen(projekt_id) {
       return true; // wird vom /werkstatt/{id}/schueler Endpunkt gefiltert
     });
     empfEl.innerHTML = teilnehmer.map(s => `
-      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px">
-        <input type="checkbox" class="rueck-emp-cb" value="${s.id}">
-        ${s.nachname}, ${s.vorname}
-        <span style="color:var(--text3);font-size:11px">(${s.klasse})</span>
-      </label>`
+      <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)">
+        <input type="checkbox" class="rueck-emp-cb" value="${s.id}"
+               id="re-${s.id}" style="flex-shrink:0;width:16px;height:16px;cursor:pointer">
+        <label for="re-${s.id}" style="flex:1;cursor:pointer;font-size:13px">
+          ${s.nachname}, ${s.vorname}
+          <span style="color:var(--text3);font-size:11px">(${s.klasse})</span>
+        </label>
+      </div>`
     ).join('');
   }
 
