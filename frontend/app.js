@@ -587,12 +587,13 @@ function renderWerkstattDetail(p, schueler) {
     <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
       <input type="checkbox" id="abs-${s.id}"
              ${s.abgeschlossen ? 'checked' : ''}
-             onchange="toggleAbschluss(${p.id}, ${s.id}, this.checked)">
-      <label for="abs-${s.id}" style="flex:1;cursor:pointer;font-size:13px;min-width:0">
-        <span style="font-weight:500">${s.nachname}, ${s.vorname}</span>
+             onchange="toggleAbschluss(${p.id}, ${s.id}, this.checked)"
+             style="flex-shrink:0">
+      <label for="abs-${s.id}" style="flex:1;cursor:pointer;font-size:13px">
+        ${s.nachname}, ${s.vorname}
         <span style="color:var(--text3);font-size:11px;margin-left:4px">(${s.klasse})</span>
       </label>
-      <span style="color:var(--ok);font-size:11px;white-space:nowrap;min-width:70px;text-align:right">
+      <span style="color:var(--ok);font-size:11px;white-space:nowrap;flex-shrink:0;min-width:72px;text-align:right">
         ${s.abgeschlossen ? '✓ absolviert' : ''}
       </span>
     </div>`
@@ -857,15 +858,11 @@ async function toggleAbschluss(proj_id, schueler_id, abgeschlossen) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ schueler_id, abgeschlossen })
     });
-    // Label aktualisieren
-    const lbl = document.querySelector(`label[for="abs-${schueler_id}"]`);
-    if (lbl) {
-      const span = lbl.nextElementSibling;
-      if (abgeschlossen) {
-        if (!span || !span.textContent.includes('absolviert')) {
-          lbl.insertAdjacentHTML('afterend', '<span style="color:var(--ok);font-size:11px">✓ absolviert</span>');
-        }
-      } else if (span) span.remove();
+    // Status-Span neben der Checkbox aktualisieren
+    const row = document.getElementById('abs-' + schueler_id)?.closest('div');
+    if (row) {
+      const span = row.querySelector('span:last-child');
+      if (span) span.textContent = abgeschlossen ? '✓ absolviert' : '';
     }
   } catch(e) { alert(e.message); }
 }
