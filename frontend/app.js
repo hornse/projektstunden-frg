@@ -585,15 +585,15 @@ function renderWerkstattDetail(p, schueler) {
 
   const schuelerRows = schueler.map(s => `
     <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
-      <input type="checkbox" id="abs-${s.id}"
-             ${s.abgeschlossen ? 'checked' : ''}
-             onchange="toggleAbschluss(${p.id}, ${s.id}, this.checked)"
-             style="flex-shrink:0;margin-top:1px;align-self:flex-start">
       <label for="abs-${s.id}" style="flex:1;cursor:pointer;font-size:13px;line-height:1.4">
         ${s.nachname}, ${s.vorname}
         <span style="color:var(--text3);font-size:11px">(${s.klasse})</span>
-        ${s.abgeschlossen ? '<span style="color:var(--ok);font-size:11px;margin-left:4px">✓</span>' : ''}
       </label>
+      ${s.abgeschlossen ? '<span style="color:var(--ok);font-size:11px;flex-shrink:0">✓</span>' : ''}
+      <input type="checkbox" id="abs-${s.id}"
+             ${s.abgeschlossen ? 'checked' : ''}
+             onchange="toggleAbschluss(${p.id}, ${s.id}, this.checked)"
+             style="flex-shrink:0;width:16px;height:16px;cursor:pointer">
     </div>`
   ).join('');
 
@@ -856,14 +856,15 @@ async function toggleAbschluss(proj_id, schueler_id, abgeschlossen) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ schueler_id, abgeschlossen })
     });
-    const lbl = document.querySelector(`label[for="abs-${schueler_id}"]`);
-    if (lbl) {
-      const haken = lbl.querySelector('span:last-child');
-      if (abgeschlossen && !haken?.textContent.includes('✓')) {
-        lbl.insertAdjacentHTML('beforeend', '<span style="color:var(--ok);font-size:11px;margin-left:4px">✓</span>');
-      } else if (!abgeschlossen && haken) {
-        haken.remove();
-      }
+    const cb = document.getElementById('abs-' + schueler_id);
+    if (!cb) return;
+    const row = cb.closest('div');
+    const haken = row.querySelector('span[style*="--ok"]');
+    if (abgeschlossen && !haken) {
+      cb.insertAdjacentHTML('beforebegin',
+        '<span style="color:var(--ok);font-size:11px;flex-shrink:0">✓</span>');
+    } else if (!abgeschlossen && haken) {
+      haken.remove();
     }
   } catch(e) { alert(e.message); }
 }
