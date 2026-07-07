@@ -609,6 +609,7 @@ function handle_projekte(string $method, ?int $id, array $body): void {
         $name                = clean($body['name']      ?? '');
         $klasse_ids_put      = array_map('intval', $body['klasse_ids'] ?? []);
         $klasse_id           = (int)($body['klasse_id'] ?? ($klasse_ids_put[0] ?? 0));
+        $schuljahr_id        = (int)($body['schuljahr_id'] ?? 0) ?: null;
         $datum_von           = $body['datum_von'] ?? '';
         $datum_bis           = $body['datum_bis'] ?? null;
         $praesentation_datum = $body['praesentation_datum'] ?? null;
@@ -627,18 +628,34 @@ function handle_projekte(string $method, ?int $id, array $body): void {
 
         $db->beginTransaction();
         try {
-            $db->prepare(
-                'UPDATE projekte SET
-                 klasse_id=?, schuljahr_id=?, name=?, beschreibung=?,
-                 datum_von=?, datum_bis=?, laufzeit=?, max_schueler=?,
-                 praesentation_datum=?, status=?
-                 WHERE id=? AND schule_id=?'
-            )->execute([
-                $klasse_id, $schuljahr_id, $name, $beschreibung,
-                $datum_von, $datum_bis ?: null, $laufzeit, $max_schueler,
-                $praesentation_datum ?: null, $status,
-                $id, $user['schule_id']
-            ]);
+            // klasse_id nur updaten wenn mitgeschickt (sonst bestehenden Wert behalten)
+            if ($klasse_id) {
+                $db->prepare(
+                    'UPDATE projekte SET
+                     klasse_id=?, schuljahr_id=?, name=?, beschreibung=?,
+                     datum_von=?, datum_bis=?, laufzeit=?, max_schueler=?,
+                     praesentation_datum=?, status=?
+                     WHERE id=? AND schule_id=?'
+                )->execute([
+                    $klasse_id, $schuljahr_id, $name, $beschreibung,
+                    $datum_von, $datum_bis ?: null, $laufzeit, $max_schueler,
+                    $praesentation_datum ?: null, $status,
+                    $id, $user['schule_id']
+                ]);
+            } else {
+                $db->prepare(
+                    'UPDATE projekte SET
+                     schuljahr_id=?, name=?, beschreibung=?,
+                     datum_von=?, datum_bis=?, laufzeit=?, max_schueler=?,
+                     praesentation_datum=?, status=?
+                     WHERE id=? AND schule_id=?'
+                )->execute([
+                    $schuljahr_id, $name, $beschreibung,
+                    $datum_von, $datum_bis ?: null, $laufzeit, $max_schueler,
+                    $praesentation_datum ?: null, $status,
+                    $id, $user['schule_id']
+                ]);
+            }
 
             // Lernbegleiter neu setzen
             if (!empty($lehrer_ids)) {
