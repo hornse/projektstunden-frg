@@ -651,6 +651,22 @@ function handle_projekte(string $method, ?int $id, array $body): void {
                 }
             }
 
+            // Stunden aktualisieren (falls mitgeschickt)
+            $stunden = $body['stunden'] ?? [];
+            if (!empty($stunden)) {
+                $db->prepare('DELETE FROM projekt_stunden WHERE projekt_id = ?')->execute([$id]);
+                $ins = $db->prepare(
+                    'INSERT INTO projekt_stunden (projekt_id, fach_id, stunden, notiz) VALUES (?, ?, ?, ?)'
+                );
+                foreach ($stunden as $s) {
+                    if (empty($s['fach_id']) || empty($s['stunden'])) continue;
+                    $ins->execute([
+                        $id, (int)$s['fach_id'],
+                        round((float)$s['stunden'], 1), clean($s['notiz'] ?? '')
+                    ]);
+                }
+            }
+
             $db->commit();
             audit($user['id'], 'projekte', $id, 'UPDATE', null, ['name' => $name]);
             json_response(['ok' => true]);
@@ -684,16 +700,22 @@ function handle_dashboard(string $method): void {
     $schueler_id = (int)($_GET['schueler_id'] ?? 0);
 
     // Schüler mit Projektstunden-Summe je Fach laden
+    // Stunden werden nur angerechnet wenn:
+    // - Werkstatt status = 'abgeschlossen' ODER Schüler individuell abgeschlossen
     $sql = '
         SELECT s.id, s.vorname, s.nachname,
                k.bezeichnung AS klasse, k.jahrgang, k.id AS klasse_id,
                f.id AS fach_id, f.name AS fach_name, f.kuerzel AS fach_kuerzel,
                f.soll_jg5, f.soll_jg6, f.soll_jg7, f.soll_jg8, f.soll_jg9, f.soll_jg10,
-               COALESCE(SUM(ps_st.stunden), 0) AS projekt_stunden
+               COALESCE(SUM(
+                   CASE WHEN (p.status = "abgeschlossen" OR ps_s.abgeschlossen = 1)
+                        THEN ps_st.stunden ELSE 0 END
+               ), 0) AS projekt_stunden
         FROM schueler s
         JOIN klassen k ON k.id = s.klasse_id
         CROSS JOIN faecher f ON f.schule_id = k.schule_id AND f.aktiv = 1
         LEFT JOIN projekt_schueler ps_s ON ps_s.schueler_id = s.id
+        LEFT JOIN projekte p ON p.id = ps_s.projekt_id
         LEFT JOIN projekt_stunden  ps_st ON ps_st.projekt_id = ps_s.projekt_id
                                          AND ps_st.fach_id = f.id
         WHERE k.schule_id = ? AND s.aktiv = 1
@@ -707,16 +729,19 @@ function handle_dashboard(string $method): void {
     $stmt->execute($params);
     $rows = $stmt->fetchAll();
 
-    // Kompetenzen je Schüler (aggregiert)
+    // Kompetenzen je Schüler (nur aus abgeschlossenen Werkstätten)
     $komp_sql = '
         SELECT psk.schueler_id, k.id, k.code, k.kurzname, kb.name AS bereich, kr.kuerzel AS rahmen
         FROM projekt_schueler_kompetenzen psk
         JOIN schueler s       ON s.id  = psk.schueler_id
         JOIN klassen kl       ON kl.id = s.klasse_id
+        JOIN projekt_schueler ps ON ps.projekt_id = psk.projekt_id AND ps.schueler_id = psk.schueler_id
+        JOIN projekte p       ON p.id  = psk.projekt_id
         JOIN kompetenzen k    ON k.id  = psk.kompetenz_id
         JOIN kompetenzbereiche kb ON kb.id = k.bereich_id
         JOIN kompetenzrahmen kr   ON kr.id = kb.rahmen_id
         WHERE kl.schule_id = ? AND s.aktiv = 1
+          AND (p.status = "abgeschlossen" OR ps.abgeschlossen = 1)
     ';
     $kparams = [$user['schule_id']];
     if ($klasse_id)   { $komp_sql .= ' AND kl.id = ?'; $kparams[] = $klasse_id; }

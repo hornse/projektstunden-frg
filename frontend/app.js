@@ -518,8 +518,6 @@ async function renderProjektListe() {
 // ============================================================
 async function openWerkstattDetail(id) {
   const modal = document.getElementById('ws-modal');
-  //Funktioniert nicht
-  //modal.style.display = 'block';
   modal.style.cssText = 'display:block;position:fixed;inset:0;z-index:200';
   modal.innerHTML = `<div class="modal-wrap"><div class="modal" style="width:560px;max-height:85vh;overflow-y:auto">
     <button class="modal-close" onclick="closeWsModal()">✕</button>
@@ -569,9 +567,20 @@ function renderWerkstattDetail(p, schueler) {
   const statusOptionen = ['geplant','aktiv','abgeschlossen','abgesagt']
     .map(s => `<option value="${s}" ${s === p.status ? 'selected' : ''}>${s}</option>`).join('');
 
+  // Lernbegleiter-Optionen für Edit
+  const lehrerOptionen = STATE.lehrer.map(l =>
+    `<option value="${l.id}" ${(p.lernbegleiter||[]).some(lb=>lb.id===l.id) ? 'selected' : ''}>`+
+    `${l.vorname} ${l.nachname}${l.kuerzel?' ('+l.kuerzel+')':''}</option>`
+  ).join('');
+
+  // Klassen-Optionen für Edit
+  const klassenOptionen = STATE.klassen.map(k =>
+    `<option value="${k.id}">${k.bezeichnung} (${k.schuljahr})</option>`
+  ).join('');
+
   modal.innerHTML = `
   <div class="modal-wrap" onclick="if(event.target===this)closeWsModal()">
-    <div class="modal" style="width:560px;max-height:85vh;overflow-y:auto">
+    <div class="modal" style="width:580px;max-height:88vh;overflow-y:auto">
       <button class="modal-close" onclick="closeWsModal()">✕</button>
       <h2>${p.name}</h2>
       <p class="modal-sub">
@@ -581,6 +590,7 @@ function renderWerkstattDetail(p, schueler) {
 
       <div style="margin-bottom:12px">${lb}</div>
 
+      <!-- Status -->
       <div class="g2" style="margin-bottom:14px">
         <div>
           <label style="font-size:12px;color:var(--text3)">Status</label>
@@ -591,12 +601,72 @@ function renderWerkstattDetail(p, schueler) {
         </div>
       </div>
 
+      <!-- Teilnehmer -->
       <div class="sec" style="margin:14px 0 8px">Teilnehmer/innen</div>
       <div style="margin-bottom:8px;display:flex;gap:8px">
         <button class="btn" style="font-size:12px" onclick="alleAbschliessen(${p.id}, true)">Alle ✓</button>
         <button class="btn" style="font-size:12px" onclick="alleAbschliessen(${p.id}, false)">Alle zurücksetzen</button>
       </div>
       <div id="ws-schueler-liste">${schuelerRows || '<p style="color:var(--text3);font-size:13px">Keine Teilnehmer zugeordnet.</p>'}</div>
+
+      <!-- Bearbeiten-Bereich (aufklappbar) -->
+      <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+        <button class="btn" style="width:100%;text-align:left" onclick="toggleWsEdit()">
+          ✏️ Werkstatt bearbeiten (Name, Stunden, Kompetenzen …)
+        </button>
+        <div id="ws-edit-wrap" style="display:none;margin-top:14px">
+
+          <label style="font-size:12px;color:var(--text3)">Name *</label>
+          <input id="ws-name" value="${p.name.replace(/"/g,'&quot;')}" style="width:100%;margin-bottom:10px">
+
+          <div class="g2" style="margin-bottom:10px">
+            <div>
+              <label style="font-size:12px;color:var(--text3)">Startdatum *</label>
+              <input type="date" id="ws-von" value="${p.datum_von}" style="width:100%">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text3)">Enddatum</label>
+              <input type="date" id="ws-bis" value="${p.datum_bis||''}" style="width:100%">
+            </div>
+          </div>
+
+          <div class="g2" style="margin-bottom:10px">
+            <div>
+              <label style="font-size:12px;color:var(--text3)">Laufzeit</label>
+              <select id="ws-laufzeit" style="width:100%">
+                <option value="jahr" ${p.laufzeit==='jahr'?'selected':''}>Ganzjährig</option>
+                <option value="halbjahr" ${p.laufzeit==='halbjahr'?'selected':''}>Halbjahr</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--text3)">Präsentationsdatum</label>
+              <input type="date" id="ws-praes" value="${p.praesentation_datum||''}" style="width:100%">
+            </div>
+          </div>
+
+          <label style="font-size:12px;color:var(--text3)">Lernbegleiter <small>(Strg/Cmd für mehrere)</small></label>
+          <select id="ws-lehrer" multiple size="3" style="width:100%;margin-bottom:10px">${lehrerOptionen}</select>
+
+          <label style="font-size:12px;color:var(--text3)">Beschreibung</label>
+          <textarea id="ws-desc" style="width:100%;margin-bottom:10px;min-height:60px">${p.beschreibung||''}</textarea>
+
+          <label style="font-size:12px;color:var(--text3)">Stunden je Fach</label>
+          <div id="ws-fach-grid" style="margin-bottom:10px">
+            ${STATE.faecher.map(f => {
+              const st = (p.stunden||[]).find(s=>s.fach_id==f.id);
+              return `<div class="fach-item">
+                <span style="font-size:12px">${f.name}</span>
+                <input type="number" min="0" max="40" step="0.5" placeholder="0"
+                       data-fid="${f.id}" value="${st?st.stunden:''}"
+                       style="width:70px;padding:4px 6px;font-size:12px">
+              </div>`;
+            }).join('')}
+          </div>
+
+          <div id="ws-edit-msg"></div>
+          <button class="btn btn-p" style="width:100%" onclick="saveWsEdit(${p.id})">Änderungen speichern</button>
+        </div>
+      </div>
 
       ${p.beschreibung ? `<div class="sec" style="margin:14px 0 6px">Beschreibung</div>
         <p style="font-size:13px;color:var(--text2)">${p.beschreibung}</p>` : ''}
@@ -607,6 +677,46 @@ function renderWerkstattDetail(p, schueler) {
       </div>
     </div>
   </div>`;
+}
+
+function toggleWsEdit() {
+  const wrap = document.getElementById('ws-edit-wrap');
+  wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
+}
+
+async function saveWsEdit(id) {
+  const name    = document.getElementById('ws-name').value.trim();
+  const datum_von = document.getElementById('ws-von').value;
+  const datum_bis = document.getElementById('ws-bis').value || null;
+  const laufzeit  = document.getElementById('ws-laufzeit').value;
+  const praesentation_datum = document.getElementById('ws-praes').value || null;
+  const beschreibung = document.getElementById('ws-desc').value.trim();
+  const lehrer_ids = [...document.getElementById('ws-lehrer').selectedOptions].map(o=>parseInt(o.value));
+
+  const stunden = [...document.querySelectorAll('#ws-fach-grid input')]
+    .filter(i => parseFloat(i.value) > 0)
+    .map(i => ({ fach_id: parseInt(i.dataset.fid), stunden: parseFloat(i.value) }));
+
+  if (!name || !datum_von) return showMsg('ws-edit-msg', 'Name und Startdatum sind Pflichtfelder.', 'err');
+  if (!lehrer_ids.length) return showMsg('ws-edit-msg', 'Mindestens einen Lernbegleiter wählen.', 'err');
+
+  try {
+    const r = await fetch('/api/projekte/' + id, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name, datum_von, datum_bis, laufzeit, praesentation_datum,
+        beschreibung, lehrer_ids, stunden,
+        status: document.getElementById('ws-status').value
+      })
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Fehler');
+    showMsg('ws-edit-msg', 'Gespeichert ✓', 'ok');
+    // Modal neu laden
+    setTimeout(() => openWerkstattDetail(id), 800);
+  } catch(e) { showMsg('ws-edit-msg', e.message, 'err'); }
 }
 
 async function saveWsStatus(id) {
