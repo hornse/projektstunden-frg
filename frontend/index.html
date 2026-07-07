@@ -200,7 +200,7 @@ select[multiple]{height:100px}
     </button>
     <button class="nv" onclick="go('projekt')">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M5 3V2a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M5 8h6M5 11h4"/></svg>
-      Werkstatt eintragen
+      Werkstätten
     </button>
     <button class="nv" onclick="go('schueler')">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5"/></svg>
@@ -253,83 +253,104 @@ select[multiple]{height:100px}
 
   <!-- PROJEKT -->
   <div id="s-projekt" class="screen">
-    <h1>Werkstatt eintragen</h1>
-    <p class="sub">Stunden und Kompetenzen fächerübergreifend zuweisen</p>
-    <div class="card">
-      <h2>Werkstattdaten</h2>
-      <label>Werkstattname *</label>
-      <input id="p-name" placeholder="z. B. Umweltwerkstatt 7b">
-      <div class="g2">
-        <div>
-          <label>Schuljahr</label>
-          <select id="p-schuljahr" onchange="renderProjektListe()"><option value="">– kein –</option></select>
-        </div>
-        <div>
-          <label>Laufzeit</label>
-          <select id="p-laufzeit">
-            <option value="jahr">Ganzjährig</option>
-            <option value="halbjahr">Halbjahr</option>
-          </select>
-        </div>
-      </div>
-      <div class="g2">
-        <div><label>Startdatum *</label><input type="date" id="p-von"></div>
-        <div><label>Enddatum (optional)</label><input type="date" id="p-bis"></div>
-      </div>
-      <div class="g2">
-        <div><label>Präsentationsdatum</label><input type="date" id="p-praesentation"></div>
-        <div><label>Max. Teilnehmer</label><input type="number" id="p-max" min="1" max="99" placeholder="unbegrenzt"></div>
-      </div>
-      <div class="g2">
-        <div>
-          <label>Klassen * <small style="color:var(--text3);font-weight:normal">(Strg/Cmd für mehrere)</small></label>
-          <select id="p-kl" multiple size="4" onchange="loadSchuelerForProjekt()"></select>
-        </div>
-        <div>
-          <label>Status</label>
-          <select id="p-status">
-            <option value="geplant">Geplant</option>
-            <option value="aktiv">Aktiv</option>
-            <option value="abgeschlossen">Abgeschlossen</option>
-            <option value="abgesagt">Abgesagt</option>
-          </select>
-        </div>
-      </div>
-      <label>Lernbegleiter * <small style="color:var(--text3);font-weight:normal">(Strg/Cmd für mehrere; erster = Leitung)</small></label>
-      <select id="p-lehrer" multiple size="4"></select>
-      <label>Beschreibung</label>
-      <textarea id="p-desc" placeholder="Was wird erarbeitet? Warum fächerübergreifend?"></textarea>
+    <h1>Werkstätten</h1>
+    <p class="sub">Übersicht und Verwaltung aller Werkstätten</p>
+
+    <!-- Filter + Neue Werkstatt -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <select id="p-schuljahr" onchange="renderProjektListe()" style="flex:1;min-width:160px">
+        <option value="">– alle Schuljahre –</option>
+      </select>
+      <button class="btn btn-p" onclick="toggleNeueWerkstatt()" id="btn-neue-ws">
+        + Neue Werkstatt
+      </button>
     </div>
 
-    <div class="card">
-      <h2>Beteiligte Schüler/innen</h2>
-      <p style="font-size:12px;color:var(--text3);margin-bottom:8px">Strg/Cmd für Mehrfachauswahl</p>
-      <select id="p-schueler" multiple></select>
-    </div>
-
-    <div class="card">
-      <h2>Stunden je Fach</h2>
-      <p style="font-size:12px;color:var(--text3);margin-bottom:10px">Nur Fächer ausfüllen, die inhaltlich beteiligt sind. Eintrag wird auf das Jahresstundensoll angerechnet.</p>
-      <div class="fach-grid" id="p-fach-grid"></div>
-      <div style="margin-top:12px;padding:8px 12px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--text2)">
-        Gesamtstunden Werkstatt: <strong id="p-summe">0</strong> Std.
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Kompetenzen</h2>
-      <p style="font-size:12px;color:var(--text3);margin-bottom:12px">
-        Kompetenzen sind fächerbezogen gefiltert. Wähle zuerst beteiligte Fächer (oben), dann erscheinen die passenden Kompetenzen inkl. Medienkompetenzrahmen NRW.
-      </p>
-      <div class="rahmen-tabs" id="rahmen-tabs"></div>
-      <div id="komp-bereich-list"></div>
-    </div>
-
-    <button class="btn btn-p btn-full" onclick="projektSpeichern()">Werkstatt speichern</button>
-    <div id="p-msg"></div>
-
-    <div class="sec" style="margin-top:28px">Gespeicherte Werkstätten</div>
+    <!-- Liste der Werkstätten -->
     <div id="proj-liste"></div>
+
+    <!-- Formular: Neue Werkstatt anlegen (aufklappbar) -->
+    <div id="neue-ws-wrap" style="display:none;margin-top:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h2 style="margin:0;font-size:16px">Neue Werkstatt anlegen</h2>
+        <button class="btn" onclick="toggleNeueWerkstatt()">✕ Schließen</button>
+      </div>
+
+      <div class="card">
+        <h2>Werkstattdaten</h2>
+        <label>Werkstattname *</label>
+        <input id="p-name" placeholder="z. B. Umweltwerkstatt 7b">
+        <div class="g2">
+          <div>
+            <label>Schuljahr</label>
+            <select id="p-schuljahr-form"><option value="">– kein –</option></select>
+          </div>
+          <div>
+            <label>Laufzeit</label>
+            <select id="p-laufzeit">
+              <option value="jahr">Ganzjährig</option>
+              <option value="halbjahr">Halbjahr</option>
+            </select>
+          </div>
+        </div>
+        <div class="g2">
+          <div><label>Startdatum *</label><input type="date" id="p-von"></div>
+          <div><label>Enddatum (optional)</label><input type="date" id="p-bis"></div>
+        </div>
+        <div class="g2">
+          <div><label>Präsentationsdatum</label><input type="date" id="p-praesentation"></div>
+          <div><label>Max. Teilnehmer</label><input type="number" id="p-max" min="1" max="99" placeholder="unbegrenzt"></div>
+        </div>
+        <div class="g2">
+          <div>
+            <label>Klassen * <small style="color:var(--text3);font-weight:normal">(Strg/Cmd für mehrere)</small></label>
+            <select id="p-kl" multiple size="4" onchange="loadSchuelerForProjekt()"></select>
+          </div>
+          <div>
+            <label>Status</label>
+            <select id="p-status">
+              <option value="geplant">Geplant</option>
+              <option value="aktiv">Aktiv</option>
+              <option value="abgeschlossen">Abgeschlossen</option>
+              <option value="abgesagt">Abgesagt</option>
+            </select>
+          </div>
+        </div>
+        <label>Lernbegleiter * <small style="color:var(--text3);font-weight:normal">(Strg/Cmd für mehrere; erster = Leitung)</small></label>
+        <select id="p-lehrer" multiple size="4"></select>
+        <label>Beschreibung</label>
+        <textarea id="p-desc" placeholder="Was wird erarbeitet? Warum fächerübergreifend?"></textarea>
+      </div>
+
+      <div class="card">
+        <h2>Beteiligte Schüler/innen</h2>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:8px">Strg/Cmd für Mehrfachauswahl</p>
+        <select id="p-schueler" multiple></select>
+      </div>
+
+      <div class="card">
+        <h2>Stunden je Fach</h2>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:10px">Nur Fächer ausfüllen, die inhaltlich beteiligt sind.</p>
+        <div class="fach-grid" id="p-fach-grid"></div>
+        <div style="margin-top:12px;padding:8px 12px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--text2)">
+          Gesamtstunden Werkstatt: <strong id="p-summe">0</strong> Std.
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Kompetenzen</h2>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:12px">
+          Kompetenzen sind fächerbezogen gefiltert. Wähle zuerst beteiligte Fächer (oben).
+        </p>
+        <div class="rahmen-tabs" id="rahmen-tabs"></div>
+        <div id="komp-bereich-list"></div>
+      </div>
+
+      <button class="btn btn-p btn-full" onclick="projektSpeichern()">Werkstatt speichern</button>
+      <div id="p-msg"></div>
+    </div>
+
+    <!-- Detail/Bearbeiten Modal -->
     <div id="ws-modal" style="display:none"></div>
   </div>
 

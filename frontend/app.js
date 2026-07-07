@@ -218,13 +218,22 @@ let KOMPETENZEN_CACHE = {}; // { fach_id: [...kompetenzen] }
 let AKTIVER_RAHMEN    = 0;
 
 async function initProjekt() {
-  // Schuljahr-Dropdown
+  // Schuljahr-Filter-Dropdown (oben in der Liste)
   const sjData = await GET('schuljahre');
   const sjEl = document.getElementById('p-schuljahr');
-  sjEl.innerHTML = '<option value="">– kein –</option>' +
+  sjEl.innerHTML = '<option value="">– alle Schuljahre –</option>' +
     (sjData || []).map(s =>
       `<option value="${s.id}" ${s.status === 'aktiv' ? 'selected' : ''}>${s.name}${s.status === 'aktiv' ? ' ✓' : ''}</option>`
     ).join('');
+
+  // Schuljahr im Formular
+  const sjFormEl = document.getElementById('p-schuljahr-form');
+  if (sjFormEl) {
+    sjFormEl.innerHTML = '<option value="">– kein –</option>' +
+      (sjData || []).map(s =>
+        `<option value="${s.id}" ${s.status === 'aktiv' ? 'selected' : ''}>${s.name}${s.status === 'aktiv' ? ' ✓' : ''}</option>`
+      ).join('');
+  }
 
   // Klassen Multi-Select
   const kEl = document.getElementById('p-kl');
@@ -246,6 +255,18 @@ async function initProjekt() {
   await loadKompetenzenFuerFaecher([]);
   renderRahmenTabs();
   await renderProjektListe();
+}
+
+function toggleNeueWerkstatt() {
+  const wrap = document.getElementById('neue-ws-wrap');
+  const btn  = document.getElementById('btn-neue-ws');
+  const open = wrap.style.display === 'none';
+  wrap.style.display = open ? 'block' : 'none';
+  btn.textContent = open ? '✕ Abbrechen' : '+ Neue Werkstatt';
+  if (open) {
+    // Zum Formular scrollen
+    wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
 
 function buildFachGrid() {
@@ -430,8 +451,8 @@ function loadSchuelerForProjekt() {
 async function projektSpeichern() {
   const name        = document.getElementById('p-name').value.trim();
   const klasse_ids  = [...document.getElementById('p-kl').selectedOptions].map(o => parseInt(o.value));
-  const klasse_id   = klasse_ids[0] || 0; // Erste Klasse als Haupt-FK
-  const schuljahr_id = parseInt(document.getElementById('p-schuljahr').value) || null;
+  const klasse_id   = klasse_ids[0] || 0;
+  const schuljahr_id = parseInt(document.getElementById('p-schuljahr-form')?.value) || null;
   const datum_von   = document.getElementById('p-von').value;
   const datum_bis   = document.getElementById('p-bis').value || null;
   const praesentation_datum = document.getElementById('p-praesentation').value || null;
@@ -472,6 +493,9 @@ async function projektSpeichern() {
     document.querySelectorAll('#p-fach-grid input').forEach(i => i.value = '');
     document.querySelectorAll('.komp-cb').forEach(c => c.checked = false);
     document.getElementById('p-summe').textContent = '0';
+    // Formular einklappen und Liste aktualisieren
+    document.getElementById('neue-ws-wrap').style.display = 'none';
+    document.getElementById('btn-neue-ws').textContent = '+ Neue Werkstatt';
     renderProjektListe();
   } catch(e) { showMsg('p-msg', e.message, 'err'); }
 }
@@ -482,11 +506,11 @@ async function renderProjektListe() {
   const data = await GET(url);
   const el   = document.getElementById('proj-liste');
   if (!data || !data.length) {
-    el.innerHTML = '<div class="empty">Noch keine Werkstätten eingetragen.</div>';
+    el.innerHTML = '<div class="empty">Noch keine Werkstätten vorhanden. Klicke auf „+ Neue Werkstatt" um zu starten.</div>';
     return;
   }
   el.innerHTML = data.map(p => `
-    <div class="proj-card" onclick="openWerkstattDetail(${p.id})" style="cursor:pointer">
+    <div class="proj-card">
       <div class="proj-row">
         <div style="flex:1">
           <div class="proj-name">${p.name}</div>
@@ -501,13 +525,16 @@ async function renderProjektListe() {
             ${p.praesentation_datum ? ' · 🎤 ' + p.praesentation_datum : ''}
             ${p.max_schueler ? ' · max. ' + p.max_schueler + ' TN' : ''}
           </div>
-          <div class="tags">
+          <div class="tags" style="margin-top:6px">
             <span class="tag-f">${p.laufzeit === 'halbjahr' ? 'Halbjahr' : 'Ganzjährig'}</span>
             <span class="tag-k">${p.kompetenzen_anzahl} Kompetenzen</span>
-            <span class="tag-f status-${p.status}">${p.status}</span>
+            <span class="tag-f">${p.status}</span>
           </div>
         </div>
-        <div style="font-size:18px;color:var(--text3);align-self:center">›</div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-self:center;margin-left:12px">
+          <button class="btn btn-p" style="font-size:12px;padding:6px 12px"
+                  onclick="openWerkstattDetail(${p.id})">Details</button>
+        </div>
       </div>
     </div>`
   ).join('');
