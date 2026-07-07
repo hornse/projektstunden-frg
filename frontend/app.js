@@ -60,8 +60,14 @@ async function checkAuth() {
     clearTimeout(timeout);
     if (r.status === 401 || !r.ok) { showLogin(); return; }
     const me = await r.json().catch(() => null);
-    if (me && me.id) { STATE.user = me; showApp(); }
-    else showLogin();
+    if (me && me.id) {
+      STATE.user = me;
+      if (me.typ === 'schueler') {
+        showSchuelerPortal(me);
+      } else {
+        showApp();
+      }
+    } else showLogin();
   } catch { showLogin(); }
 }
 function showLogin() {
@@ -84,11 +90,13 @@ async function doLogin() {
   const email = document.getElementById('l-email').value.trim();
   const pass  = document.getElementById('l-pass').value;
   try {
-    // Login-Response direkt in STATE.user speichern, damit showApp()
-    // die Rolle kennt und Admin-UI korrekt ein-/ausblendet.
-    const me = await POST('auth/login', { email, passwort: pass });
+    const me = await POST('auth/login', { email, username: email, passwort: pass });
     STATE.user = me;
-    showApp();
+    if (me.typ === 'schueler') {
+      showSchuelerPortal(me);
+    } else {
+      showApp();
+    }
   } catch(e) { showMsg('l-msg', e.message, 'err'); }
 }
 async function doLogout() {
@@ -2053,4 +2061,157 @@ function hilfeHandbuch() {
       Kein Tracking. Alle Daten verbleiben auf dem Schulserver.</p>
     </div>
   </div>`;
+}
+
+// ============================================================
+// SCHÜLER-PORTAL (nur für Schüler-Login via WebUntis)
+// ============================================================
+async function showSchuelerPortal(me) {
+  document.getElementById('login-view').style.display = 'none';
+  document.getElementById('app-view').style.display   = 'flex';
+  // Nur Schüler-Screen sichtbar – Navigation ausblenden
+  document.querySelector('aside').style.display = 'none';
+  document.getElementById('schueler-portal-sub').textContent =
+    `Hallo, ${me.vorname} ${me.nachname}!`;
+  await ladeSchuelerPortal(me.id);
+}
+
+async function ladeSchuelerPortal(schueler_id) {
+  // Werkstätten des Schülers laden
+  const data = await GET(`schueler-portal`);
+  const el   = document.getElementById('schueler-portal-liste');
+
+  if (!data || !data.werkstaetten || !data.werkstaetten.length) {
+    el.innerHTML = '<div class="empty">Du bist noch keiner Werkstatt zugeordnet.</div>';
+    return;
+  }
+
+  el.innerHTML = data.werkstaetten.map(w => `
+    <div class="proj-card" style="cursor:pointer" onclick="schuelerWerkstattDetail(${w.id})">
+      <div class="proj-row">
+        <div style="flex:1">
+          <div class="proj-name">${w.name}</div>
+          <div class="proj-meta">
+            ${w.datum_von}${w.datum_bis ? ' – ' + w.datum_bis : ''}
+            ${w.schuljahr_name ? ' · ' + w.schuljahr_name : ''}
+          </div>
+          <div class="proj-meta" style="margin-top:2px">
+            👤 ${w.lernbegleiter || '–'}
+          </div>
+          <div class="tags">
+            <span class="tag-f">${w.status}</span>
+            <span class="tag-k">${w.kompetenzen_anzahl || 0} Kompetenzen</span>
+            ${w.abgeschlossen ? '<span class="tag-f" style="background:#d1fae5;color:#065f46">✓ Absolviert</span>' : ''}
+          </div>
+        </div>
+        <div style="font-size:18px;color:var(--text3);align-self:center">›</div>
+      </div>
+    </div>`
+  ).join('');
+}
+
+async function schuelerWerkstattDetail(werkstatt_id) {
+  const detail = document.getElementById('schueler-portal-detail');
+  const liste  = document.getElementById('schueler-portal-liste');
+
+  detail.style.display = 'block';
+  liste.style.display  = 'none';
+  detail.innerHTML = '<p style="color:var(--text3);font-size:13px">Lade…</p>';
+
+  const data = await GET(`schueler-portal/${werkstatt_id}`);
+  if (!data) {
+    detail.innerHTML = '<p style="color:var(--danger)">Fehler beim Laden.</p>';
+    return;
+  }
+
+  const STUFEN = { 1: 'Mit Unterstützung', 2: 'Teilweise', 3: 'Weitgehend', 4: 'Sicher' };
+
+  // Kompetenzen mit Fremd- und Selbsteinschätzung
+  const kompRows = (data.kompetenzen || []).map(k => {
+    const fremd = k.fremd_stufe
+      ? `<span class="bew-chip bew-${k.fremd_stufe}">${k.fremd_stufe} – ${STUFEN[k.fremd_stufe]}</span>`
+      : '<span style="color:var(--text3);font-size:12px">noch keine</span>';
+
+    const selbstChips = [1,2,3,4].map(n =>
+      `<span class="bew-chip bew-${n}${k.selbst_stufe===n?' on':''}"
+             onclick="selbstEinschaetzung(${werkstatt_id},${k.kompetenz_id},${n},this)">${n}</span>`
+    ).join('');
+
+    return `
+      <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="font-size:13px;font-weight:500;margin-bottom:6px">
+          ${k.code ? '[' + k.code + '] ' : ''}${k.kompetenz_name}
+          <span style="color:var(--text3);font-size:11px">${k.bereich_name}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px">
+          <div>
+            <span style="color:var(--text3)">Einschätzung Lehrer: </span>${fremd}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="color:var(--text3)">Meine Selbsteinschätzung: </span>
+            <div class="bew-cell">${selbstChips}</div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Rückmeldungen (nur sichtbare)
+  const rueckRows = (data.rueckmeldungen || []).map(r => `
+    <div class="rueck-row">
+      ${r.bewertung_stufe
+        ? `<span class="bew-chip bew-${r.bewertung_stufe}" style="margin-bottom:6px;display:inline-block">
+           ${r.bewertung_stufe} – ${STUFEN[r.bewertung_stufe]}</span>` : ''}
+      ${r.freitext ? `<p style="font-size:13px;margin:0 0 4px">${r.freitext}</p>` : ''}
+      <p style="font-size:11px;color:var(--text3);margin:0">
+        ${r.lb_vorname} ${r.lb_nachname} · ${(r.geaendert_am || r.erstellt_am || '').substring(0,10)}
+      </p>
+    </div>`
+  ).join('');
+
+  detail.innerHTML = `
+    <button class="btn" onclick="schuelerZurueck()" style="margin-bottom:16px">← Zurück</button>
+    <h2>${data.name}</h2>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:16px">
+      ${data.datum_von}${data.datum_bis ? ' – ' + data.datum_bis : ''}
+      ${data.schuljahr_name ? ' · ' + data.schuljahr_name : ''}
+    </p>
+
+    ${kompRows ? `
+      <div class="card">
+        <h2>Kompetenzen & Selbsteinschätzung</h2>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:10px">
+          Klicke auf einen Chip um deine Selbsteinschätzung zu setzen.
+        </p>
+        ${kompRows}
+      </div>` : ''}
+
+    ${rueckRows ? `
+      <div class="card" style="margin-top:16px">
+        <h2>Rückmeldungen</h2>
+        ${rueckRows}
+      </div>` : '<div class="card" style="margin-top:16px"><p style="font-size:13px;color:var(--text3)">Noch keine Rückmeldungen.</p></div>'}
+
+    <button class="btn" style="margin-top:16px;color:var(--danger)" onclick="doLogout()">Abmelden</button>
+  `;
+}
+
+function schuelerZurueck() {
+  document.getElementById('schueler-portal-detail').style.display = 'none';
+  document.getElementById('schueler-portal-liste').style.display  = 'block';
+}
+
+async function selbstEinschaetzung(werkstatt_id, kompetenz_id, stufe, chipEl) {
+  const row   = chipEl.closest('div');
+  const aktiv = chipEl.classList.contains('on');
+  const neue_stufe = aktiv ? null : stufe;
+  row.querySelectorAll('.bew-chip').forEach(c => c.classList.remove('on'));
+  if (!aktiv) chipEl.classList.add('on');
+  try {
+    await fetch(`/api/selbsteinschaetzung/${werkstatt_id}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kompetenz_id, selbst_stufe: neue_stufe })
+    });
+  } catch(e) { alert('Selbsteinschätzung konnte nicht gespeichert werden: ' + e.message); }
 }

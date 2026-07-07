@@ -93,8 +93,10 @@ try {
         'kompetenzrahmen' => handle_kompetenzrahmen($method),
         'projekte'      => handle_projekte($method, $id, $body),
         'werkstatt'     => handle_werkstatt($method, $id, $sub, $body),
-        'bewertung'     => handle_bewertung($method, $id, $body),
-        'rueckmeldung'  => handle_rueckmeldung($method, $id, $body),
+        'bewertung'        => handle_bewertung($method, $id, $body),
+        'rueckmeldung'     => handle_rueckmeldung($method, $id, $body),
+        'schueler-portal'  => handle_schueler_portal($method, $id, $body),
+        'selbsteinschaetzung' => handle_selbsteinschaetzung($method, $id, $body),
         'dashboard'   => handle_dashboard($method),
         'export'      => handle_export($method, $sub),
         'benutzer'    => handle_benutzer($method, $id, $sub, $body),
@@ -116,30 +118,100 @@ try {
 // ============================================================
 function handle_auth(string $method, string $sub, array $body): void {
     if ($method === 'POST' && $sub === 'login') {
-        $email = trim($body['email'] ?? '');
-        $pass  = $body['passwort'] ?? '';
-        if (!$email || !$pass) json_error('Email und Passwort erforderlich.');
+        $email    = trim($body['email']    ?? '');
+        $username = trim($body['username'] ?? $email); // WebUntis-Kürzel oder E-Mail
+        $pass     = $body['passwort']      ?? '';
+        if (!$username || !$pass) json_error('Zugangsdaten erforderlich.');
 
-        $db   = get_db();
-        $stmt = $db->prepare(
-            'SELECT id, vorname, nachname, email, passwort_hash, rolle, schule_id, aktiv
-             FROM benutzer WHERE email = ? AND schule_id = ? LIMIT 1'
-        );
-        $stmt->execute([$email, SCHULE_ID]);
-        $user = $stmt->fetch();
+        $db = get_db();
 
-        if (!$user || !$user['aktiv'] || !password_verify($pass, $user['passwort_hash'])) {
-            json_error('Ungültige Anmeldedaten.', 401);
+        // ── Schritt 1: E-Mail/Passwort (lokaler Login) ──
+        if (filter_var($username, FILTER_VALIDATE_EMAIL)) {
+            $stmt = $db->prepare(
+                'SELECT id, vorname, nachname, email, passwort_hash, rolle, schule_id, aktiv
+                 FROM benutzer WHERE email = ? AND schule_id = ? LIMIT 1'
+            );
+            $stmt->execute([$username, SCHULE_ID]);
+            $user = $stmt->fetch();
+            if ($user && $user['aktiv'] && password_verify($pass, $user['passwort_hash'])) {
+                session_start_secure();
+                session_regenerate_id(true);
+                $_SESSION['benutzer_id'] = $user['id'];
+                $_SESSION['rolle']       = $user['rolle'];
+                $_SESSION['schule_id']   = $user['schule_id'];
+                $_SESSION['typ']         = 'benutzer';
+                json_response(['ok' => true, 'vorname' => $user['vorname'],
+                               'nachname' => $user['nachname'], 'rolle' => $user['rolle'],
+                               'typ' => 'benutzer']);
+            }
         }
 
-        session_start_secure();
-        session_regenerate_id(true); // Session-Fixation verhindern
-        $_SESSION['benutzer_id'] = $user['id'];
-        $_SESSION['rolle']       = $user['rolle'];
-        $_SESSION['schule_id']   = $user['schule_id'];
+        // ── Schritt 2: WebUntis-Login (Lehrer per Kürzel) ──
+        global $WEBUNTIS_CONFIG;
+        if (defined('WEBUNTIS_ENABLED') && WEBUNTIS_ENABLED && !empty($WEBUNTIS_CONFIG)) {
+            require_once __DIR__ . '/../auth/WebUntisAuth.php';
+            $wu = new WebUntisAuth($db, $WEBUNTIS_CONFIG);
+            $ip = $_SERVER['REMOTE_ADDR'] ?? 'unbekannt';
+            $result = $wu->authenticate($username, $pass, $ip);
 
-        json_response(['ok' => true, 'vorname' => $user['vorname'],
-                       'nachname' => $user['nachname'], 'rolle' => $user['rolle']]);
+            if ($result !== null) {
+                $personType = $result['personType'];
+
+                // Lehrer-Login (personType = 2)
+                if ($personType === WebUntisAuth::TYPE_LEHRER) {
+                    // Benutzer per webuntis_user suchen
+                    $stmt = $db->prepare(
+                        'SELECT id, vorname, nachname, rolle, schule_id, aktiv
+                         FROM benutzer WHERE webuntis_user = ? AND schule_id = ? LIMIT 1'
+                    );
+                    $stmt->execute([$username, SCHULE_ID]);
+                    $user = $stmt->fetch();
+
+                    if (!$user || !$user['aktiv']) {
+                        json_error('WebUntis-Login erfolgreich, aber kein freigegebenes Konto gefunden. ' .
+                                   'Bitte Administrator kontaktieren.', 403);
+                    }
+
+                    session_start_secure();
+                    session_regenerate_id(true);
+                    $_SESSION['benutzer_id'] = $user['id'];
+                    $_SESSION['rolle']       = $user['rolle'];
+                    $_SESSION['schule_id']   = $user['schule_id'];
+                    $_SESSION['typ']         = 'benutzer';
+                    json_response(['ok' => true, 'vorname' => $user['vorname'],
+                                   'nachname' => $user['nachname'], 'rolle' => $user['rolle'],
+                                   'typ' => 'benutzer']);
+                }
+
+                // Schüler-Login (personType = 5)
+                if ($personType === WebUntisAuth::TYPE_SCHUELER) {
+                    $stmt = $db->prepare(
+                        'SELECT s.id, s.vorname, s.nachname, s.aktiv, k.schule_id
+                         FROM schueler s JOIN klassen k ON k.id = s.klasse_id
+                         WHERE s.webuntis_user = ? AND k.schule_id = ? LIMIT 1'
+                    );
+                    $stmt->execute([$username, SCHULE_ID]);
+                    $schueler = $stmt->fetch();
+
+                    if (!$schueler || !$schueler['aktiv']) {
+                        json_error('Schüler-Login erfolgreich, aber kein aktives Konto gefunden.', 403);
+                    }
+
+                    session_start_secure();
+                    session_regenerate_id(true);
+                    $_SESSION['benutzer_id'] = $schueler['id'];
+                    $_SESSION['rolle']       = 'schueler';
+                    $_SESSION['schule_id']   = SCHULE_ID;
+                    $_SESSION['typ']         = 'schueler';
+                    json_response(['ok' => true, 'vorname' => $schueler['vorname'],
+                                   'nachname' => $schueler['nachname'], 'rolle' => 'schueler',
+                                   'typ' => 'schueler']);
+                }
+            }
+        }
+
+        // ── Kein Login erfolgreich ──
+        json_error('Ungültige Anmeldedaten.', 401);
     }
 
     if ($method === 'POST' && $sub === 'logout') {
@@ -151,9 +223,16 @@ function handle_auth(string $method, string $sub, array $body): void {
     if ($method === 'GET' && $sub === 'me') {
         $user = require_auth();
         $db   = get_db();
+        if ($user['typ'] === 'schueler') {
+            $stmt = $db->prepare('SELECT id, vorname, nachname FROM schueler WHERE id = ?');
+            $stmt->execute([$user['id']]);
+            $row = $stmt->fetch();
+            json_response(array_merge($row, ['rolle' => 'schueler', 'typ' => 'schueler']));
+        }
         $stmt = $db->prepare('SELECT id, vorname, nachname, email, rolle FROM benutzer WHERE id = ?');
         $stmt->execute([$user['id']]);
-        json_response($stmt->fetch());
+        $row = $stmt->fetch();
+        json_response(array_merge($row, ['typ' => 'benutzer']));
     }
 
     json_error('Unbekannte Auth-Aktion.', 404);
@@ -1940,4 +2019,135 @@ function handle_rueckmeldung(string $method, ?int $id, array $body): void {
     }
 
     json_error('Methode nicht erlaubt.', 405);
+}
+
+// ============================================================
+//  SCHÜLER-PORTAL
+//  GET /api/schueler-portal          – alle Werkstätten des Schülers
+//  GET /api/schueler-portal/{id}     – Detail einer Werkstatt
+// ============================================================
+function handle_schueler_portal(string $method, ?int $id, array $body): void {
+    $user = require_auth();
+    $db   = get_db();
+
+    // Nur Schüler dürfen diesen Endpunkt nutzen
+    if ($user['typ'] !== 'schueler') {
+        json_error('Nur für Schüler-Logins.', 403);
+    }
+
+    $schueler_id = $user['id'];
+
+    // GET /api/schueler-portal – Übersicht aller Werkstätten
+    if ($method === 'GET' && !$id) {
+        $stmt = $db->prepare(
+            'SELECT p.id, p.name, p.datum_von, p.datum_bis, p.status,
+                    sj.name AS schuljahr_name,
+                    ps.abgeschlossen,
+                    COUNT(DISTINCT psk.kompetenz_id) AS kompetenzen_anzahl,
+                    GROUP_CONCAT(DISTINCT CONCAT(b.vorname, " ", b.nachname)
+                                 ORDER BY pl.rolle ASC SEPARATOR ", ") AS lernbegleiter
+             FROM projekt_schueler ps
+             JOIN projekte p ON p.id = ps.projekt_id
+             LEFT JOIN schuljahre sj ON sj.id = p.schuljahr_id
+             LEFT JOIN projekt_lehrer pl ON pl.projekt_id = p.id
+             LEFT JOIN benutzer b ON b.id = pl.benutzer_id
+             LEFT JOIN projekt_schueler_kompetenzen psk
+                    ON psk.projekt_id = p.id AND psk.schueler_id = ps.schueler_id
+             WHERE ps.schueler_id = ?
+             GROUP BY p.id
+             ORDER BY p.datum_von DESC'
+        );
+        $stmt->execute([$schueler_id]);
+        $werkstaetten = $stmt->fetchAll();
+        json_response(['werkstaetten' => $werkstaetten]);
+    }
+
+    // GET /api/schueler-portal/{id} – Detail einer Werkstatt
+    if ($method === 'GET' && $id) {
+        // Zugangsprüfung: Schüler muss Teilnehmer sein
+        $chk = $db->prepare(
+            'SELECT 1 FROM projekt_schueler WHERE projekt_id = ? AND schueler_id = ?'
+        );
+        $chk->execute([$id, $schueler_id]);
+        if (!$chk->fetch()) json_error('Keine Berechtigung.', 403);
+
+        // Werkstatt-Grunddaten
+        $stmt = $db->prepare(
+            'SELECT p.id, p.name, p.datum_von, p.datum_bis, p.status,
+                    sj.name AS schuljahr_name
+             FROM projekte p
+             LEFT JOIN schuljahre sj ON sj.id = p.schuljahr_id
+             WHERE p.id = ?'
+        );
+        $stmt->execute([$id]);
+        $proj = $stmt->fetch();
+        if (!$proj) json_error('Werkstatt nicht gefunden.', 404);
+
+        // Kompetenzen mit Fremd- und Selbsteinschätzung
+        $stmt = $db->prepare(
+            'SELECT psk.kompetenz_id, psk.fremd_stufe, psk.selbst_stufe,
+                    k.code, k.kurzname AS kompetenz_name,
+                    kb.name AS bereich_name, kr.kuerzel AS rahmen
+             FROM projekt_schueler_kompetenzen psk
+             JOIN kompetenzen k ON k.id = psk.kompetenz_id
+             JOIN kompetenzbereiche kb ON kb.id = k.bereich_id
+             JOIN kompetenzrahmen kr ON kr.id = kb.rahmen_id
+             WHERE psk.projekt_id = ? AND psk.schueler_id = ?
+             ORDER BY kb.reihenfolge, k.code'
+        );
+        $stmt->execute([$id, $schueler_id]);
+        $proj['kompetenzen'] = $stmt->fetchAll();
+
+        // Nur sichtbare Rückmeldungen
+        $stmt = $db->prepare(
+            'SELECT r.bewertung_stufe, r.freitext, r.erstellt_am, r.geaendert_am,
+                    b.vorname AS lb_vorname, b.nachname AS lb_nachname
+             FROM werkstatt_rueckmeldungen r
+             JOIN benutzer b ON b.id = r.erstellt_von
+             WHERE r.projekt_id = ? AND r.schueler_id = ? AND r.sichtbar = 1'
+        );
+        $stmt->execute([$id, $schueler_id]);
+        $proj['rueckmeldungen'] = $stmt->fetchAll();
+
+        json_response($proj);
+    }
+
+    json_error('Methode nicht erlaubt.', 405);
+}
+
+// ============================================================
+//  SELBSTEINSCHÄTZUNG (Schüler bewertet sich selbst)
+//  PUT /api/selbsteinschaetzung/{projekt_id}
+// ============================================================
+function handle_selbsteinschaetzung(string $method, ?int $id, array $body): void {
+    $user = require_auth();
+    $db   = get_db();
+
+    if ($user['typ'] !== 'schueler') json_error('Nur für Schüler.', 403);
+    if (!$id) json_error('projekt_id fehlt.', 400);
+
+    $schueler_id  = $user['id'];
+    $kompetenz_id = (int)($body['kompetenz_id'] ?? 0);
+    $selbst_stufe = isset($body['selbst_stufe']) && $body['selbst_stufe'] !== ''
+                    ? (int)$body['selbst_stufe'] : null;
+
+    if (!$kompetenz_id) json_error('kompetenz_id fehlt.', 400);
+    if ($selbst_stufe !== null && ($selbst_stufe < 1 || $selbst_stufe > 4)) {
+        json_error('Stufe muss zwischen 1 und 4 liegen.', 400);
+    }
+
+    // Zugangsprüfung
+    $chk = $db->prepare(
+        'SELECT 1 FROM projekt_schueler WHERE projekt_id = ? AND schueler_id = ?'
+    );
+    $chk->execute([$id, $schueler_id]);
+    if (!$chk->fetch()) json_error('Keine Berechtigung.', 403);
+
+    $db->prepare(
+        'UPDATE projekt_schueler_kompetenzen
+         SET selbst_stufe = ?
+         WHERE projekt_id = ? AND schueler_id = ? AND kompetenz_id = ?'
+    )->execute([$selbst_stufe, $id, $schueler_id, $kompetenz_id]);
+
+    json_response(['ok' => true]);
 }

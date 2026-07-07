@@ -207,13 +207,15 @@ select[multiple]{height:100px}
   <div class="login-box">
     <h2>Projektstunden NRW</h2>
     <p class="sub">Gymnasium G9 – Kompetenz- und Stunden-Tracking</p>
-    <label>E-Mail</label>
-    <input type="email" id="l-email" placeholder="lehrer@schule.de" autocomplete="username">
+    <label>E-Mail oder WebUntis-Kürzel</label>
+    <input type="text" id="l-email" placeholder="lehrer@schule.de oder Kürzel" autocomplete="username">
     <label>Passwort</label>
     <input type="password" id="l-pass" autocomplete="current-password">
     <button class="btn btn-p btn-full" onclick="doLogin()">Anmelden</button>
     <div id="l-msg"></div>
-
+    <p style="font-size:11px;color:var(--text3);margin-top:12px;text-align:center">
+      Lehrer: E-Mail/Passwort oder WebUntis-Kürzel<br>Schüler: WebUntis-Login
+    </p>
   </div>
 </div>
 
@@ -709,6 +711,14 @@ select[multiple]{height:100px}
     <!-- Import-Verlauf -->
     <div class="sec" style="margin-top:28px">Letzte Importe</div>
     <div id="imp-log-liste"><div class="empty">Noch keine Importe durchgeführt.</div></div>
+  </div>
+
+  <!-- SCHÜLER-ANSICHT (nur für Schüler-Login) -->
+  <div id="s-schueler-portal" class="screen">
+    <h1>Meine Werkstätten</h1>
+    <p class="sub" id="schueler-portal-sub">Übersicht deiner Projektstunden</p>
+    <div id="schueler-portal-liste"></div>
+    <div id="schueler-portal-detail" style="display:none"></div>
   </div>
 
   <!-- HILFE (ohne Login zugänglich) -->
