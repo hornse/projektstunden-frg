@@ -518,7 +518,9 @@ async function renderProjektListe() {
 // ============================================================
 async function openWerkstattDetail(id) {
   const modal = document.getElementById('ws-modal');
-  modal.style.display = 'block';
+  //Funktioniert nicht
+  //modal.style.display = 'block';
+  modal.style.cssText = 'display:block;position:fixed;inset:0;z-index:200';
   modal.innerHTML = `<div class="modal-wrap"><div class="modal" style="width:560px;max-height:85vh;overflow-y:auto">
     <button class="modal-close" onclick="closeWsModal()">✕</button>
     <div style="color:var(--text3);font-size:13px;padding:40px 0;text-align:center">Lade…</div>
