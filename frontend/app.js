@@ -646,6 +646,7 @@ let WS_EDIT_AKTIVER_RAHMEN = 0;
 async function openWerkstattBearbeiten(id) {
   WS_EDIT_ID = id;
   go('werkstatt-edit');
+  document.getElementById('we-id').value = id;
 
   // Daten laden
   const [proj, sjData] = await Promise.all([
@@ -784,8 +785,8 @@ function renderKompBereichListWe(rahmen_id, fachIds) {
 }
 
 async function werkstattEditSpeichern() {
-  const id = WS_EDIT_ID;
-  if (!id) return;
+  const id = parseInt(document.getElementById('we-id').value) || WS_EDIT_ID;
+  if (!id) return showMsg('we-msg', 'Fehler: Werkstatt-ID nicht gefunden. Bitte neu öffnen.', 'err');
 
   const name       = document.getElementById('we-name').value.trim();
   const datum_von  = document.getElementById('we-von').value;
