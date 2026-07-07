@@ -71,7 +71,7 @@ if ($route === 'import') {
     $id  = null;
 }
 if ($route === 'werkstatt' && isset($parts[2])) {
-    $sub = $parts[2];                  // z. B. 'abschluss', 'schueler'
+    $sub = $parts[2];                  // z. B. 'abschluss', 'schueler', 'status'
 }
 
 // JSON-Body einlesen (für POST/PUT)
@@ -1698,6 +1698,17 @@ function handle_werkstatt(string $method, ?int $id, string $sub, array $body): v
         );
         $chk->execute([$id, $user['id']]);
         if (!$chk->fetch()) json_error('Keine Berechtigung.', 403);
+    }
+
+    // ----- PUT /api/werkstatt/{id}/status -----
+    if ($method === 'PUT' && $sub === 'status') {
+        $status = in_array($body['status'] ?? '', ['geplant','aktiv','abgeschlossen','abgesagt'])
+                  ? $body['status'] : null;
+        if (!$status) json_error('Ungültiger Status.', 400);
+        $db->prepare('UPDATE projekte SET status = ? WHERE id = ? AND schule_id = ?')
+           ->execute([$status, $id, $user['schule_id']]);
+        audit($user['id'], 'projekte', $id, 'UPDATE', null, ['status' => $status]);
+        json_response(['ok' => true]);
     }
 
     // ----- GET /api/werkstatt/{id}/schueler -----

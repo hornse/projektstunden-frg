@@ -585,15 +585,15 @@ function renderWerkstattDetail(p, schueler) {
 
   const schuelerRows = schueler.map(s => `
     <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
-      <label for="abs-${s.id}" style="flex:1;cursor:pointer;font-size:13px;line-height:1.4">
-        ${s.nachname}, ${s.vorname}
-        <span style="color:var(--text3);font-size:11px">(${s.klasse})</span>
-      </label>
-      ${s.abgeschlossen ? '<span style="color:var(--ok);font-size:11px;flex-shrink:0">✓</span>' : ''}
       <input type="checkbox" id="abs-${s.id}"
              ${s.abgeschlossen ? 'checked' : ''}
              onchange="toggleAbschluss(${p.id}, ${s.id}, this.checked)"
              style="flex-shrink:0;width:16px;height:16px;cursor:pointer">
+      <label for="abs-${s.id}" style="flex:1;cursor:pointer;font-size:13px;line-height:1.4">
+        ${s.nachname}, ${s.vorname}
+        <span style="color:var(--text3);font-size:11px">(${s.klasse})</span>
+        ${s.abgeschlossen ? '<span style="color:var(--ok);font-size:11px;margin-left:4px">✓</span>' : ''}
+      </label>
     </div>`
   ).join('');
 
@@ -821,31 +821,28 @@ async function werkstattEditSpeichern() {
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || 'Fehler');
     showMsg('we-msg', 'Gespeichert ✓', 'ok');
-    setTimeout(() => go('projekt'), 1000);
+    setTimeout(() => {
+      go('projekt');
+      renderProjektListe();
+    }, 800);
   } catch(e) { showMsg('we-msg', e.message, 'err'); }
 }
 
 async function saveWsStatus(id) {
   const status = document.getElementById('ws-status').value;
   try {
-    // Minimaler PUT mit nur dem Status-Feld
-    const proj = await GET(`projekte/${id}`);
-    const lehrer_ids = (proj.lernbegleiter || []).map(l => l.id);
-    await fetch('/api/projekte/' + id, {
+    const r = await fetch('/api/werkstatt/' + id + '/status', {
       method: 'PUT',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: proj.name,
-        klasse_id: proj.klasse_id,
-        datum_von: proj.datum_von,
-        status,
-        laufzeit: proj.laufzeit || 'jahr',
-        lehrer_ids
-      })
+      body: JSON.stringify({ status })
     });
-    showMsg('p-msg', 'Status gespeichert ✓', 'ok');
-  } catch(e) { alert(e.message); }
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Fehler');
+    // Kurze Bestätigung im Modal
+    const btn = document.querySelector(`button[onclick="saveWsStatus(${id})"]`);
+    if (btn) { btn.textContent = '✓'; setTimeout(() => btn.textContent = 'Speichern', 1500); }
+  } catch(e) { alert('Status konnte nicht gespeichert werden: ' + e.message); }
 }
 
 async function toggleAbschluss(proj_id, schueler_id, abgeschlossen) {
@@ -856,13 +853,12 @@ async function toggleAbschluss(proj_id, schueler_id, abgeschlossen) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ schueler_id, abgeschlossen })
     });
-    const cb = document.getElementById('abs-' + schueler_id);
-    if (!cb) return;
-    const row = cb.closest('div');
-    const haken = row.querySelector('span[style*="--ok"]');
+    const lbl = document.querySelector(`label[for="abs-${schueler_id}"]`);
+    if (!lbl) return;
+    const haken = lbl.querySelector('span[style*="--ok"]');
     if (abgeschlossen && !haken) {
-      cb.insertAdjacentHTML('beforebegin',
-        '<span style="color:var(--ok);font-size:11px;flex-shrink:0">✓</span>');
+      lbl.insertAdjacentHTML('beforeend',
+        '<span style="color:var(--ok);font-size:11px;margin-left:4px">✓</span>');
     } else if (!abgeschlossen && haken) {
       haken.remove();
     }
