@@ -148,6 +148,18 @@ select[multiple]{height:100px}
 .modal-close{position:absolute;top:14px;right:16px;font-size:20px;color:var(--text3);cursor:pointer;border:none;background:none;line-height:1}
 .modal-close:hover{color:var(--text)}
 .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+.bew-chip{font-size:11px;padding:2px 7px;border-radius:99px;cursor:pointer;border:1px solid transparent;font-weight:500;white-space:nowrap}
+.bew-1{background:#fee2e2;color:#b91c1c}.bew-1.on{border-color:#b91c1c}
+.bew-2{background:#fef3c7;color:#b45309}.bew-2.on{border-color:#b45309}
+.bew-3{background:#d1fae5;color:#065f46}.bew-3.on{border-color:#065f46}
+.bew-4{background:#dbeafe;color:#1e40af}.bew-4.on{border-color:#1e40af}
+.bew-cell{display:flex;gap:3px;flex-wrap:nowrap}
+.bew-table{border-collapse:collapse;font-size:12px;min-width:100%}
+.bew-table th{background:var(--surface2);padding:6px 8px;text-align:left;white-space:nowrap;position:sticky;top:0}
+.bew-table td{padding:5px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+.bew-table .name-col{position:sticky;left:0;background:var(--surface);z-index:1;white-space:nowrap;min-width:140px}
+.rueck-row{padding:10px 0;border-bottom:1px solid var(--border)}
+.rueck-row:last-child{border-bottom:none}
 .admin-only{display:none}
 .is-admin .admin-only{display:flex}
 @media(max-width:700px){aside{display:none}main{padding:16px}}
@@ -427,6 +439,64 @@ select[multiple]{height:100px}
 
     <button class="btn btn-p btn-full" onclick="werkstattEditSpeichern()">Änderungen speichern</button>
     <div id="we-msg"></div>
+
+    <!-- Bewertungen -->
+    <div class="card" style="margin-top:16px">
+      <h2>Bewertungen (Fremdeinschätzung)</h2>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:12px">
+        4-stufige Einschätzung pro Schüler und Kompetenz.
+        <span style="display:inline-flex;gap:6px;margin-left:8px">
+          <span class="bew-chip bew-1">1 Mit Unterstützung</span>
+          <span class="bew-chip bew-2">2 Teilweise</span>
+          <span class="bew-chip bew-3">3 Weitgehend</span>
+          <span class="bew-chip bew-4">4 Sicher</span>
+        </span>
+      </p>
+      <div id="we-bewertung-wrap" style="overflow-x:auto">
+        <div id="we-bewertung-tabelle"></div>
+      </div>
+    </div>
+
+    <!-- Rückmeldungen -->
+    <div class="card" style="margin-top:16px">
+      <h2>Rückmeldungen</h2>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:12px">
+        Strukturierte + freie Rückmeldung je Schüler. Empfänger einzeln wählbar.
+      </p>
+
+      <div id="we-rueckmeldung-liste"></div>
+
+      <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px">
+        <h3 style="font-size:13px;font-weight:500;margin-bottom:10px">Neue Rückmeldung</h3>
+
+        <label style="font-size:12px;color:var(--text3)">Empfänger</label>
+        <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+          <button class="btn" style="font-size:12px" onclick="alleRueckEmpfaenger(true)">Alle auswählen</button>
+          <button class="btn" style="font-size:12px" onclick="alleRueckEmpfaenger(false)">Alle abwählen</button>
+        </div>
+        <div id="we-rueck-empfaenger" style="max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:6px;margin-bottom:10px"></div>
+
+        <label style="font-size:12px;color:var(--text3)">Bewertungsstufe (optional)</label>
+        <select id="we-rueck-stufe" style="width:100%;margin-bottom:10px">
+          <option value="">– keine –</option>
+          <option value="1">1 – Mit Unterstützung</option>
+          <option value="2">2 – Teilweise selbstständig</option>
+          <option value="3">3 – Weitgehend sicher</option>
+          <option value="4">4 – Sicher und reflektiert</option>
+        </select>
+
+        <label style="font-size:12px;color:var(--text3)">Freitext</label>
+        <textarea id="we-rueck-text" placeholder="Individuelle Rückmeldung…" style="min-height:80px;margin-bottom:10px"></textarea>
+
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <input type="checkbox" id="we-rueck-sichtbar">
+          <label for="we-rueck-sichtbar" style="font-size:13px;cursor:pointer">Sofort für Schüler sichtbar</label>
+        </div>
+
+        <button class="btn btn-p btn-full" onclick="rueckmeldungSpeichern()">Rückmeldung speichern</button>
+        <div id="we-rueck-msg"></div>
+      </div>
+    </div>
   </div>
 
   <!-- SCHÜLER -->

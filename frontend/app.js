@@ -705,6 +705,10 @@ async function openWerkstattBearbeiten(id) {
       cb.checked = vorhandeneKompIds.includes(parseInt(cb.value));
     });
   }, 200);
+
+  // Bewertungen und Rückmeldungen laden
+  ladeBewertungen(id);
+  ladeRueckmeldungen(id);
 }
 
 function onWeStundenChange() {
@@ -1608,3 +1612,188 @@ function impReset() {
 
 checkAuth();
 
+
+// ============================================================
+// BEWERTUNGEN
+// ============================================================
+async function ladeBewertungen(projekt_id) {
+  const [bewertungen, schuelerListe] = await Promise.all([
+    GET(`bewertung?projekt_id=${projekt_id}`),
+    GET(`werkstatt/${projekt_id}/schueler`)
+  ]);
+
+  const el = document.getElementById('we-bewertung-tabelle');
+  if (!el) return;
+
+  if (!bewertungen || !bewertungen.length) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--text3)">Noch keine Kompetenzen zugewiesen. Zuerst Kompetenzen im Abschnitt oben wählen und speichern.</p>';
+    return;
+  }
+
+  // Eindeutige Kompetenzen und Schüler ermitteln
+  const kompMap = {};
+  const schuelerMap = {};
+  bewertungen.forEach(b => {
+    kompMap[b.kompetenz_id] = { id: b.kompetenz_id, name: b.kompetenz_name, code: b.code, bereich: b.bereich_name };
+    schuelerMap[b.schueler_id] = { id: b.schueler_id, vorname: b.vorname, nachname: b.nachname };
+  });
+  const komps    = Object.values(kompMap);
+  const schueler = Object.values(schuelerMap).sort((a,b) => a.nachname.localeCompare(b.nachname));
+
+  // Index: schueler_id → kompetenz_id → bewertung
+  const idx = {};
+  bewertungen.forEach(b => {
+    if (!idx[b.schueler_id]) idx[b.schueler_id] = {};
+    idx[b.schueler_id][b.kompetenz_id] = b;
+  });
+
+  const STUFEN = ['','1','2','3','4'];
+  const header = `<tr>
+    <th class="name-col">Schüler/in</th>
+    ${komps.map(k => `<th title="${k.bereich}">${k.code || k.name.substring(0,12)}</th>`).join('')}
+  </tr>`;
+
+  const rows = schueler.map(s => {
+    const zellen = komps.map(k => {
+      const bew = idx[s.id]?.[k.id];
+      const stufe = bew?.fremd_stufe || 0;
+      const chips = [1,2,3,4].map(n =>
+        `<span class="bew-chip bew-${n}${stufe===n?' on':''}"
+               onclick="setBewertung(${projekt_id},${s.id},${k.id},${n},this)">${n}</span>`
+      ).join('');
+      return `<td><div class="bew-cell">${chips}</div></td>`;
+    }).join('');
+    return `<tr>
+      <td class="name-col">${s.nachname}, ${s.vorname}</td>
+      ${zellen}
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `<table class="bew-table"><thead>${header}</thead><tbody>${rows}</tbody></table>`;
+}
+
+async function setBewertung(projekt_id, schueler_id, kompetenz_id, stufe, chipEl) {
+  // Aktuelle Stufe auslesen (toggle: gleiche Stufe → auf null setzen)
+  const row = chipEl.closest('div');
+  const aktiv = chipEl.classList.contains('on');
+  const neue_stufe = aktiv ? null : stufe;
+
+  // Chips in dieser Zelle aktualisieren
+  row.querySelectorAll('.bew-chip').forEach(c => c.classList.remove('on'));
+  if (!aktiv) chipEl.classList.add('on');
+
+  try {
+    await fetch(`/api/bewertung/${projekt_id}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ schueler_id, kompetenz_id, fremd_stufe: neue_stufe })
+    });
+  } catch(e) { alert('Bewertung konnte nicht gespeichert werden: ' + e.message); }
+}
+
+// ============================================================
+// RÜCKMELDUNGEN
+// ============================================================
+async function ladeRueckmeldungen(projekt_id) {
+  const [rueckmeldungen, schuelerListe] = await Promise.all([
+    GET(`rueckmeldung?projekt_id=${projekt_id}`),
+    GET(`werkstatt/${projekt_id}/schueler`)
+  ]);
+
+  // Empfänger-Checkboxen aufbauen
+  const empfEl = document.getElementById('we-rueck-empfaenger');
+  if (empfEl && schuelerListe) {
+    // Nur zugeordnete Teilnehmer (nicht alle Klassenschüler)
+    const teilnehmer = schuelerListe.filter(s => {
+      // Schüler ist Teilnehmer wenn er in projekt_schueler ist
+      return true; // wird vom /werkstatt/{id}/schueler Endpunkt gefiltert
+    });
+    empfEl.innerHTML = teilnehmer.map(s => `
+      <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" class="rueck-emp-cb" value="${s.id}">
+        ${s.nachname}, ${s.vorname}
+        <span style="color:var(--text3);font-size:11px">(${s.klasse})</span>
+      </label>`
+    ).join('');
+  }
+
+  // Vorhandene Rückmeldungen anzeigen
+  const listeEl = document.getElementById('we-rueckmeldung-liste');
+  if (!listeEl) return;
+  if (!rueckmeldungen || !rueckmeldungen.length) {
+    listeEl.innerHTML = '<p style="font-size:13px;color:var(--text3);margin-bottom:10px">Noch keine Rückmeldungen vorhanden.</p>';
+    return;
+  }
+
+  const STUFEN = { 1: '1 – Mit Unterstützung', 2: '2 – Teilweise', 3: '3 – Weitgehend', 4: '4 – Sicher' };
+  listeEl.innerHTML = rueckmeldungen.map(r => `
+    <div class="rueck-row">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div>
+          <strong style="font-size:13px">${r.nachname}, ${r.vorname}</strong>
+          ${r.bewertung_stufe ? `<span class="bew-chip bew-${r.bewertung_stufe}" style="margin-left:6px">${STUFEN[r.bewertung_stufe]}</span>` : ''}
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;white-space:nowrap">
+          <input type="checkbox" ${r.sichtbar ? 'checked' : ''}
+                 onchange="toggleRueckSichtbar(${projekt_id}, ${r.schueler_id}, this.checked)">
+          für Schüler sichtbar
+        </label>
+      </div>
+      ${r.freitext ? `<p style="font-size:13px;color:var(--text2);margin:6px 0 0">${r.freitext}</p>` : ''}
+      <p style="font-size:11px;color:var(--text3);margin:4px 0 0">
+        ${r.lb_vorname} ${r.lb_nachname} · ${r.geaendert_am?.substring(0,10) || r.erstellt_am?.substring(0,10)}
+      </p>
+    </div>`
+  ).join('');
+}
+
+function alleRueckEmpfaenger(checked) {
+  document.querySelectorAll('.rueck-emp-cb').forEach(cb => cb.checked = checked);
+}
+
+async function rueckmeldungSpeichern() {
+  const projekt_id = parseInt(document.getElementById('we-id').value) || WS_EDIT_ID;
+  if (!projekt_id) return showMsg('we-rueck-msg', 'Fehler: Werkstatt-ID fehlt.', 'err');
+
+  const schueler_ids = [...document.querySelectorAll('.rueck-emp-cb:checked')].map(c => parseInt(c.value));
+  if (!schueler_ids.length) return showMsg('we-rueck-msg', 'Mindestens einen Schüler auswählen.', 'err');
+
+  const bewertung_stufe = document.getElementById('we-rueck-stufe').value || null;
+  const freitext        = document.getElementById('we-rueck-text').value.trim();
+  const sichtbar        = document.getElementById('we-rueck-sichtbar').checked ? 1 : 0;
+
+  if (!freitext && !bewertung_stufe) {
+    return showMsg('we-rueck-msg', 'Bitte Bewertungsstufe oder Freitext angeben.', 'err');
+  }
+
+  try {
+    const r = await fetch(`/api/rueckmeldung/${projekt_id}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ schueler_ids, bewertung_stufe, freitext, sichtbar })
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Fehler');
+    showMsg('we-rueck-msg', `${data.anzahl} Rückmeldung(en) gespeichert ✓`, 'ok');
+    // Felder zurücksetzen
+    document.getElementById('we-rueck-stufe').value = '';
+    document.getElementById('we-rueck-text').value  = '';
+    document.getElementById('we-rueck-sichtbar').checked = false;
+    alleRueckEmpfaenger(false);
+    // Liste neu laden
+    ladeRueckmeldungen(projekt_id);
+  } catch(e) { showMsg('we-rueck-msg', e.message, 'err'); }
+}
+
+async function toggleRueckSichtbar(projekt_id, schueler_id, sichtbar) {
+  try {
+    await fetch(`/api/rueckmeldung/${projekt_id}`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ schueler_id, sichtbar: sichtbar ? 1 : 0 })
+    });
+  } catch(e) { alert(e.message); }
+}

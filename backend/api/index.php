@@ -91,8 +91,10 @@ try {
         'lehrer'      => handle_lehrer($method),
         'kompetenzen' => handle_kompetenzen($method),
         'kompetenzrahmen' => handle_kompetenzrahmen($method),
-        'projekte'    => handle_projekte($method, $id, $body),
-        'werkstatt'   => handle_werkstatt($method, $id, $sub, $body),
+        'projekte'      => handle_projekte($method, $id, $body),
+        'werkstatt'     => handle_werkstatt($method, $id, $sub, $body),
+        'bewertung'     => handle_bewertung($method, $id, $body),
+        'rueckmeldung'  => handle_rueckmeldung($method, $id, $body),
         'dashboard'   => handle_dashboard($method),
         'export'      => handle_export($method, $sub),
         'benutzer'    => handle_benutzer($method, $id, $sub, $body),
@@ -1782,4 +1784,155 @@ function handle_werkstatt(string $method, ?int $id, string $sub, array $body): v
     }
 
     json_error('Unbekannte Werkstatt-Aktion.', 404);
+}
+
+// ============================================================
+//  BEWERTUNGEN (Fremd-/Selbsteinschätzung pro Schüler+Kompetenz)
+//  GET  /api/bewertung?projekt_id=1       – alle Bewertungen der Werkstatt
+//  PUT  /api/bewertung/{projekt_id}       – Bewertung setzen/aktualisieren
+// ============================================================
+function handle_bewertung(string $method, ?int $id, array $body): void {
+    $user     = require_auth();
+    $db       = get_db();
+    $istAdmin = $user['rolle'] === 'admin';
+
+    // GET /api/bewertung?projekt_id=1
+    if ($method === 'GET') {
+        $projekt_id = (int)($_GET['projekt_id'] ?? 0);
+        if (!$projekt_id) json_error('projekt_id fehlt.', 400);
+
+        // Zugangskontrolle
+        if (!$istAdmin) {
+            $chk = $db->prepare('SELECT 1 FROM projekt_lehrer WHERE projekt_id=? AND benutzer_id=?');
+            $chk->execute([$projekt_id, $user['id']]);
+            if (!$chk->fetch()) json_error('Keine Berechtigung.', 403);
+        }
+
+        $stmt = $db->prepare(
+            'SELECT psk.schueler_id, psk.kompetenz_id,
+                    psk.fremd_stufe, psk.selbst_stufe, psk.selbst_sichtbar,
+                    psk.notiz, psk.bewertet_am,
+                    k.kurzname AS kompetenz_name, k.code,
+                    kb.name AS bereich_name,
+                    s.vorname, s.nachname
+             FROM projekt_schueler_kompetenzen psk
+             JOIN kompetenzen k ON k.id = psk.kompetenz_id
+             JOIN kompetenzbereiche kb ON kb.id = k.bereich_id
+             JOIN schueler s ON s.id = psk.schueler_id
+             WHERE psk.projekt_id = ?
+             ORDER BY s.nachname, s.vorname, kb.reihenfolge, k.code'
+        );
+        $stmt->execute([$projekt_id]);
+        json_response($stmt->fetchAll());
+    }
+
+    // PUT /api/bewertung/{projekt_id} – Fremdeinschätzung setzen
+    if ($method === 'PUT' && $id) {
+        $schueler_id  = (int)($body['schueler_id']  ?? 0);
+        $kompetenz_id = (int)($body['kompetenz_id'] ?? 0);
+        $fremd_stufe  = isset($body['fremd_stufe']) && $body['fremd_stufe'] !== ''
+                        ? (int)$body['fremd_stufe'] : null;
+
+        if (!$schueler_id || !$kompetenz_id) json_error('schueler_id und kompetenz_id erforderlich.');
+        if ($fremd_stufe !== null && ($fremd_stufe < 1 || $fremd_stufe > 4)) {
+            json_error('Bewertungsstufe muss zwischen 1 und 4 liegen.');
+        }
+
+        $db->prepare(
+            'UPDATE projekt_schueler_kompetenzen
+             SET fremd_stufe = ?, fremd_benutzer_id = ?, bewertet_am = NOW()
+             WHERE projekt_id = ? AND schueler_id = ? AND kompetenz_id = ?'
+        )->execute([$fremd_stufe, $user['id'], $id, $schueler_id, $kompetenz_id]);
+
+        json_response(['ok' => true]);
+    }
+
+    json_error('Methode nicht erlaubt.', 405);
+}
+
+// ============================================================
+//  RÜCKMELDUNGEN (pro Schüler, persistent)
+//  GET  /api/rueckmeldung?projekt_id=1    – alle Rückmeldungen der Werkstatt
+//  POST /api/rueckmeldung/{projekt_id}    – Rückmeldung anlegen/aktualisieren
+//  PUT  /api/rueckmeldung/{projekt_id}    – Sichtbarkeit umschalten
+// ============================================================
+function handle_rueckmeldung(string $method, ?int $id, array $body): void {
+    $user     = require_auth();
+    $db       = get_db();
+    $istAdmin = $user['rolle'] === 'admin';
+
+    $projekt_id = $id ?? (int)($_GET['projekt_id'] ?? 0);
+    if (!$projekt_id) json_error('projekt_id fehlt.', 400);
+
+    // Zugangskontrolle
+    if (!$istAdmin) {
+        $chk = $db->prepare('SELECT 1 FROM projekt_lehrer WHERE projekt_id=? AND benutzer_id=?');
+        $chk->execute([$projekt_id, $user['id']]);
+        if (!$chk->fetch()) json_error('Keine Berechtigung.', 403);
+    }
+
+    // GET – alle Rückmeldungen laden
+    if ($method === 'GET') {
+        $stmt = $db->prepare(
+            'SELECT r.id, r.schueler_id, r.bewertung_stufe, r.freitext,
+                    r.sichtbar, r.erstellt_am, r.geaendert_am,
+                    s.vorname, s.nachname,
+                    b.vorname AS lb_vorname, b.nachname AS lb_nachname
+             FROM werkstatt_rueckmeldungen r
+             JOIN schueler s ON s.id = r.schueler_id
+             JOIN benutzer b ON b.id = r.erstellt_von
+             WHERE r.projekt_id = ?
+             ORDER BY s.nachname, s.vorname'
+        );
+        $stmt->execute([$projekt_id]);
+        json_response($stmt->fetchAll());
+    }
+
+    // POST – Rückmeldung anlegen oder aktualisieren (UPSERT)
+    if ($method === 'POST') {
+        $schueler_ids   = array_map('intval', $body['schueler_ids'] ?? []);
+        $bewertung_stufe = isset($body['bewertung_stufe']) && $body['bewertung_stufe'] !== ''
+                          ? (int)$body['bewertung_stufe'] : null;
+        $freitext       = $body['freitext'] ?? '';
+        $sichtbar       = (int)($body['sichtbar'] ?? 0);
+
+        if (empty($schueler_ids)) json_error('Mindestens einen Schüler angeben.');
+
+        $stmt = $db->prepare(
+            'INSERT INTO werkstatt_rueckmeldungen
+             (projekt_id, schueler_id, erstellt_von, bewertung_stufe, freitext, sichtbar)
+             VALUES (?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+             bewertung_stufe = VALUES(bewertung_stufe),
+             freitext        = VALUES(freitext),
+             sichtbar        = VALUES(sichtbar),
+             erstellt_von    = VALUES(erstellt_von),
+             geaendert_am    = NOW()'
+        );
+
+        foreach ($schueler_ids as $sid) {
+            $stmt->execute([
+                $projekt_id, $sid, $user['id'],
+                $bewertung_stufe, $freitext ?: null, $sichtbar
+            ]);
+        }
+
+        json_response(['ok' => true, 'anzahl' => count($schueler_ids)]);
+    }
+
+    // PUT – Sichtbarkeit für einzelnen Schüler umschalten
+    if ($method === 'PUT') {
+        $schueler_id = (int)($body['schueler_id'] ?? 0);
+        $sichtbar    = (int)(bool)($body['sichtbar'] ?? 0);
+        if (!$schueler_id) json_error('schueler_id fehlt.');
+
+        $db->prepare(
+            'UPDATE werkstatt_rueckmeldungen SET sichtbar=?
+             WHERE projekt_id=? AND schueler_id=?'
+        )->execute([$sichtbar, $projekt_id, $schueler_id]);
+
+        json_response(['ok' => true]);
+    }
+
+    json_error('Methode nicht erlaubt.', 405);
 }
