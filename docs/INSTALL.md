@@ -4,11 +4,11 @@
 
 ## Teil 1: Lokales Projekt einrichten
 
-### Schritt 1 – Repository klonen oder ZIP entpacken
+### Schritt 1 – Repository klonen
 
 ```bash
 git clone https://github.com/hornse/projektstunden.git
-# oder ZIP entpacken nach ~/Projekte/projektstunden/
+cd projektstunden
 ```
 
 ### Schritt 2 – Git-Remotes prüfen
@@ -51,7 +51,7 @@ EOF
 chmod +x hooks/post-receive
 ```
 
-### Schritt 5 – Projektverzeichnis anlegen und ersten Push
+### Schritt 5 – Ersten Push
 
 ```bash
 mkdir -p /home/hornse/projektstunden
@@ -70,10 +70,9 @@ cd /var/www/virtual/hornse
 ln -s /home/hornse/projektstunden projektstunden
 ```
 
-### Schritt 7 – PHP Backend-Server einrichten (supervisord)
+### Schritt 7 – PHP Backend-Server (supervisord)
 
 ```bash
-mkdir -p ~/etc/services.d
 cat > ~/etc/services.d/projektstunden.ini << 'EOF'
 [program:projektstunden]
 command=php -S 0.0.0.0:8082 /var/www/virtual/hornse/router.php
@@ -96,38 +95,55 @@ uberspace web backend list | grep projektstunden
 # Erwartet: projektstunden.hornse.de/ http:8082 => OK, listening: ...
 ```
 
-### Schritt 9 – Datenbank anlegen
+### Schritt 9 – Datenbank anlegen (MariaDB)
 
 ```bash
-DB=/home/hornse/projektstunden/backend/datenbank.sqlite
-SRC=/home/hornse/projektstunden/sql
+# Datenbank erstellen
+mysql -e "CREATE DATABASE IF NOT EXISTS hornse_projektstunden
+          CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
 
-sqlite3 $DB < $SRC/01_schema.sql
-sqlite3 $DB < $SRC/02_seed.sql
-sqlite3 $DB < $SRC/03_migration_schuljahr_schueler_werkstatt.sql
-sqlite3 $DB < $SRC/09_seed_sport_konkrete_erwartungen.sql
+# Migrationen in dieser Reihenfolge einspielen:
+DB=hornse_projektstunden
+mysql $DB < /home/hornse/projektstunden/sql/01_schema.sql
+mysql $DB < /home/hornse/projektstunden/sql/02_seed.sql
+mysql $DB < /home/hornse/projektstunden/sql/03_migration_schuljahr_schueler_werkstatt.sql
+mysql $DB < /home/hornse/projektstunden/sql/04_migration_werkstatt_detail.sql
+mysql $DB < /home/hornse/projektstunden/sql/05_migration_rueckmeldungen.sql
+mysql $DB < /home/hornse/projektstunden/sql/09_seed_sport_konkrete_erwartungen.sql
 ```
 
-**Wichtig:** Alle Migrationen in dieser Reihenfolge einspielen.
+> Alle Migrationen müssen in dieser Reihenfolge eingespielt werden.
 
-### Schritt 10 – Ersten Admin anlegen
+### Schritt 10 – config.php prüfen
+
+Die Datei `backend/config.php` enthält die Datenbankzugangsdaten.
+Auf Uberspace sind die MariaDB-Zugangsdaten in `~/.my.cnf` hinterlegt:
 
 ```bash
-sqlite3 /home/hornse/projektstunden/backend/datenbank.sqlite \
-  "INSERT INTO benutzer (schule_id, vorname, nachname, email, passwort_hash, rolle)
-   VALUES (1, 'Sebastian', 'Horn', 'deine@email.de',
-   '\$(php -r \"echo password_hash(\'PASSWORT\', PASSWORD_BCRYPT);\")','admin');"
+cat ~/.my.cnf
+# [client]
+# user=hornse
+# password=DEIN_PASSWORT
 ```
 
-Oder komfortabler – Hash separat erzeugen:
-```bash
-# Auf dem Server:
-php -r "echo password_hash('DEIN_PASSWORT', PASSWORD_BCRYPT) . PHP_EOL;"
+In `backend/config.php` eintragen:
+```php
+define('DB_HOST', '127.0.0.1');
+define('DB_NAME', 'hornse_projektstunden');
+define('DB_USER', 'hornse');
+define('DB_PASS', 'DEIN_PASSWORT');
+```
 
-# Hash dann eintragen:
-sqlite3 /home/hornse/projektstunden/backend/datenbank.sqlite \
-  "INSERT INTO benutzer (schule_id, vorname, nachname, email, passwort_hash, rolle)
-   VALUES (1, 'Sebastian', 'Horn', 'deine@email.de', 'HASH_HIER', 'admin');"
+### Schritt 11 – Ersten Admin anlegen
+
+```bash
+# Hash erzeugen
+HASH=$(php -r "echo password_hash('DEIN_PASSWORT', PASSWORD_BCRYPT);")
+
+# Admin eintragen
+mysql hornse_projektstunden -e "
+INSERT INTO benutzer (schule_id, vorname, nachname, email, passwort_hash, rolle)
+VALUES (1, 'Sebastian', 'Horn', 'deine@email.de', '$HASH', 'admin');"
 ```
 
 ---
@@ -139,6 +155,8 @@ sqlite3 /home/hornse/projektstunden/backend/datenbank.sqlite \
 | `01_schema.sql` | Vollständiges Datenbankschema |
 | `02_seed.sql` | Grunddaten: Schule, Fächer, Kompetenzrahmen |
 | `03_migration_schuljahr_schueler_werkstatt.sql` | Schuljahre, Import, Werkstatt-Erweiterungen, Bewertungsstufen |
+| `04_migration_werkstatt_detail.sql` | Abschluss je Schüler, Multi-Klassen |
+| `05_migration_rueckmeldungen.sql` | Rückmeldungen-Tabelle |
 | `09_seed_sport_konkrete_erwartungen.sql` | Konkrete Erwartungen für Sport-KLP |
 
 ---
@@ -151,15 +169,6 @@ sqlite3 /home/hornse/projektstunden/backend/datenbank.sqlite \
 cd /Users/sebastianhorn/Projekte/projektstunden
 ./deploy.sh "Beschreibung der Änderung"
 ```
-
-Das Script macht automatisch:
-1. Cache-Busting-Timestamp in `frontend/index.html` aktualisieren (`?v=YYYYMMDDHHMM`)
-2. `git add -A && git commit`
-3. `git push github main && git push uberspace main`
-
-Der post-receive Hook auf dem Server deployt automatisch.
-Ein `supervisorctl restart` ist normalerweise nicht nötig da PHP-Dateien
-bei jedem Request neu geladen werden.
 
 ### Server-Status prüfen
 
@@ -177,30 +186,26 @@ uberspace web log php_error enable
 
 tail -f ~/logs/webserver/error_log_apache
 tail -f ~/logs/error_log_php
-tail -f ~/logs/supervisord.log | grep projektstunden
+supervisorctl tail projektstunden stderr
 
 # Danach wieder deaktivieren:
 uberspace web log apache_error disable
 uberspace web log php_error disable
 ```
 
-### Datenbank-Backup (manuell)
+### Neue Migration einspielen
 
 ```bash
-TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
-sqlite3 /home/hornse/projektstunden/backend/datenbank.sqlite .dump \
-  > /home/hornse/projektstunden/backups/backup_${TIMESTAMP}.sql
+mysql hornse_projektstunden < /home/hornse/projektstunden/sql/NEUE_MIGRATION.sql
 ```
 
 ### Git-Stand auf dem Server prüfen
 
 ```bash
-# Weicht der Work-Tree vom letzten Commit ab?
 git --git-dir=/home/hornse/repos/projektstunden.git \
     --work-tree=/home/hornse/projektstunden \
     status
 
-# Letzter eingespielter Commit:
 git --git-dir=/home/hornse/repos/projektstunden.git log --oneline -5
 ```
 
