@@ -76,19 +76,37 @@ class WebUntisAuth
         $details = ['personType' => $personType, 'personId' => $personId];
 
         if ($personType === self::TYPE_LEHRER || $personType === self::TYPE_ADMIN) {
-            $teachers = $this->jsonRpc('getTeachers', []);
-            if ($teachers && isset($teachers['result'])) {
-                foreach ($teachers['result'] as $t) {
-                    if ((int)$t['id'] === $personId) {
-                        $details['kuerzel']  = $t['name']     ?? '';
-                        $details['vorname']  = $t['foreName'] ?? '';
-                        $details['nachname'] = $t['longName'] ?? '';
-                        break;
+            $details['kuerzel'] = $username; // Fallback
+
+            // personId = -1 bei reinen WebUntis-Admins (kein Stundenplan-Eintrag)
+            // In diesem Fall Kürzel = username, Name aus lokaler DB holen falls vorhanden
+            if ($personId > 0) {
+                $teachers = $this->jsonRpc('getTeachers', []);
+                if ($teachers && isset($teachers['result'])) {
+                    foreach ($teachers['result'] as $t) {
+                        if ((int)$t['id'] === $personId) {
+                            $details['kuerzel']  = $t['name']     ?? $username;
+                            $details['vorname']  = $t['foreName'] ?? '';
+                            $details['nachname'] = $t['longName'] ?? '';
+                            break;
+                        }
                     }
                 }
             }
-            if (empty($details['kuerzel'])) {
-                $details['kuerzel'] = $username;
+            // Wenn Name noch leer: aus DB per Kürzel nachschlagen
+            if (empty($details['vorname'])) {
+                try {
+                    $stmt = $this->db->prepare(
+                        'SELECT vorname, nachname FROM benutzer
+                         WHERE kuerzel = ? AND schule_id = 1 AND aktiv = 1 LIMIT 1'
+                    );
+                    $stmt->execute([$details['kuerzel']]);
+                    $row = $stmt->fetch();
+                    if ($row) {
+                        $details['vorname']  = $row['vorname'];
+                        $details['nachname'] = $row['nachname'];
+                    }
+                } catch (Throwable) {}
             }
         }
 
