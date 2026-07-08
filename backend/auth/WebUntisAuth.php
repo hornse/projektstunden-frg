@@ -25,9 +25,11 @@ class WebUntisAuth
     const TYPE_ADMIN    = 16; // WebUntis-Administrator
     const TYPE_SCHUELER = 5;
 
+    private string $sessionCookie = ''; // aktive Session-Cookie
+
     public function __construct(
         private readonly PDO   $db,
-        private readonly array $config  // aus config.php: $config['webuntis']
+        private readonly array $config
     ) {}
 
     /**
@@ -47,12 +49,12 @@ class WebUntisAuth
             return null;
         }
 
-        // Einloggen
+        // Einloggen – Cookie wird in $this->sessionCookie gespeichert
         $authResponse = $this->jsonRpc('authenticate', [
             'user'     => $username,
             'password' => $password,
             'client'   => $this->config['client'] ?? 'ProjektstundenNRW',
-        ]);
+        ], true); // true = Cookie aus Response speichern
 
         if ($authResponse === null || isset($authResponse['error'])) {
             $this->log($username, false, 'falsches_passwort_oder_netzwerk', $ip);
@@ -62,20 +64,18 @@ class WebUntisAuth
         $result     = $authResponse['result'] ?? null;
         $personType = (int)($result['personType'] ?? 0);
         $personId   = (int)($result['personId']   ?? 0);
-        $sessionId  = $result['sessionId']         ?? '';
 
         $erlaubt = $this->config['allowed_person_types'] ?? [self::TYPE_LEHRER];
         if (!in_array($personType, $erlaubt, true)) {
-            $this->logoutSession($sessionId);
+            $this->jsonRpc('logout', []);
             $this->log($username, false, 'falsche_rolle', $ip);
             return null;
         }
 
-        // Zusatzdaten holen (mit aktiver Session)
+        // Zusatzdaten mit aktiver Session holen
         $details = ['personType' => $personType, 'personId' => $personId];
 
-        if ($personType === self::TYPE_LEHRER) {
-            // Lehrerliste holen und passenden Eintrag finden
+        if ($personType === self::TYPE_LEHRER || $personType === self::TYPE_ADMIN) {
             $teachers = $this->jsonRpc('getTeachers', []);
             if ($teachers && isset($teachers['result'])) {
                 foreach ($teachers['result'] as $t) {
@@ -87,19 +87,17 @@ class WebUntisAuth
                     }
                 }
             }
-            // Fallback: Kürzel aus username
             if (empty($details['kuerzel'])) {
                 $details['kuerzel'] = $username;
             }
         }
 
         if ($personType === self::TYPE_SCHUELER) {
-            // Schülerliste holen und passenden Eintrag finden
             $students = $this->jsonRpc('getStudents', []);
             if ($students && isset($students['result'])) {
                 foreach ($students['result'] as $s) {
                     if ((int)$s['id'] === $personId) {
-                        $details['key']      = $s['key']      ?? ''; // = Schild-ID
+                        $details['key']      = $s['key']      ?? '';
                         $details['vorname']  = $s['foreName'] ?? '';
                         $details['nachname'] = $s['longName'] ?? '';
                         $details['gender']   = $s['gender']   ?? '';
@@ -110,7 +108,8 @@ class WebUntisAuth
         }
 
         // Session freigeben
-        $this->logoutSession($sessionId);
+        $this->jsonRpc('logout', []);
+        $this->sessionCookie = '';
         $this->log($username, true, null, $ip);
 
         return $details;
@@ -121,7 +120,6 @@ class WebUntisAuth
      */
     private function logoutSession(string $sessionId): void
     {
-        // Session-Cookie setzen und logout aufrufen
         $this->jsonRpc('logout', []);
     }
 
@@ -136,9 +134,9 @@ class WebUntisAuth
 
     /**
      * JSON-RPC-Aufruf an WebUntis.
-     * KEIN Logging von Requests die Passwörter enthalten.
+     * @param bool $saveCookie  true beim ersten Aufruf (authenticate) um Session-Cookie zu speichern
      */
-    private function jsonRpc(string $method, array $params): ?array
+    private function jsonRpc(string $method, array $params, bool $saveCookie = false): ?array
     {
         $baseUrl = rtrim($this->config['base_url'], '/');
 
@@ -154,19 +152,27 @@ class WebUntisAuth
             'jsonrpc' => '2.0',
         ]);
 
+        $headers = ['Content-Type: application/json'];
+        // Session-Cookie mitschicken wenn vorhanden
+        if ($this->sessionCookie !== '') {
+            $headers[] = 'Cookie: ' . $this->sessionCookie;
+        }
+
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $body,
-            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+            CURLOPT_HTTPHEADER     => $headers,
             CURLOPT_CONNECTTIMEOUT => $this->config['connect_timeout'] ?? 5,
             CURLOPT_TIMEOUT        => $this->config['timeout']         ?? 10,
+            CURLOPT_HEADER         => $saveCookie, // Header in Response einschließen
         ]);
 
         $raw      = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlErr  = curl_error($ch);
+        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         curl_close($ch);
 
         if ($raw === false) {
@@ -176,6 +182,16 @@ class WebUntisAuth
         if ($httpCode !== 200) {
             error_log("WebUntisAuth: HTTP {$httpCode} bei method={$method}");
             return null;
+        }
+
+        // Cookie aus Response-Header speichern (nur beim ersten Aufruf)
+        if ($saveCookie) {
+            $responseHeaders = substr($raw, 0, $headerSize);
+            $raw             = substr($raw, $headerSize);
+            // JSESSIONID aus Set-Cookie Header extrahieren
+            if (preg_match('/Set-Cookie:\s*(JSESSIONID=[^;]+)/i', $responseHeaders, $m)) {
+                $this->sessionCookie = $m[1];
+            }
         }
 
         $decoded = json_decode($raw, true);

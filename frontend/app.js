@@ -60,7 +60,7 @@ async function checkAuth() {
     clearTimeout(timeout);
     if (r.status === 401 || !r.ok) { showLogin(); return; }
     const me = await r.json().catch(() => null);
-    if (me && me.id) {
+    if (me && (me.id || me.id === 0)) {
       STATE.user = me;
       if (me.typ === 'schueler') {
         showSchuelerPortal(me);
@@ -77,7 +77,6 @@ function showLogin() {
 async function showApp() {
   document.getElementById('login-view').style.display = 'none';
   document.getElementById('app-view').style.display   = 'flex';
-  // Admin-Klasse am Shell-Element setzen (steuert Sichtbarkeit admin-only Elemente)
   if (STATE.user && STATE.user.rolle === 'admin') {
     document.getElementById('app-view').classList.add('is-admin');
   } else {
