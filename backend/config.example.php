@@ -41,23 +41,25 @@ define('ALLOWED_ORIGIN', 'https://projektstunden.hornse.de');
 // Eigenen personType herausfinden:
 //   php -r "..." (siehe deploy/uberspace.md)
 //
-// personType-Werte: 2 = Lehrkraft, 5 = Schüler
+// personType-Werte: 2=Lehrkraft, 16=WebUntis-Admin, 5=Schüler
 define('WEBUNTIS_ENABLED', true);
 
 $WEBUNTIS_CONFIG = [
-    'base_url'             => 'https://frg-dusseldorf.webuntis.com',  // ohne / am Ende
-    'school'               => 'frg-duesseldorf',              // Schulkürzel in WebUntis-URL
+    'base_url'             => 'https://frg-dusseldorf.webuntis.com', // ohne / am Ende
+    'school'               => 'frg-dusseldorf',
     'client'               => 'ProjektstundenNRW',
-    'allowed_person_types' => [2, 5],  // 2 = Lehrkraft, 5 = Schüler
+    // personType 2  = Lehrkraft      → Rolle 'lernbegleiter'
+    // personType 16 = WebUntis-Admin → Rolle 'admin'
+    // personType 5  = Schüler        → Schüler-Portal
+    'allowed_person_types' => [2, 16, 5],
     'connect_timeout'      => 5,
     'timeout'              => 10,
-    'max_failed_logins'    => 5,       // Versuche bevor gesperrt
-    'lockout_minutes'      => 15,      // Sperrzeit in Minuten
+    'max_failed_logins'    => 5,
+    'lockout_minutes'      => 15,
 
-    // Lehrer-Kürzel die automatisch Admin-Rechte erhalten.
-    // Alle anderen WebUntis-Lehrer bekommen Rolle 'lernbegleiter'.
-    // Kürzel = WebUntis-Anmeldename (z. B. 'ho' für Horn)
-    'admin_kuerzel'        => ['ho'],
+    // Zusätzlich: Lehrer-Kürzel (personType 2) die auch Admin werden sollen.
+    // WebUntis-Admins (personType 16) werden automatisch Admin ohne diese Liste.
+    'admin_kuerzel'        => ['Hor'],
 ];
 
 // ============================================================

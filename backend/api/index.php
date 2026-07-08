@@ -159,15 +159,23 @@ function handle_auth(string $method, string $sub, array $body): void {
                 $personType = $result['personType'];
                 $personId   = $result['personId'];
 
-                // ── Lehrer (personType = 2) ──
-                if ($personType === WebUntisAuth::TYPE_LEHRER) {
+                // ── Lehrer (personType = 2 oder 16) ──
+                if ($personType === WebUntisAuth::TYPE_LEHRER ||
+                    $personType === WebUntisAuth::TYPE_ADMIN) {
                     $kuerzel  = $result['kuerzel']  ?? '';
                     $vorname  = $result['vorname']  ?? '';
                     $nachname = $result['nachname'] ?? '';
 
-                    // Rolle bestimmen: admin_kuerzel aus Config oder lokaler DB-Eintrag
+                    // personType 16 = WebUntis-Admin → immer admin
+                    // personType  2 = Lehrkraft → lernbegleiter (außer in admin_kuerzel)
                     $adminKuerzel = $WEBUNTIS_CONFIG['admin_kuerzel'] ?? [];
-                    $rolle = in_array($kuerzel, $adminKuerzel, true) ? 'admin' : 'lernbegleiter';
+                    if ($personType === WebUntisAuth::TYPE_ADMIN) {
+                        $rolle = 'admin';
+                    } elseif (in_array($kuerzel, $adminKuerzel, true)) {
+                        $rolle = 'admin';
+                    } else {
+                        $rolle = 'lernbegleiter';
+                    }
 
                     // Lokalen DB-Eintrag per Kürzel prüfen (Rolle hat Vorrang)
                     if ($kuerzel) {

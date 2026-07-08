@@ -21,7 +21,8 @@
 class WebUntisAuth
 {
     // personType-Konstanten laut WebUntis JSON-RPC
-    const TYPE_LEHRER  = 2;
+    const TYPE_LEHRER   = 2;
+    const TYPE_ADMIN    = 16; // WebUntis-Administrator
     const TYPE_SCHUELER = 5;
 
     public function __construct(
