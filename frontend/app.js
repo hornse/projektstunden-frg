@@ -17,12 +17,15 @@ async function api(method, path, body) {
   };
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch(API_BASE + '/api/' + path, opts);
-  if (r.status === 401) { showLogin(); return null; }
+  if (r.status === 401) {
+    // Nur zum Login wenn wir nicht gerade einloggen
+    if (path !== 'auth/login' && path !== 'auth/me') showLogin();
+    return null;
+  }
   if (!r.ok) {
     const e = await r.json().catch(() => ({ error: 'Netzwerkfehler' }));
     throw new Error(e.error || 'Fehler ' + r.status);
   }
-  // Export-Endpunkte liefern Blobs zurück
   const ct = r.headers.get('Content-Type') || '';
   if (ct.includes('text/csv')) return r.blob();
   return r.json();
@@ -91,6 +94,8 @@ async function doLogin() {
   try {
     const me = await POST('auth/login', { email, username: email, passwort: pass });
     STATE.user = me;
+    // Kurze Pause damit der Browser den Session-Cookie speichern kann
+    await new Promise(resolve => setTimeout(resolve, 100));
     if (me.typ === 'schueler') {
       showSchuelerPortal(me);
     } else {

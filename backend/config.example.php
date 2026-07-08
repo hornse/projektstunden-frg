@@ -96,7 +96,7 @@ function session_start_secure(): void {
 
 function require_auth(): array {
     session_start_secure();
-    if (empty($_SESSION['benutzer_id'])) {
+    if (!isset($_SESSION['benutzer_id']) || $_SESSION['benutzer_id'] === null) {
         http_response_code(401);
         die(json_encode(['error' => 'Nicht eingeloggt.']));
     }
