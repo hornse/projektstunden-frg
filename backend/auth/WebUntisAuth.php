@@ -30,55 +30,107 @@ class WebUntisAuth
     ) {}
 
     /**
-     * Authentifiziert einen Benutzer gegen WebUntis.
+     * Authentifiziert einen Benutzer und holt zusätzliche Details.
+     * Für Lehrer: Kürzel, Vor- und Nachname
+     * Für Schüler: key (= Schild-ID)
      *
-     * @return array{username: string, personType: int, personId: int}|null
-     *         null = Login fehlgeschlagen (falsches Passwort, gesperrt, Netzwerkfehler)
+     * @return array|null  null = Login fehlgeschlagen
      */
-    public function authenticate(string $username, string $password, string $ip): ?array
+    public function authenticateAndGetDetails(string $username, string $password, string $ip): ?array
     {
         $username = trim($username);
         if ($username === '' || $password === '') return null;
 
-        // Brute-Force-Schutz
         if ($this->tooManyAttempts($username)) {
             $this->log($username, false, 'zu_viele_versuche', $ip);
             return null;
         }
 
-        // WebUntis-Anfrage
-        $response = $this->jsonRpc('authenticate', [
+        // Einloggen
+        $authResponse = $this->jsonRpc('authenticate', [
             'user'     => $username,
             'password' => $password,
             'client'   => $this->config['client'] ?? 'ProjektstundenNRW',
         ]);
 
-        if ($response === null || isset($response['error'])) {
+        if ($authResponse === null || isset($authResponse['error'])) {
             $this->log($username, false, 'falsches_passwort_oder_netzwerk', $ip);
             return null;
         }
 
-        $result     = $response['result'] ?? null;
+        $result     = $authResponse['result'] ?? null;
         $personType = (int)($result['personType'] ?? 0);
         $personId   = (int)($result['personId']   ?? 0);
+        $sessionId  = $result['sessionId']         ?? '';
 
-        // WebUntis-Session sofort freigeben (Best effort)
-        $this->jsonRpc('logout', []);
-
-        // Erlaubte Typen prüfen
         $erlaubt = $this->config['allowed_person_types'] ?? [self::TYPE_LEHRER];
         if (!in_array($personType, $erlaubt, true)) {
+            $this->logoutSession($sessionId);
             $this->log($username, false, 'falsche_rolle', $ip);
             return null;
         }
 
+        // Zusatzdaten holen (mit aktiver Session)
+        $details = ['personType' => $personType, 'personId' => $personId];
+
+        if ($personType === self::TYPE_LEHRER) {
+            // Lehrerliste holen und passenden Eintrag finden
+            $teachers = $this->jsonRpc('getTeachers', []);
+            if ($teachers && isset($teachers['result'])) {
+                foreach ($teachers['result'] as $t) {
+                    if ((int)$t['id'] === $personId) {
+                        $details['kuerzel']  = $t['name']     ?? '';
+                        $details['vorname']  = $t['foreName'] ?? '';
+                        $details['nachname'] = $t['longName'] ?? '';
+                        break;
+                    }
+                }
+            }
+            // Fallback: Kürzel aus username
+            if (empty($details['kuerzel'])) {
+                $details['kuerzel'] = $username;
+            }
+        }
+
+        if ($personType === self::TYPE_SCHUELER) {
+            // Schülerliste holen und passenden Eintrag finden
+            $students = $this->jsonRpc('getStudents', []);
+            if ($students && isset($students['result'])) {
+                foreach ($students['result'] as $s) {
+                    if ((int)$s['id'] === $personId) {
+                        $details['key']      = $s['key']      ?? ''; // = Schild-ID
+                        $details['vorname']  = $s['foreName'] ?? '';
+                        $details['nachname'] = $s['longName'] ?? '';
+                        $details['gender']   = $s['gender']   ?? '';
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Session freigeben
+        $this->logoutSession($sessionId);
         $this->log($username, true, null, $ip);
 
-        return [
-            'username'   => $username,
-            'personType' => $personType,
-            'personId'   => $personId,
-        ];
+        return $details;
+    }
+
+    /**
+     * WebUntis-Session freigeben.
+     */
+    private function logoutSession(string $sessionId): void
+    {
+        // Session-Cookie setzen und logout aufrufen
+        $this->jsonRpc('logout', []);
+    }
+
+    /**
+     * Alte authenticate-Methode – bleibt für Rückwärtskompatibilität.
+     * @deprecated Nutze authenticateAndGetDetails()
+     */
+    public function authenticate(string $username, string $password, string $ip): ?array
+    {
+        return $this->authenticateAndGetDetails($username, $password, $ip);
     }
 
     /**

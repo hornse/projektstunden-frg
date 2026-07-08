@@ -45,14 +45,19 @@ define('ALLOWED_ORIGIN', 'https://projektstunden.hornse.de');
 define('WEBUNTIS_ENABLED', true);
 
 $WEBUNTIS_CONFIG = [
-    'base_url'             => 'https://neilo.webuntis.com',  // ohne / am Ende
+    'base_url'             => 'https://frg-dusseldorf.webuntis.com',  // ohne / am Ende
     'school'               => 'frg-duesseldorf',              // Schulkürzel in WebUntis-URL
     'client'               => 'ProjektstundenNRW',
-    'allowed_person_types' => [2],     // Lehrkräfte; [2, 5] für Lehrer + Schüler
+    'allowed_person_types' => [2, 5],  // 2 = Lehrkraft, 5 = Schüler
     'connect_timeout'      => 5,
     'timeout'              => 10,
     'max_failed_logins'    => 5,       // Versuche bevor gesperrt
-    'lockout_minutes'      => 15,      // Sperrzeit
+    'lockout_minutes'      => 15,      // Sperrzeit in Minuten
+
+    // Lehrer-Kürzel die automatisch Admin-Rechte erhalten.
+    // Alle anderen WebUntis-Lehrer bekommen Rolle 'lernbegleiter'.
+    // Kürzel = WebUntis-Anmeldename (z. B. 'ho' für Horn)
+    'admin_kuerzel'        => ['ho'],
 ];
 
 // ============================================================

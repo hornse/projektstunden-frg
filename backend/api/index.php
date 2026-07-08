@@ -118,14 +118,13 @@ try {
 // ============================================================
 function handle_auth(string $method, string $sub, array $body): void {
     if ($method === 'POST' && $sub === 'login') {
-        $email    = trim($body['email']    ?? '');
-        $username = trim($body['username'] ?? $email); // WebUntis-Kürzel oder E-Mail
-        $pass     = $body['passwort']      ?? '';
+        $username = trim($body['username'] ?? $body['email'] ?? '');
+        $pass     = $body['passwort'] ?? '';
         if (!$username || !$pass) json_error('Zugangsdaten erforderlich.');
 
         $db = get_db();
 
-        // ── Schritt 1: E-Mail/Passwort (lokaler Login) ──
+        // ── Schritt 1: Lokaler Login (E-Mail + Passwort) ──
         if (filter_var($username, FILTER_VALIDATE_EMAIL)) {
             $stmt = $db->prepare(
                 'SELECT id, vorname, nachname, email, passwort_hash, rolle, schule_id, aktiv
@@ -142,59 +141,86 @@ function handle_auth(string $method, string $sub, array $body): void {
                 $_SESSION['typ']         = 'benutzer';
                 json_response(['ok' => true, 'vorname' => $user['vorname'],
                                'nachname' => $user['nachname'], 'rolle' => $user['rolle'],
-                               'typ' => 'benutzer']);
+                               'typ' => 'benutzer', 'id' => $user['id']]);
             }
         }
 
-        // ── Schritt 2: WebUntis-Login (Lehrer per Kürzel) ──
+        // ── Schritt 2: WebUntis-Login ──
+        // Lehrer: Session on-the-fly, kein DB-Eintrag nötig
+        // Schüler: Abgleich schild_id = WebUntis key (beide aus Schild-NRW)
         global $WEBUNTIS_CONFIG;
         if (defined('WEBUNTIS_ENABLED') && WEBUNTIS_ENABLED && !empty($WEBUNTIS_CONFIG)) {
             require_once __DIR__ . '/../auth/WebUntisAuth.php';
-            $wu = new WebUntisAuth($db, $WEBUNTIS_CONFIG);
-            $ip = $_SERVER['REMOTE_ADDR'] ?? 'unbekannt';
-            $result = $wu->authenticate($username, $pass, $ip);
+            $wu     = new WebUntisAuth($db, $WEBUNTIS_CONFIG);
+            $ip     = $_SERVER['REMOTE_ADDR'] ?? 'unbekannt';
+            $result = $wu->authenticateAndGetDetails($username, $pass, $ip);
 
             if ($result !== null) {
                 $personType = $result['personType'];
+                $personId   = $result['personId'];
 
-                // Lehrer-Login (personType = 2)
+                // ── Lehrer (personType = 2) ──
                 if ($personType === WebUntisAuth::TYPE_LEHRER) {
-                    // Benutzer per webuntis_user suchen
-                    $stmt = $db->prepare(
-                        'SELECT id, vorname, nachname, rolle, schule_id, aktiv
-                         FROM benutzer WHERE webuntis_user = ? AND schule_id = ? LIMIT 1'
-                    );
-                    $stmt->execute([$username, SCHULE_ID]);
-                    $user = $stmt->fetch();
+                    $kuerzel  = $result['kuerzel']  ?? '';
+                    $vorname  = $result['vorname']  ?? '';
+                    $nachname = $result['nachname'] ?? '';
 
-                    if (!$user || !$user['aktiv']) {
-                        json_error('WebUntis-Login erfolgreich, aber kein freigegebenes Konto gefunden. ' .
-                                   'Bitte Administrator kontaktieren.', 403);
+                    // Rolle bestimmen: admin_kuerzel aus Config oder lokaler DB-Eintrag
+                    $adminKuerzel = $WEBUNTIS_CONFIG['admin_kuerzel'] ?? [];
+                    $rolle = in_array($kuerzel, $adminKuerzel, true) ? 'admin' : 'lernbegleiter';
+
+                    // Lokalen DB-Eintrag per Kürzel prüfen (Rolle hat Vorrang)
+                    if ($kuerzel) {
+                        $chk = $db->prepare(
+                            'SELECT id, rolle FROM benutzer
+                             WHERE kuerzel = ? AND schule_id = ? AND aktiv = 1 LIMIT 1'
+                        );
+                        $chk->execute([$kuerzel, SCHULE_ID]);
+                        $dbUser = $chk->fetch();
+                        if ($dbUser) {
+                            $rolle = $dbUser['rolle'];
+                            // Lokaler Benutzer gefunden – dessen ID nutzen
+                            $dbUserId = $dbUser['id'];
+                        }
                     }
 
                     session_start_secure();
                     session_regenerate_id(true);
-                    $_SESSION['benutzer_id'] = $user['id'];
-                    $_SESSION['rolle']       = $user['rolle'];
-                    $_SESSION['schule_id']   = $user['schule_id'];
-                    $_SESSION['typ']         = 'benutzer';
-                    json_response(['ok' => true, 'vorname' => $user['vorname'],
-                                   'nachname' => $user['nachname'], 'rolle' => $user['rolle'],
-                                   'typ' => 'benutzer']);
+                    $_SESSION['benutzer_id']  = $dbUserId ?? 0;
+                    $_SESSION['wu_person_id'] = $personId;
+                    $_SESSION['wu_kuerzel']   = $kuerzel;
+                    $_SESSION['wu_vorname']   = $vorname;
+                    $_SESSION['wu_nachname']  = $nachname;
+                    $_SESSION['rolle']        = $rolle;
+                    $_SESSION['schule_id']    = SCHULE_ID;
+                    $_SESSION['typ']          = 'benutzer';
+
+                    json_response(['ok' => true, 'vorname' => $vorname,
+                                   'nachname' => $nachname, 'rolle' => $rolle,
+                                   'typ' => 'benutzer', 'id' => $dbUserId ?? 0]);
                 }
 
-                // Schüler-Login (personType = 5)
+                // ── Schüler (personType = 5) ──
+                // key = Schild-ID (aus Schild-NRW → WebUntis → Projektstunden)
                 if ($personType === WebUntisAuth::TYPE_SCHUELER) {
+                    $schildId = (int)($result['key'] ?? 0);
+
+                    if (!$schildId) {
+                        json_error('WebUntis-Login erfolgreich, aber Schüler-ID fehlt.', 403);
+                    }
+
                     $stmt = $db->prepare(
-                        'SELECT s.id, s.vorname, s.nachname, s.aktiv, k.schule_id
-                         FROM schueler s JOIN klassen k ON k.id = s.klasse_id
-                         WHERE s.webuntis_user = ? AND k.schule_id = ? LIMIT 1'
+                        'SELECT s.id, s.vorname, s.nachname
+                         FROM schueler s
+                         JOIN klassen k ON k.id = s.klasse_id
+                         WHERE s.schild_id = ? AND k.schule_id = ? AND s.aktiv = 1 LIMIT 1'
                     );
-                    $stmt->execute([$username, SCHULE_ID]);
+                    $stmt->execute([$schildId, SCHULE_ID]);
                     $schueler = $stmt->fetch();
 
-                    if (!$schueler || !$schueler['aktiv']) {
-                        json_error('Schüler-Login erfolgreich, aber kein aktives Konto gefunden.', 403);
+                    if (!$schueler) {
+                        json_error('Schüler nicht gefunden. Bitte Administrator informieren ' .
+                                   '(CSV-Import erforderlich).', 403);
                     }
 
                     session_start_secure();
@@ -203,14 +229,14 @@ function handle_auth(string $method, string $sub, array $body): void {
                     $_SESSION['rolle']       = 'schueler';
                     $_SESSION['schule_id']   = SCHULE_ID;
                     $_SESSION['typ']         = 'schueler';
+
                     json_response(['ok' => true, 'vorname' => $schueler['vorname'],
                                    'nachname' => $schueler['nachname'], 'rolle' => 'schueler',
-                                   'typ' => 'schueler']);
+                                   'typ' => 'schueler', 'id' => $schueler['id']]);
                 }
             }
         }
 
-        // ── Kein Login erfolgreich ──
         json_error('Ungültige Anmeldedaten.', 401);
     }
 
@@ -223,12 +249,25 @@ function handle_auth(string $method, string $sub, array $body): void {
     if ($method === 'GET' && $sub === 'me') {
         $user = require_auth();
         $db   = get_db();
+
         if ($user['typ'] === 'schueler') {
             $stmt = $db->prepare('SELECT id, vorname, nachname FROM schueler WHERE id = ?');
             $stmt->execute([$user['id']]);
             $row = $stmt->fetch();
             json_response(array_merge($row, ['rolle' => 'schueler', 'typ' => 'schueler']));
         }
+
+        // WebUntis-Lehrer ohne lokalen DB-Eintrag
+        if (($user['id'] ?? 0) === 0) {
+            json_response([
+                'id'       => 0,
+                'vorname'  => $_SESSION['wu_vorname']  ?? '',
+                'nachname' => $_SESSION['wu_nachname'] ?? '',
+                'rolle'    => $_SESSION['rolle'],
+                'typ'      => 'benutzer',
+            ]);
+        }
+
         $stmt = $db->prepare('SELECT id, vorname, nachname, email, rolle FROM benutzer WHERE id = ?');
         $stmt->execute([$user['id']]);
         $row = $stmt->fetch();
@@ -237,6 +276,7 @@ function handle_auth(string $method, string $sub, array $body): void {
 
     json_error('Unbekannte Auth-Aktion.', 404);
 }
+
 
 // ============================================================
 //  SCHÜLER
