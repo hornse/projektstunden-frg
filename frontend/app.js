@@ -85,6 +85,8 @@ async function showApp() {
   } else {
     document.getElementById('app-view').classList.remove('is-admin');
   }
+  // Einstellungen (Logo, Farben, Name) laden
+  await ladeEinstellungenApp();
   await loadState();
   go('dashboard');
 }
@@ -121,7 +123,7 @@ function go(id) {
   const init = { dashboard: initDash, projekt: initProjekt, schueler: initSchueler,
                  klassen: initKlassen, katalog: initKatalog, export: initExport,
                  benutzer: initBenutzer, schuljahre: initSchuljahre, import: initImport,
-                 bewertung: initBewertung, hilfe: initHilfe,
+                 bewertung: initBewertung, hilfe: initHilfe, einstellungen: initEinstellungen,
                  'werkstatt-edit': () => {} };
   if (init[id]) init[id]();
 }
@@ -2218,4 +2220,204 @@ async function selbstEinschaetzung(werkstatt_id, kompetenz_id, stufe, chipEl) {
       body: JSON.stringify({ kompetenz_id, selbst_stufe: neue_stufe })
     });
   } catch(e) { alert('Selbsteinschätzung konnte nicht gespeichert werden: ' + e.message); }
+}
+
+// ============================================================
+// EINSTELLUNGEN
+// ============================================================
+async function initEinstellungen() {
+  const data = await GET('einstellungen');
+  if (!data) return;
+
+  document.getElementById('ein-schulname').value   = data.schulname       || '';
+  document.getElementById('ein-titel').value        = data.app_titel       || '';
+  document.getElementById('ein-untertitel').value   = data.app_untertitel  || '';
+
+  const akzent = data.farbe_akzent   || '#3d6b4f';
+  const sek    = data.farbe_sekundaer|| '#2c4f3a';
+  document.getElementById('ein-farbe-akzent').value     = akzent;
+  document.getElementById('ein-farbe-akzent-hex').value = akzent;
+  document.getElementById('ein-farbe-sek').value         = sek;
+  document.getElementById('ein-farbe-sek-hex').value     = sek;
+
+  // Color-Picker ↔ Hex-Feld synchronisieren
+  document.getElementById('ein-farbe-akzent').oninput = e => {
+    document.getElementById('ein-farbe-akzent-hex').value = e.target.value;
+  };
+  document.getElementById('ein-farbe-akzent-hex').oninput = e => {
+    if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value))
+      document.getElementById('ein-farbe-akzent').value = e.target.value;
+  };
+  document.getElementById('ein-farbe-sek').oninput = e => {
+    document.getElementById('ein-farbe-sek-hex').value = e.target.value;
+  };
+  document.getElementById('ein-farbe-sek-hex').oninput = e => {
+    if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value))
+      document.getElementById('ein-farbe-sek').value = e.target.value;
+  };
+
+  // Logo-Vorschau
+  const vorschauEl = document.getElementById('ein-logo-vorschau');
+  const loeschenBtn = document.getElementById('ein-logo-loeschen-btn');
+  if (data.hat_logo) {
+    vorschauEl.innerHTML = `<img src="/api/einstellungen/logo?v=${Date.now()}"
+      style="max-height:80px;max-width:200px;object-fit:contain;border:1px solid var(--border);border-radius:8px;padding:8px">`;
+    loeschenBtn.style.display = 'inline-flex';
+  } else {
+    vorschauEl.innerHTML = '<p style="font-size:13px;color:var(--text3)">Kein Logo hochgeladen.</p>';
+    loeschenBtn.style.display = 'none';
+  }
+}
+
+async function einstellungenSpeichern() {
+  const body = {
+    schulname:      document.getElementById('ein-schulname').value.trim(),
+    app_titel:      document.getElementById('ein-titel').value.trim(),
+    app_untertitel: document.getElementById('ein-untertitel').value.trim(),
+  };
+  try {
+    const r = await fetch('/api/einstellungen', {
+      method: 'POST', credentials: 'include',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error);
+    showMsg('ein-msg', 'Gespeichert ✓', 'ok');
+    // Login-Box aktualisieren
+    applyEinstellungen(body);
+  } catch(e) { showMsg('ein-msg', e.message, 'err'); }
+}
+
+async function farbenanSpeichern() {
+  const body = {
+    farbe_akzent:    document.getElementById('ein-farbe-akzent-hex').value,
+    farbe_sekundaer: document.getElementById('ein-farbe-sek-hex').value,
+  };
+  try {
+    const r = await fetch('/api/einstellungen', {
+      method: 'POST', credentials: 'include',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error);
+    showMsg('ein-farb-msg', 'Farben gespeichert ✓', 'ok');
+    applyEinstellungen(body);
+  } catch(e) { showMsg('ein-farb-msg', e.message, 'err'); }
+}
+
+async function einstellungenZuruecksetzen() {
+  if (!confirm('Alle Einstellungen und das Logo auf Standard zurücksetzen?')) return;
+  try {
+    const r = await fetch('/api/einstellungen/zuruecksetzen', {
+      method: 'POST', credentials: 'include',
+      headers: {'Content-Type':'application/json'}, body: '{}'
+    });
+    if (!r.ok) throw new Error('Fehler');
+    showMsg('ein-farb-msg', 'Zurückgesetzt ✓', 'ok');
+    initEinstellungen();
+    applyEinstellungen({
+      schulname: 'Friedrich-Rückert-Gymnasium Düsseldorf',
+      app_titel: 'Projektstunden NRW',
+      app_untertitel: 'Gymnasium G9 – Kompetenz- und Stunden-Tracking',
+      farbe_akzent: '#3d6b4f',
+      farbe_sekundaer: '#2c4f3a',
+    });
+  } catch(e) { showMsg('ein-farb-msg', e.message, 'err'); }
+}
+
+// Logo
+let LOGO_BASE64 = null;
+
+function logoGewaehlt(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    LOGO_BASE64 = e.target.result.split(',')[1];
+    document.getElementById('ein-logo-upload-btn').disabled = false;
+    // Vorschau
+    document.getElementById('ein-logo-vorschau').innerHTML =
+      `<img src="${e.target.result}"
+        style="max-height:80px;max-width:200px;object-fit:contain;border:1px solid var(--border);border-radius:8px;padding:8px">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function logoHochladen() {
+  if (!LOGO_BASE64) return;
+  try {
+    const r = await fetch('/api/einstellungen/logo', {
+      method: 'POST', credentials: 'include',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ daten: LOGO_BASE64 })
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error);
+    showMsg('ein-logo-msg', 'Logo gespeichert ✓', 'ok');
+    LOGO_BASE64 = null;
+    document.getElementById('ein-logo-upload-btn').disabled = true;
+    document.getElementById('ein-logo-loeschen-btn').style.display = 'inline-flex';
+    // Nav-Logo aktualisieren
+    ladeNavLogo();
+  } catch(e) { showMsg('ein-logo-msg', e.message, 'err'); }
+}
+
+async function logoLoeschen() {
+  if (!confirm('Logo entfernen?')) return;
+  try {
+    await fetch('/api/einstellungen/logo/loeschen', {
+      method: 'POST', credentials: 'include',
+      headers: {'Content-Type':'application/json'}, body: '{}'
+    });
+    showMsg('ein-logo-msg', 'Logo entfernt ✓', 'ok');
+    document.getElementById('ein-logo-vorschau').innerHTML =
+      '<p style="font-size:13px;color:var(--text3)">Kein Logo hochgeladen.</p>';
+    document.getElementById('ein-logo-loeschen-btn').style.display = 'none';
+    ladeNavLogo();
+  } catch(e) { showMsg('ein-logo-msg', e.message, 'err'); }
+}
+
+// ── Einstellungen auf die App anwenden (CSS-Variablen + Texte) ──────────────
+function applyEinstellungen(data) {
+  if (data.farbe_akzent) {
+    document.documentElement.style.setProperty('--accent', data.farbe_akzent);
+    document.documentElement.style.setProperty('--accent-dark', data.farbe_akzent);
+  }
+  if (data.farbe_sekundaer) {
+    document.documentElement.style.setProperty('--nav-bg', data.farbe_sekundaer);
+  }
+  if (data.schulname) {
+    const el = document.getElementById('nav-schulname');
+    if (el) el.textContent = data.schulname;
+  }
+  if (data.app_titel) {
+    const el = document.getElementById('nav-app-titel');
+    if (el) el.textContent = data.app_titel;
+    document.title = data.app_titel;
+  }
+}
+
+async function ladeNavLogo() {
+  const el = document.getElementById('nav-logo');
+  if (!el) return;
+  // Cache-Busting via Timestamp
+  const r = await fetch(`/api/einstellungen/logo?v=${Date.now()}`, {credentials:'include'});
+  if (r.ok) {
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    el.src   = url;
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+async function ladeEinstellungenApp() {
+  try {
+    const data = await GET('einstellungen');
+    if (data) applyEinstellungen(data);
+    ladeNavLogo();
+  } catch { /* Einstellungen optional */ }
 }

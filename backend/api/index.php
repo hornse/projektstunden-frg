@@ -93,10 +93,11 @@ try {
         'kompetenzrahmen' => handle_kompetenzrahmen($method),
         'projekte'      => handle_projekte($method, $id, $body),
         'werkstatt'     => handle_werkstatt($method, $id, $sub, $body),
-        'bewertung'        => handle_bewertung($method, $id, $body),
-        'rueckmeldung'     => handle_rueckmeldung($method, $id, $body),
-        'schueler-portal'  => handle_schueler_portal($method, $id, $body),
+        'bewertung'           => handle_bewertung($method, $id, $body),
+        'rueckmeldung'        => handle_rueckmeldung($method, $id, $body),
+        'schueler-portal'     => handle_schueler_portal($method, $id, $body),
         'selbsteinschaetzung' => handle_selbsteinschaetzung($method, $id, $body),
+        'einstellungen'       => handle_einstellungen($method, $sub ?? '', $body),
         'dashboard'   => handle_dashboard($method),
         'export'      => handle_export($method, $sub),
         'benutzer'    => handle_benutzer($method, $id, $sub, $body),
@@ -211,12 +212,17 @@ function handle_auth(string $method, string $sub, array $body): void {
                 // ── Schüler (personType = 5) ──
                 // key = Schild-ID (aus Schild-NRW → WebUntis → Projektstunden)
                 if ($personType === WebUntisAuth::TYPE_SCHUELER) {
-                    $schildId = (int)($result['key'] ?? 0);
+                    $schildId    = (int)($result['key']        ?? 0);
+                    $wuKlasseId  = (int)($result['klasseId']   ?? 0);
+                    $klasseName  = $result['klasse_name']       ?? '';
+                    $vorname     = $result['vorname']           ?? '';
+                    $nachname    = $result['nachname']          ?? '';
 
                     if (!$schildId) {
                         json_error('WebUntis-Login erfolgreich, aber Schüler-ID fehlt.', 403);
                     }
 
+                    // Schüler in DB suchen
                     $stmt = $db->prepare(
                         'SELECT s.id, s.vorname, s.nachname
                          FROM schueler s
@@ -226,9 +232,50 @@ function handle_auth(string $method, string $sub, array $body): void {
                     $stmt->execute([$schildId, SCHULE_ID]);
                     $schueler = $stmt->fetch();
 
+                    // Nicht gefunden → automatisch anlegen (on-the-fly Registration)
+                    if (!$schueler && $klasseName && $vorname && $nachname) {
+                        $db->beginTransaction();
+                        try {
+                            // Klasse anlegen falls nicht vorhanden
+                            $kl = $db->prepare(
+                                'SELECT id FROM klassen WHERE bezeichnung = ? AND schule_id = ? LIMIT 1'
+                            );
+                            $kl->execute([$klasseName, SCHULE_ID]);
+                            $klasse = $kl->fetch();
+
+                            if (!$klasse) {
+                                // Jahrgang aus Klassenname extrahieren (z.B. "06A" → 6)
+                                preg_match('/^(\d+)/', $klasseName, $m);
+                                $jahrgang = isset($m[1]) ? (int)$m[1] : 0;
+                                $db->prepare(
+                                    'INSERT INTO klassen (schule_id, bezeichnung, schuljahr, jahrgang)
+                                     VALUES (?, ?, ?, ?)'
+                                )->execute([SCHULE_ID, $klasseName,
+                                            date('Y') . '/' . (date('Y')+1), $jahrgang]);
+                                $klasse_id = (int)$db->lastInsertId();
+                            } else {
+                                $klasse_id = (int)$klasse['id'];
+                            }
+
+                            // Schüler anlegen
+                            $db->prepare(
+                                'INSERT INTO schueler
+                                 (schule_id, klasse_id, schild_id, vorname, nachname, aktiv)
+                                 VALUES (?, ?, ?, ?, ?, 1)'
+                            )->execute([SCHULE_ID, $klasse_id, $schildId, $vorname, $nachname]);
+                            $schueler_id = (int)$db->lastInsertId();
+
+                            $db->commit();
+                            $schueler = ['id' => $schueler_id,
+                                         'vorname' => $vorname, 'nachname' => $nachname];
+                        } catch (Throwable $e) {
+                            $db->rollBack();
+                            json_error('Fehler beim automatischen Anlegen des Schülers.', 500);
+                        }
+                    }
+
                     if (!$schueler) {
-                        json_error('Schüler nicht gefunden. Bitte Administrator informieren ' .
-                                   '(CSV-Import erforderlich).', 403);
+                        json_error('Schüler nicht gefunden. Bitte Administrator informieren.', 403);
                     }
 
                     session_start_secure();
@@ -2198,4 +2245,191 @@ function handle_selbsteinschaetzung(string $method, ?int $id, array $body): void
     )->execute([$selbst_stufe, $id, $schueler_id, $kompetenz_id]);
 
     json_response(['ok' => true]);
+}
+
+// ============================================================
+//  EINSTELLUNGEN (Schulanpassung)
+//  GET  /api/einstellungen          – alle lesen (admin)
+//  POST /api/einstellungen          – speichern (admin)
+//  POST /api/einstellungen/logo     – Logo hochladen (admin)
+//  GET  /api/einstellungen/logo     – Logo ausliefern (öffentlich)
+//  POST /api/einstellungen/logo/loeschen – Logo löschen (admin)
+//  POST /api/einstellungen/zuruecksetzen – Auf Standard (admin)
+// ============================================================
+function handle_einstellungen(string $method, string $sub, array $body): void {
+    $db = get_db();
+
+    // Logo ausliefern – öffentlich, kein Login nötig
+    if ($method === 'GET' && $sub === 'logo') {
+        $pfad = $db->query("SELECT wert FROM einstellungen WHERE schluessel='logo_pfad'")->fetchColumn();
+        if (!$pfad || !is_file($pfad)) { http_response_code(404); exit; }
+        $mime = $db->query("SELECT wert FROM einstellungen WHERE schluessel='logo_mime'")->fetchColumn() ?: 'image/png';
+        header('Content-Type: ' . $mime);
+        header('Cache-Control: public, max-age=3600');
+        header('Content-Length: ' . filesize($pfad));
+        readfile($pfad);
+        exit;
+    }
+
+    // Ab hier: nur Admin
+    $user = require_admin();
+    $kuerzel = $_SESSION['wu_kuerzel'] ?? ($_SESSION['benutzer_id'] ? 'lokal' : 'unbekannt');
+
+    // GET – alle Einstellungen lesen
+    if ($method === 'GET' && $sub === '') {
+        $rows = $db->query(
+            "SELECT schluessel, wert FROM einstellungen WHERE schluessel != 'logo_pfad'"
+        )->fetchAll(PDO::FETCH_KEY_PAIR);
+
+        $defaults = [
+            'schulname'      => 'Friedrich-Rückert-Gymnasium Düsseldorf',
+            'app_titel'      => 'Projektstunden NRW',
+            'app_untertitel' => 'Gymnasium G9 – Kompetenz- und Stunden-Tracking',
+            'farbe_akzent'   => '#3d6b4f',
+            'farbe_sekundaer'=> '#2c4f3a',
+            'logo_mime'      => '',
+        ];
+        $result = array_merge($defaults, $rows);
+
+        $hatLogo = (bool)$db->query(
+            "SELECT wert FROM einstellungen WHERE schluessel='logo_pfad'"
+        )->fetchColumn();
+        $result['hat_logo'] = $hatLogo;
+
+        json_response($result);
+    }
+
+    // POST – Einstellungen speichern
+    if ($method === 'POST' && $sub === '') {
+        $felder = [
+            'schulname'      => ['typ' => 'text', 'max' => 80],
+            'app_titel'      => ['typ' => 'text', 'max' => 60],
+            'app_untertitel' => ['typ' => 'text', 'max' => 100],
+            'farbe_akzent'   => ['typ' => 'farbe'],
+            'farbe_sekundaer'=> ['typ' => 'farbe'],
+        ];
+
+        $stmt = $db->prepare(
+            'INSERT INTO einstellungen (schluessel, wert, geaendert_von)
+             VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE wert=VALUES(wert), geaendert_von=VALUES(geaendert_von)'
+        );
+
+        $gespeichert = [];
+        foreach ($felder as $key => $regel) {
+            if (!array_key_exists($key, $body)) continue;
+            $wert = (string)$body[$key];
+
+            if ($regel['typ'] === 'farbe') {
+                if (!preg_match('/^#[0-9A-Fa-f]{6}$/', $wert)) {
+                    json_error("Ungültiger Farbwert für '{$key}'. Erwartet: #RRGGBB", 400);
+                }
+            } else {
+                $wert = mb_substr(strip_tags(trim($wert)), 0, $regel['max']);
+                if ($wert === '') json_error("'{$key}' darf nicht leer sein.", 400);
+            }
+
+            $stmt->execute([$key, $wert, $kuerzel]);
+            $gespeichert[] = $key;
+        }
+
+        json_response(['ok' => true, 'gespeichert' => $gespeichert]);
+    }
+
+    // POST /logo – Logo hochladen (Base64)
+    if ($method === 'POST' && $sub === 'logo') {
+        $base64 = $body['daten'] ?? null;
+        if (!$base64) json_error('Keine Bilddaten übermittelt.', 400);
+
+        $binaer = base64_decode($base64, strict: true);
+        if ($binaer === false) json_error('Ungültige Base64-Daten.', 400);
+        if (strlen($binaer) > 500 * 1024) json_error('Logo darf max. 500 KB groß sein.', 400);
+
+        // MIME via finfo prüfen
+        $tmp = tempnam(sys_get_temp_dir(), 'logo_');
+        file_put_contents($tmp, $binaer);
+        $mime = (new finfo(FILEINFO_MIME_TYPE))->file($tmp);
+
+        $erlaubt = ['image/png' => 'png', 'image/jpeg' => 'jpg', 'image/svg+xml' => 'svg'];
+        if (!isset($erlaubt[$mime])) {
+            unlink($tmp);
+            json_error('Nur PNG, JPG und SVG erlaubt. Erkannt: ' . htmlspecialchars($mime), 400);
+        }
+
+        // SVG auf gefährliche Inhalte prüfen
+        if ($mime === 'image/svg+xml') {
+            $muster = ['/<script/i', '/javascript:/i', '/on\w+\s*=/i', '/<iframe/i', '/<object/i'];
+            foreach ($muster as $m) {
+                if (preg_match($m, $binaer)) {
+                    unlink($tmp);
+                    json_error('SVG enthält potenziell gefährliche Inhalte.', 400);
+                }
+            }
+        }
+
+        // Zielverzeichnis außerhalb Webroot
+        $logoDir = dirname(__DIR__, 2) . '/data/logos/';
+        if (!is_dir($logoDir)) mkdir($logoDir, 0750, true);
+
+        // Altes Logo löschen
+        $alt = $db->query("SELECT wert FROM einstellungen WHERE schluessel='logo_pfad'")->fetchColumn();
+        if ($alt && is_file($alt)) unlink($alt);
+
+        // Speichern
+        $ziel = $logoDir . bin2hex(random_bytes(16)) . '.' . $erlaubt[$mime];
+        rename($tmp, $ziel);
+        chmod($ziel, 0640);
+
+        $stmt = $db->prepare(
+            'INSERT INTO einstellungen (schluessel, wert, geaendert_von)
+             VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE wert=VALUES(wert), geaendert_von=VALUES(geaendert_von)'
+        );
+        $stmt->execute(['logo_pfad', $ziel, $kuerzel]);
+        $stmt->execute(['logo_mime', $mime, $kuerzel]);
+
+        json_response(['ok' => true, 'mime' => $mime]);
+    }
+
+    // POST /logo/loeschen
+    if ($method === 'POST' && $sub === 'logo/loeschen') {
+        $pfad = $db->query("SELECT wert FROM einstellungen WHERE schluessel='logo_pfad'")->fetchColumn();
+        if ($pfad && is_file($pfad)) unlink($pfad);
+
+        $stmt = $db->prepare(
+            'INSERT INTO einstellungen (schluessel, wert, geaendert_von)
+             VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE wert=VALUES(wert), geaendert_von=VALUES(geaendert_von)'
+        );
+        $stmt->execute(['logo_pfad', '', $kuerzel]);
+        $stmt->execute(['logo_mime', '', $kuerzel]);
+
+        json_response(['ok' => true]);
+    }
+
+    // POST /zuruecksetzen
+    if ($method === 'POST' && $sub === 'zuruecksetzen') {
+        $pfad = $db->query("SELECT wert FROM einstellungen WHERE schluessel='logo_pfad'")->fetchColumn();
+        if ($pfad && is_file($pfad)) unlink($pfad);
+
+        $defaults = [
+            'schulname'      => 'Friedrich-Rückert-Gymnasium Düsseldorf',
+            'app_titel'      => 'Projektstunden NRW',
+            'app_untertitel' => 'Gymnasium G9 – Kompetenz- und Stunden-Tracking',
+            'farbe_akzent'   => '#3d6b4f',
+            'farbe_sekundaer'=> '#2c4f3a',
+            'logo_pfad'      => '',
+            'logo_mime'      => '',
+        ];
+        $stmt = $db->prepare(
+            'INSERT INTO einstellungen (schluessel, wert, geaendert_von)
+             VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE wert=VALUES(wert), geaendert_von=VALUES(geaendert_von)'
+        );
+        foreach ($defaults as $k => $v) $stmt->execute([$k, $v, $kuerzel]);
+
+        json_response(['ok' => true]);
+    }
+
+    json_error('Unbekannte Einstellungs-Aktion.', 404);
 }

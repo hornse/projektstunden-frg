@@ -18,6 +18,7 @@
   --bg:#f5f4f0;--surface:#fff;--surface2:#f0efe9;--border:#e0dfd8;--border2:#cccbc2;
   --text:#1a1a18;--text2:#6b6a62;--text3:#9d9c94;
   --accent:#2d5a3d;--accent-bg:#eaf2ec;--accent-text:#1a3d26;
+  --nav-bg:#fff;
   --warn-bg:#fdf3e3;--warn:#7a4d00;
   --danger-bg:#fdeaea;--danger:#8b1a1a;
   --info-bg:#e8f0fb;--info:#1a3d6e;
@@ -223,8 +224,10 @@ select[multiple]{height:100px}
 <div id="app-view" class="shell" style="display:none">
 <aside>
   <div class="logo">
-    <div class="logo-mark">Projektstunden</div>
-    <div class="logo-sub" id="aside-schule">Gymnasium NRW · G9</div>
+    <img id="nav-logo" src="" alt="Schullogo"
+         style="display:none;max-height:48px;max-width:140px;object-fit:contain;margin-bottom:6px">
+    <div class="logo-mark" id="nav-app-titel">Projektstunden</div>
+    <div class="logo-sub" id="nav-schulname">Gymnasium NRW · G9</div>
   </div>
   <nav>
     <button class="nv on" onclick="go('dashboard')">
@@ -266,6 +269,10 @@ select[multiple]{height:100px}
     <button class="nv admin-only" onclick="go('benutzer')">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="2.5"/><path d="M1 14c0-2.761 2.239-4.5 5-4.5"/><circle cx="12" cy="11" r="3"/><path d="M12 9.5v1.5l1 1"/></svg>
       Benutzerverwaltung
+    </button>
+    <button class="nv admin-only" onclick="go('einstellungen')">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>
+      Einstellungen
     </button>
     <button class="nv" onclick="doLogout()" style="margin-top:20px;color:var(--danger)">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3M10 11l3-3-3-3M13 8H6"/></svg>
@@ -719,6 +726,66 @@ select[multiple]{height:100px}
     <p class="sub" id="schueler-portal-sub">Übersicht deiner Projektstunden</p>
     <div id="schueler-portal-liste"></div>
     <div id="schueler-portal-detail" style="display:none"></div>
+  </div>
+
+  <!-- EINSTELLUNGEN (nur Admin) -->
+  <div id="s-einstellungen" class="screen">
+    <h1>Einstellungen</h1>
+    <p class="sub">Schulname, Logo und Farben anpassen</p>
+
+    <div class="card">
+      <h2>Allgemein</h2>
+      <label>Schulname</label>
+      <input type="text" id="ein-schulname" maxlength="80" placeholder="z. B. Friedrich-Rückert-Gymnasium Düsseldorf">
+      <label>App-Titel</label>
+      <input type="text" id="ein-titel" maxlength="60" placeholder="z. B. Projektstunden NRW">
+      <label>Untertitel</label>
+      <input type="text" id="ein-untertitel" maxlength="100" placeholder="z. B. Gymnasium G9 – Kompetenz- und Stunden-Tracking">
+      <button class="btn btn-p" onclick="einstellungenSpeichern()" style="margin-top:8px">Speichern</button>
+      <div id="ein-msg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Farben</h2>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:12px">
+        Akzentfarbe wird für Buttons und Chips verwendet.
+        Sekundärfarbe für die Navigation.
+      </p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <label>Akzentfarbe</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="color" id="ein-farbe-akzent" style="width:48px;height:36px;padding:2px;cursor:pointer;border:1px solid var(--border);border-radius:6px">
+            <input type="text" id="ein-farbe-akzent-hex" maxlength="7" placeholder="#3d6b4f" style="font-family:monospace;width:90px">
+          </div>
+        </div>
+        <div>
+          <label>Sekundärfarbe (Nav)</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="color" id="ein-farbe-sek" style="width:48px;height:36px;padding:2px;cursor:pointer;border:1px solid var(--border);border-radius:6px">
+            <input type="text" id="ein-farbe-sek-hex" maxlength="7" placeholder="#2c4f3a" style="font-family:monospace;width:90px">
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-p" onclick="farbenanSpeichern()" style="margin-top:16px">Farben speichern</button>
+      <button class="btn" onclick="einstellungenZuruecksetzen()" style="margin-top:8px;color:var(--danger)">Auf Standard zurücksetzen</button>
+      <div id="ein-farb-msg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Logo</h2>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:12px">
+        PNG, JPG oder SVG · max. 500 KB · wird oben links in der Navigation angezeigt
+      </p>
+      <div id="ein-logo-vorschau" style="margin-bottom:12px;min-height:48px"></div>
+      <input type="file" id="ein-logo-datei" accept="image/png,image/jpeg,image/svg+xml"
+             onchange="logoGewaehlt(this)" style="margin-bottom:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-p" id="ein-logo-upload-btn" onclick="logoHochladen()" disabled>Logo hochladen</button>
+        <button class="btn" id="ein-logo-loeschen-btn" onclick="logoLoeschen()" style="color:var(--danger);display:none">Logo entfernen</button>
+      </div>
+      <div id="ein-logo-msg"></div>
+    </div>
   </div>
 
   <!-- HILFE (ohne Login zugänglich) -->
