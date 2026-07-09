@@ -8,10 +8,44 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 ## [Unreleased]
 
 Geplant:
-- WebUntis-Authentifizierung für Lehrer und Schüler
-- Schüler-Lesezugriff auf eigene Werkstätten und Rückmeldungen
 - Schulanpassung (Logo, Schulname) – eigener Admin-Bereich
-- Selbsteinschätzung durch Schüler (4-stufige Skala)
+- Schüler-Sync direkt aus WebUntis (ohne CSV-Import)
+
+---
+
+## [0.7.0] – 2026-07-08
+
+### Hinzugefügt
+- **WebUntis-Authentifizierung** – Lehrer und Schüler können sich
+  zusätzlich per WebUntis-Kürzel/Passwort anmelden; E-Mail/Passwort
+  bleibt erhalten
+- **Kein manuelles Kürzel-Mapping** – Lehrer werden on-the-fly
+  authentifiziert; Schüler über `key` (WebUntis) = `schild_id` (Schild-NRW)
+- **Rollen aus WebUntis** – personType 16 (WebUntis-Admin) → `admin`;
+  personType 2 (Lehrkraft) → `lernbegleiter`; `admin_kuerzel` in Config
+  für zusätzliche Admins
+- **Schüler-Portal** – eigene Ansicht nach Schüler-Login: Werkstätten,
+  Kompetenzen mit Lehrereinschätzung, Selbsteinschätzung (1–4),
+  sichtbare Rückmeldungen
+- **Selbsteinschätzung** – Schüler können pro Kompetenz ihre eigene
+  Einschätzung setzen (1–4 Chips)
+- **`backend/auth/WebUntisAuth.php`** – eigenständiges Auth-Modul
+  mit Session-Cookie-Handling, Brute-Force-Schutz, getTeachers/getStudents
+- **Migration 06** – `webuntis_login_log`-Tabelle für Brute-Force-Schutz
+- **Hilfe-Seite** – drei Tabs in der App: Schnellstart, FAQ, Handbuch
+
+### Behoben
+- **Session-Cookie `Secure`-Flag** – PHP built-in Server hinter
+  Uberspace SSL-Proxy setzte keinen Secure-Flag;
+  Fix: `$_SERVER['HTTPS'] = 'on'` und `session_name()` in `router.php`
+  ganz oben (vor jedem require)
+- **`empty(0)` Bug** – `benutzer_id=0` (WebUntis-Lehrer ohne DB-Eintrag)
+  wurde von `empty()` als "nicht eingeloggt" behandelt;
+  Fix: `!isset() || === null` in `require_auth()`
+- **WebUntis-Admin `personId=-1`** – Admins tauchen nicht in
+  `getTeachers()` auf; Name wird aus lokaler DB nachgeschlagen
+- **Session-Pfad** – `session.save_path` per `~/etc/php.d/sessions.ini`
+  global gesetzt statt per `ini_set` (greift zu spät)
 
 ---
 
@@ -19,77 +53,51 @@ Geplant:
 
 ### Hinzugefügt
 - **Bewertungen-Screen** – eigener Nav-Eintrag; Werkstatt wählen →
-  Bewertungstabelle (Schüler × Kompetenzen, Chips 1–4 farbig) mit
-  horizontalem Scroll und fixierten Schülernamen; Rückmeldungsbereich
-  darunter mit Empfänger-Auswahl (einzeln/alle/Teilmenge)
-- **Rückmeldungen persistent** – neue Tabelle `werkstatt_rueckmeldungen`;
-  Bewertungsstufe (optional) + Freitext je Schüler; Sichtbarkeit für
-  Schüler steuerbar; UPSERT-Logik (eine Rückmeldung pro Schüler+Werkstatt)
-- **Bewertungsskala API** – `GET/PUT /api/bewertung`, `GET/POST/PUT /api/rueckmeldung`
-- **Kompetenzrahmen-Fix** – beim Anlegen/Bearbeiten initial nur MKR-Tabs;
-  KLP-Tabs erscheinen erst nach Eingabe von Stunden beim zugehörigen Fach
-- **Max-Teilnehmer-Prüfung** – Frontend und Backend prüfen ob Schüleranzahl
-  das gesetzte Limit überschreitet
-- **Migration 05** – Tabelle `werkstatt_rueckmeldungen`
+  Bewertungstabelle (Schüler × Kompetenzen, Chips 1–4 farbig)
+- **Rückmeldungen persistent** – Tabelle `werkstatt_rueckmeldungen`;
+  Bewertungsstufe + Freitext; Sichtbarkeit steuerbar
+- **Kompetenzrahmen-Fix** – initial nur MKR; KLP-Tabs nach Fachauswahl
+- **Max-Teilnehmer-Prüfung** – Frontend und Backend
+- **Migration 05** – `werkstatt_rueckmeldungen`
 
 ### Behoben
-- Modal-Teilnehmerliste: Checkbox links, Name rechts, kein horizontaler Scroll
-- Status-Speichern im Modal funktioniert jetzt über eigenen schlanken
-  Endpunkt `PUT /api/werkstatt/{id}/status`
-- Bearbeiten-Seite: `WS_EDIT_ID` wird zusätzlich im DOM gespeichert –
-  kein 500-Fehler mehr nach Deploy/Reload
-- PUT 500-Fehler: `$schuljahr_id` undefined und Foreign-Key-Violation
-  auf `klasse_id=0` behoben
+- Modal-Teilnehmerliste: sauberes Layout
+- Status-Speichern: eigener Endpunkt `PUT /api/werkstatt/{id}/status`
+- Bearbeiten-Seite: ID im DOM gespeichert – kein 500 nach Reload
+- PUT 500-Fehler: `$schuljahr_id` und `klasse_id=0`
 
 ---
 
 ## [0.5.0] – 2026-07-07
 
 ### Hinzugefügt
-- **Werkstätten-Seite umstrukturiert** – Liste oben mit Schuljahr-Filter
-  und „Details"-Button pro Card; „+ Neue Werkstatt" klappt Formular auf
-- **Bearbeiten als eigene Seite** – vollständiges Formular vorausgefüllt,
-  gleiche UX wie beim Anlegen; erreichbar über „✏️ Bearbeiten" im Modal
-- **Detail-Modal verschlankt** – nur noch Status, Teilnehmer abhaken,
-  Schließen/Löschen/Bearbeiten; Schülerliste mit max. 300px Scroll
-- **Nav-Eintrag** umbenannt: „Werkstatt eintragen" → „Werkstätten"
+- **Werkstätten-Seite umstrukturiert** – Liste oben, Formular aufklappbar
+- **Bearbeiten als eigene Seite** – vollständiges Formular vorausgefüllt
+- **Detail-Modal verschlankt** – Status, Teilnehmer, Bearbeiten, Löschen
 
 ### Behoben
-- Modal `position:fixed` – Modal erscheint jetzt zuverlässig beim Klick
-- Dashboard: Stunden und Kompetenzen nur für abgeschlossene Werkstätten
-  (`status='abgeschlossen'` oder Schüler individuell `abgeschlossen=1`)
+- Modal `position:fixed` – erscheint zuverlässig
+- Dashboard: nur abgeschlossene Werkstätten anrechnen
 
 ---
 
 ## [0.4.0] – 2026-07-05
 
 ### Hinzugefügt
-- **Werkstatt-Detailansicht** – klickbare Cards öffnen Modal mit Status,
-  Teilnehmer als „absolviert" markieren (einzeln oder alle), Löschen
-- **Multi-Klassen-Auswahl** – Klassen-Dropdown wird zu Multi-Select;
-  Schülerliste zeigt alle Schüler aus gewählten Klassen mit Klassenangabe
-- **Abschluss je Schüler** – neues Feld `abgeschlossen` in `projekt_schueler`;
-  individuell oder alle auf einmal markierbar
-- **Migration 04** – `abgeschlossen`-Flag, neue Tabelle `projekt_klassen`
-- **API** – `GET /api/werkstatt/{id}/schueler`,
-  `PUT /api/werkstatt/{id}/abschluss`, `PUT /api/werkstatt/{id}/status`
-- **Schüler-Suche über mehrere Klassen** – `?klassen=1,2,3`
+- **Werkstatt-Detailansicht** – Modal mit Status, Abschluss-Markierung
+- **Multi-Klassen-Auswahl** – jahrgangsübergreifende Werkstätten
+- **Abschluss je Schüler** – `abgeschlossen`-Flag in `projekt_schueler`
+- **Migration 04** – `abgeschlossen`-Flag, `projekt_klassen`
 
 ---
 
-## [0.3.0] – 2026-06-26 (Werkstätten-Feature)
+## [0.3.0] – 2026-06-26
 
 ### Hinzugefügt
-- **Werkstätten – erweitertes Formular** – Umbenennung Projekt → Werkstatt;
-  Schuljahr, Laufzeit (Halbjahr/Ganzjährig), Max-Teilnehmer, Präsentationsdatum
-- **Multi-Select Lernbegleiter** – erster Eintrag = Leitung, weitere = Begleitung;
-  Tabelle `projekt_lehrer` mit Rolle
-- **Zugangskontrolle** – Lernbegleiter sehen nur eigene Werkstätten;
-  Bearbeiten nur durch Leitungsperson; Admins sehen alles
-- **PUT /api/projekte/{id}** – Werkstatt bearbeiten inkl. Stunden-Update
-- **deploy.sh** – Deploy-Script mit Cache-Busting und interaktiver
-  Commit-Nachricht
-- **deploy/uberspace.md** – vollständige Serverdokumentation
+- **Werkstätten-Formular** – Schuljahr, Laufzeit, Max-Teilnehmer,
+  Präsentationsdatum, Multi-Select Lernbegleiter, Zugangskontrolle
+- **deploy.sh** – Cache-Busting, interaktive Commit-Nachricht
+- **deploy/uberspace.md** – Serverdokumentation
 
 ### Behoben
 - supervisord Interface `100.64.47.2` → `0.0.0.0:8082`
@@ -100,42 +108,19 @@ Geplant:
 ## [0.2.0] – 2026-04-27
 
 ### Hinzugefügt
-- **CSV-Import aus Schild-NRW** – Vorschau, Import, Inaktivierung fehlender
-  Schüler, Import-Log mit Statistik
-- **Schuljahrverwaltung** – anlegen, aktivieren, abschließen, löschen
-- **Schüler-Schuljahr-Verlauf** – Tabelle `schueler_schuljahr`
-- **GET /api/import/log** – letzte 20 Importe abrufbar
-
-### Geändert
-- Klassen werden beim Import automatisch angelegt
-- Klassenlehrer-Name aus CSV in `klassen.klassenlehrer_name`
+- CSV-Import aus Schild-NRW
+- Schuljahrverwaltung
 
 ---
 
 ## [0.1.0] – 2026-04-03
 
 ### Hinzugefügt
-- **Grundstruktur** – Werkstätten anlegen mit Name, Klasse, Datum,
-  Beschreibung, Status, Lehrer; Schüler zuordnen; Stunden je Fach;
-  Kompetenzen je Schüler
-- **Kompetenzrahmen** – KLPs und MKR; aufklappbare Erwartungen
-- **Dashboard** – Stundenkontingent Soll/Ist je Schüler und Fach
-- **Export** – CSV für Stunden und Kompetenzen (Excel-kompatibel)
-- **Benutzerverwaltung** – Admin: anlegen, bearbeiten, deaktivieren
-- **Migration 03** – Schuljahre, Import, Werkstatt-Erweiterungen,
-  Bewertungsstufen, `projekt_lehrer`
+- Grundstruktur Werkstätten, Kompetenzrahmen, Dashboard, Export
 
 ---
 
 ## [0.0.1] – 2026-03-30
 
 ### Hinzugefügt
-- **Login/Auth** mit Rollenverwaltung (`admin`/`lernbegleiter`)
-- **Session-Sicherheit** – HttpOnly, SameSite, session_regenerate_id
-- **Schüler verwalten** – anlegen, Soft-Delete, Filter nach Klasse
-- **Klassen verwalten** – anlegen, deaktivieren (nur Admin)
-- **Fächer** – Stunden-Soll je Jahrgang
-- **Kompetenzrahmen und Kompetenzen** – lesend
-- **API-Router** – PHP built-in server, Routing über PATH_INFO
-- **Audit-Log** – alle schreibenden Operationen protokolliert
-- **Single Page App** – Vanilla JS, Navigation über `go()`
+- Login/Auth, Schüler/Klassen, API-Router, Audit-Log, Single Page App
