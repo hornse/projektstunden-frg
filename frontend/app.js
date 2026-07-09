@@ -114,18 +114,52 @@ async function doLogout() {
 // NAVIGATION
 // ============================================================
 function go(id) {
+  // klassen ist in schueler integriert
+  if (id === 'klassen') id = 'schueler';
+
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
-  document.querySelectorAll('.nv').forEach(b => b.classList.remove('on'));
-  document.getElementById('s-' + id).classList.add('on');
+  document.querySelectorAll('.nv, .nv-child').forEach(b => b.classList.remove('on'));
+
+  const screen = document.getElementById('s-' + id);
+  if (screen) screen.classList.add('on');
+
+  // Hauptnav markieren
   document.querySelectorAll('.nv').forEach(b => {
     if ((b.getAttribute('onclick') || '').includes("'" + id + "'")) b.classList.add('on');
   });
+
+  // Admin-Sub: aufklappen wenn Admin-Screen aktiv
+  const adminScreens = ['einstellungen','benutzer','schuljahre','import'];
+  if (adminScreens.includes(id)) {
+    const sub    = document.getElementById('admin-sub');
+    const toggle = document.querySelector('.nv-group-toggle');
+    if (sub)    sub.style.display = 'block';
+    if (toggle) toggle.classList.add('open');
+    // Kind-Button markieren
+    document.querySelectorAll('.nv-child').forEach(b => {
+      if ((b.getAttribute('onclick') || '').includes("'" + id + "'")) b.classList.add('on');
+    });
+  }
+
   const init = { dashboard: initDash, projekt: initProjekt, schueler: initSchueler,
-                 klassen: initKlassen, katalog: initKatalog, export: initExport,
+                 klassen: initSchueler, katalog: initKatalog, export: initExport,
                  benutzer: initBenutzer, schuljahre: initSchuljahre, import: initImport,
                  bewertung: initBewertung, hilfe: initHilfe, einstellungen: initEinstellungen,
                  'werkstatt-edit': () => {} };
   if (init[id]) init[id]();
+}
+
+function toggleAdminGruppe() {
+  const sub  = document.getElementById('admin-sub');
+  const btn  = document.querySelector('.nv-group-toggle');
+  const open = sub.style.display === 'none';
+  sub.style.display = open ? 'block' : 'none';
+  btn.classList.toggle('open', open);
+}
+
+function toggleKlasseAnlegen() {
+  const el = document.getElementById('kl-anlegen-block');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
 // ============================================================
@@ -920,15 +954,104 @@ async function werkstattLoeschen(id) {
 // ============================================================
 // SCHÜLER
 // ============================================================
+// ============================================================
+// SCHÜLER & KLASSEN (zusammengeführt)
+// ============================================================
+let SCHUELER_ALLE = []; // Cache für Suche/Sortierung
+
 async function initSchueler() {
-  const el = document.getElementById('s-kl');
-  el.innerHTML = '<option value="">– wählen –</option>' +
-    STATE.klassen.map(k => `<option value="${k.id}">${k.bezeichnung} (${k.schuljahr})</option>`).join('');
-  renderSchuelerListe();
+  const isAdmin = STATE.user?.rolle === 'admin';
+
+  // Klassen-Dropdown für Anlegen (nur Admin sieht Card)
+  const klSel = document.getElementById('s-kl');
+  if (klSel) {
+    klSel.innerHTML = '<option value="">– wählen –</option>' +
+      STATE.klassen.map(k => `<option value="${k.id}">${k.bezeichnung} (${k.schuljahr})</option>`).join('');
+  }
+
+  // Klassen-Filter befüllen
+  const ksEl = document.getElementById('sch-klasse');
+  if (ksEl) {
+    ksEl.innerHTML = '<option value="">Alle Klassen</option>' +
+      STATE.klassen.map(k => `<option value="${k.bezeichnung}">${k.bezeichnung}</option>`).join('');
+  }
+
+  // Schuljahr-Feld vorausfüllen
+  const sjEl = document.getElementById('kl-sj');
+  if (sjEl && !sjEl.value) {
+    const aktiv = STATE.schuljahre?.find(s => s.aktiv);
+    if (aktiv) sjEl.value = aktiv.name;
+  }
+
+  // Schüler laden
+  SCHUELER_ALLE = await GET('schueler') || [];
+  schuelerRendern();
 }
+
+function schuelerRendern() {
+  const suche = (document.getElementById('sch-suche')?.value || '').toLowerCase();
+  const klass = document.getElementById('sch-klasse')?.value || '';
+  const sort  = document.getElementById('sch-sort')?.value  || 'nachname_asc';
+  const isAdmin = STATE.user?.rolle === 'admin';
+
+  let liste = SCHUELER_ALLE.filter(s => {
+    const volname = `${s.vorname} ${s.nachname} ${s.klasse}`.toLowerCase();
+    const klasseOk = !klass || s.klasse === klass;
+    return klasseOk && (!suche || volname.includes(suche));
+  });
+
+  // Sortieren
+  const [feld, richtung] = sort.split('_');
+  liste.sort((a, b) => {
+    const va = (a[feld] || '').toLowerCase();
+    const vb = (b[feld] || '').toLowerCase();
+    return richtung === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+  });
+
+  // Statistik
+  const stats = document.getElementById('sch-stats');
+  if (stats) {
+    stats.textContent = `${liste.length} von ${SCHUELER_ALLE.length} Schüler/innen`;
+  }
+
+  const el = document.getElementById('s-liste');
+  if (!liste.length) {
+    el.innerHTML = '<div class="empty">Keine Schüler gefunden.</div>';
+    return;
+  }
+
+  // Klassen-Gruppen
+  const gruppen = {};
+  liste.forEach(s => (gruppen[s.klasse] = gruppen[s.klasse] || []).push(s));
+
+  el.innerHTML = Object.keys(gruppen).sort().map(kl => {
+    const klInfo = STATE.klassen.find(k => k.bezeichnung === kl);
+    return `
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div>
+          <strong>Klasse ${kl}</strong>
+          <span style="font-size:11px;color:var(--text3);margin-left:8px">
+            ${klInfo?.schuljahr ? klInfo.schuljahr + ' · ' : ''}${gruppen[kl].length} Schüler/innen
+          </span>
+        </div>
+      </div>
+      ${gruppen[kl].map(s => `
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
+          <div class="avatar">${s.vorname[0]}${s.nachname[0]}</div>
+          <div style="flex:1">
+            <span style="font-size:13px">${s.nachname}, ${s.vorname}</span>
+          </div>
+          ${isAdmin ? `<button class="btn btn-sm btn-d" onclick="delSchueler(${s.id}, '${s.vorname} ${s.nachname}')">entfernen</button>` : ''}
+        </div>`
+      ).join('')}
+    </div>`;
+  }).join('');
+}
+
 async function schuelerSpeichern() {
-  const vorname  = document.getElementById('s-vor').value.trim();
-  const nachname = document.getElementById('s-nach').value.trim();
+  const vorname   = document.getElementById('s-vor').value.trim();
+  const nachname  = document.getElementById('s-nach').value.trim();
   const klasse_id = parseInt(document.getElementById('s-kl').value);
   if (!vorname || !nachname || !klasse_id)
     return showMsg('s-msg', 'Alle Felder ausfüllen.', 'err');
@@ -937,40 +1060,21 @@ async function schuelerSpeichern() {
     showMsg('s-msg', vorname + ' ' + nachname + ' angelegt.', 'ok');
     document.getElementById('s-vor').value = '';
     document.getElementById('s-nach').value = '';
-    renderSchuelerListe();
+    SCHUELER_ALLE = await GET('schueler') || [];
+    schuelerRendern();
   } catch(e) { showMsg('s-msg', e.message, 'err'); }
 }
-async function renderSchuelerListe() {
-  const data = await GET('schueler');
-  const el = document.getElementById('s-liste');
-  if (!data || !data.length) { el.innerHTML = '<div class="empty">Noch keine Schüler.</div>'; return; }
-  const gr = {};
-  data.forEach(s => (gr[s.klasse] = gr[s.klasse] || []).push(s));
-  el.innerHTML = Object.keys(gr).sort().map(kl =>
-    `<div class="card">
-       <div class="sec" style="margin-top:0">Klasse ${kl}</div>
-       ${gr[kl].map(s =>
-         `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
-            <div style="display:flex;align-items:center;gap:10px">
-              <div class="avatar">${s.vorname[0]}${s.nachname[0]}</div>
-              <span>${s.vorname} ${s.nachname}</span>
-            </div>
-            <button class="btn btn-sm btn-d" onclick="delSchueler(${s.id})">entfernen</button>
-          </div>`
-       ).join('')}
-     </div>`
-  ).join('');
-}
-async function delSchueler(id) {
-  if (!confirm('Schüler wirklich entfernen?')) return;
-  await DELETE('schueler/' + id);
-  renderSchuelerListe();
+
+async function delSchueler(id, name) {
+  if (!confirm(`${name} wirklich entfernen?`)) return;
+  try {
+    await DELETE('schueler/' + id);
+    SCHUELER_ALLE = SCHUELER_ALLE.filter(s => s.id !== id);
+    schuelerRendern();
+  } catch(e) { alert(e.message); }
 }
 
-// ============================================================
-// KLASSEN
-// ============================================================
-async function initKlassen() { renderKlassenListe(); }
+// Klasse anlegen (nur Admin, im aufklappbaren Block)
 async function klasseSpeichern() {
   const bezeichnung = document.getElementById('kl-bez').value.trim();
   const jahrgang    = parseInt(document.getElementById('kl-jg').value);
@@ -982,22 +1086,24 @@ async function klasseSpeichern() {
     showMsg('kl-msg', 'Klasse ' + bezeichnung + ' angelegt.', 'ok');
     document.getElementById('kl-bez').value = '';
     document.getElementById('kl-jg').value  = '';
-    await loadState(); // STATE.klassen aktualisieren
-    renderKlassenListe();
+    await loadState();
+    // Dropdowns aktualisieren
+    const klSel = document.getElementById('s-kl');
+    if (klSel) {
+      klSel.innerHTML = '<option value="">– wählen –</option>' +
+        STATE.klassen.map(k => `<option value="${k.id}">${k.bezeichnung} (${k.schuljahr})</option>`).join('');
+    }
+    const ksEl = document.getElementById('sch-klasse');
+    if (ksEl) {
+      ksEl.innerHTML = '<option value="">Alle Klassen</option>' +
+        STATE.klassen.map(k => `<option value="${k.bezeichnung}">${k.bezeichnung}</option>`).join('');
+    }
   } catch(e) { showMsg('kl-msg', e.message, 'err'); }
 }
-async function renderKlassenListe() {
-  const el = document.getElementById('kl-liste');
-  if (!STATE.klassen.length) { el.innerHTML = '<div class="empty">Noch keine Klassen.</div>'; return; }
-  el.innerHTML = STATE.klassen.map(k =>
-    `<div class="card" style="display:flex;align-items:center;justify-content:space-between">
-       <div>
-         <strong>${k.bezeichnung}</strong>
-         <span style="font-size:12px;color:var(--text3);margin-left:10px">Jg. ${k.jahrgang} · ${k.schuljahr} · ${k.schueler_anzahl} Schüler</span>
-       </div>
-     </div>`
-  ).join('');
-}
+
+// initKlassen leitet jetzt auf Schüler-Screen weiter
+async function initKlassen() { initSchueler(); }
+async function renderKlassenListe() {}
 
 // ============================================================
 // KOMPETENZKATALOG
