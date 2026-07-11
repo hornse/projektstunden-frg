@@ -509,6 +509,7 @@ function handle_kompetenzen(string $method): void {
         SELECT k.id, k.code, k.kurzname, k.beschreibung, k.jahrgangsstufe,
                k.eltern_kompetenz_id,
                kb.name AS bereich_name, kb.code AS bereich_code,
+               kb.phase, kb.inhaltsfeld, kb.kompetenzbereich,
                kr.name AS rahmen_name, kr.kuerzel AS rahmen_kuerzel,
                f.name  AS fach_name,   f.kuerzel  AS fach_kuerzel
         FROM kompetenzen k

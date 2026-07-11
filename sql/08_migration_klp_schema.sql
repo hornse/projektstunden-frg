@@ -43,12 +43,15 @@ ALTER TABLE kompetenzbereiche
             'einfuehrungsphase',      -- EF (Sek II)
             'qualifikationsphase_gk', -- Q1/Q2 Grundkurs
             'qualifikationsphase_lk'  -- Q1/Q2 Leistungskurs
-        ) NULL AFTER reihenfolge
-        COMMENT 'Schulische Phase laut G9-KLP; NULL = phasenübergreifend',
-    ADD COLUMN IF NOT EXISTS inhaltsfeld VARCHAR(120) NULL AFTER phase
-        COMMENT 'Inhaltsfeld/Gegenstandsbereich, z. B. Sprache, Texte, Kommunikation, Medien',
-    ADD COLUMN IF NOT EXISTS kompetenzbereich VARCHAR(80) NULL AFTER inhaltsfeld
-        COMMENT 'Kompetenzbereich, z. B. Rezeption/Produktion (Deutsch) oder UF/E/K/B (NaWi)';
+        ) NULL
+        COMMENT 'Schulische Phase laut G9-KLP; NULL = phasenübergreifend'
+        AFTER reihenfolge,
+    ADD COLUMN IF NOT EXISTS inhaltsfeld VARCHAR(120) NULL
+        COMMENT 'Inhaltsfeld/Gegenstandsbereich, z. B. Sprache, Texte, Kommunikation, Medien'
+        AFTER phase,
+    ADD COLUMN IF NOT EXISTS kompetenzbereich VARCHAR(80) NULL
+        COMMENT 'Kompetenzbereich, z. B. Rezeption/Produktion (Deutsch) oder UF/E/K/B (NaWi)'
+        AFTER inhaltsfeld;
 
 -- Index für phasenweises Rendern (Tabs/Farben) im Kompetenzkatalog-Screen.
 ALTER TABLE kompetenzbereiche
@@ -62,12 +65,14 @@ ALTER TABLE kompetenzbereiche
 -- schule_id. In dieser DB sind die Spalten vermutlich schon vorhanden;
 -- IF NOT EXISTS macht die Migration in beiden Fällen sicher.
 ALTER TABLE kompetenzen
-    ADD COLUMN IF NOT EXISTS eltern_kompetenz_id INT UNSIGNED NULL AFTER bereich_id
-        COMMENT 'Selbstreferenz: NULL = allgemeine Kompetenz, sonst konkrete Erwartung';
+    ADD COLUMN IF NOT EXISTS eltern_kompetenz_id INT UNSIGNED NULL
+        COMMENT 'Selbstreferenz: NULL = allgemeine Kompetenz, sonst konkrete Erwartung'
+        AFTER bereich_id;
 
 ALTER TABLE kompetenzen
-    ADD COLUMN IF NOT EXISTS schule_id INT UNSIGNED NULL AFTER fach_id
-        COMMENT 'Mandant; NULL bei fächer-/schulübergreifenden Einträgen';
+    ADD COLUMN IF NOT EXISTS schule_id INT UNSIGNED NULL
+        COMMENT 'Mandant; NULL bei fächer-/schulübergreifenden Einträgen'
+        AFTER fach_id;
 
 -- FK für die Selbstreferenz nur anlegen, wenn noch keiner existiert.
 -- (MariaDB kennt kein "ADD FOREIGN KEY IF NOT EXISTS", daher via information_schema.)

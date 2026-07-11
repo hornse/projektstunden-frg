@@ -1119,12 +1119,50 @@ async function initKatalog() {
   STATE.kompetenzen = all || [];
   renderKatalog();
 }
+// Phasen-Metadaten (Reihenfolge + Farbe pro Schulphase)
+const KAT_PHASEN = [
+  { key: 'erprobungsstufe',        label: 'Erprobungsstufe',       color: '#93c5fd' }, // hellblau
+  { key: 'erste_stufe',            label: 'Erste Stufe',           color: '#86efac' }, // hellgrün
+  { key: 'zweite_stufe',           label: 'Zweite Stufe',          color: '#fde047' }, // hellgelb
+  { key: 'einfuehrungsphase',      label: 'Einführungsphase',      color: '#fdba74' }, // hellorange
+  { key: 'qualifikationsphase_gk', label: 'Q-Phase Grundkurs',     color: '#fca5a5' }, // hellrot
+  { key: 'qualifikationsphase_lk', label: 'Q-Phase Leistungskurs', color: '#c4b5fd' }, // helllila
+];
+let AKT_KAT_PHASE = 'alle';
+
+// Beim Wechsel von Rahmen-/Fachfilter Phasenauswahl zurücksetzen
+function katRahmenWechsel() {
+  AKT_KAT_PHASE = 'alle';
+  renderKatalog();
+}
+function switchKatPhase(key) {
+  AKT_KAT_PHASE = key;
+  renderKatalog();
+}
+
 function renderKatalog() {
   const rid = parseInt(document.getElementById('kat-rahmen').value) || 0;
   const fid = parseInt(document.getElementById('kat-fach').value)   || 0;
   let komps = STATE.kompetenzen;
   if (rid) komps = komps.filter(k => { const r = STATE.rahmen.find(x => x.id === rid); return r && k.rahmen_kuerzel === r.kuerzel; });
   if (fid) { const selFach = STATE.faecher.find(x => x.id == fid); komps = komps.filter(k => selFach && k.fach_kuerzel === selFach.kuerzel); }
+
+  // Phasen-Tabs: nur anzeigen, wenn die gefilterten Kompetenzen Phasen-Angaben haben
+  const tabsEl = document.getElementById('kat-phase-tabs');
+  const phasenPresent = KAT_PHASEN.filter(p => komps.some(k => k.phase === p.key));
+  if (phasenPresent.length && tabsEl) {
+    if (AKT_KAT_PHASE !== 'alle' && !phasenPresent.some(p => p.key === AKT_KAT_PHASE)) AKT_KAT_PHASE = 'alle';
+    const tab = (key, label, color) =>
+      `<button class="ptab${AKT_KAT_PHASE === key ? ' on' : ''}" onclick="switchKatPhase('${key}')">` +
+      (color ? `<span class="dot" style="background:${color}"></span>` : '') + `${label}</button>`;
+    tabsEl.innerHTML = tab('alle', 'Alle Phasen', null) +
+      phasenPresent.map(p => tab(p.key, p.label, p.color)).join('');
+    tabsEl.style.display = 'flex';
+    if (AKT_KAT_PHASE !== 'alle') komps = komps.filter(k => k.phase === AKT_KAT_PHASE);
+  } else if (tabsEl) {
+    tabsEl.innerHTML = '';
+    tabsEl.style.display = 'none';
+  }
 
   // Allgemeine und Erwartungen trennen
   const allgemeine = komps.filter(k => !k.eltern_kompetenz_id);
@@ -1143,6 +1181,11 @@ function renderKatalog() {
   if (!Object.keys(bereiche).length) { el.innerHTML = '<div class="empty">Keine Kompetenzen gefunden.</div>'; return; }
   el.innerHTML = Object.entries(bereiche).map(([b, ks]) => {
     const [rahmen, , bereichName] = b.split('|');
+    const pMeta = KAT_PHASEN.find(p => p.key === ks[0].phase);
+    const cardStyle = pMeta ? ` style="border-left:4px solid ${pMeta.color}"` : '';
+    const phaseBadge = pMeta
+      ? `<span style="font-size:10px;font-weight:600;color:var(--text2);background:${pMeta.color}33;padding:2px 8px;border-radius:99px;margin-left:8px">${pMeta.label}</span>`
+      : '';
     const items = ks.map(k => {
       const kinder = erwByEltern[k.id] || [];
       if (!kinder.length) {
@@ -1158,9 +1201,9 @@ function renderKatalog() {
         </div>
       </div>`;
     }).join('');
-    return `<div class="card">
+    return `<div class="card"${cardStyle}>
       <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${rahmen}</div>
-      <h2>${bereichName}</h2>
+      <h2>${bereichName}${phaseBadge}</h2>
       <div class="k-pills" style="flex-wrap:wrap;gap:6px">${items}</div>
     </div>`;
   }).join('');
