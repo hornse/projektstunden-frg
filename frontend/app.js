@@ -147,6 +147,25 @@ function go(id) {
                  bewertung: initBewertung, hilfe: initHilfe, einstellungen: initEinstellungen,
                  'werkstatt-edit': () => {} };
   if (init[id]) init[id]();
+
+  fokusAufInhalt();
+}
+
+/**
+ * Setzt den Fokus auf den Inhaltsbereich.
+ *
+ * Die Anwendung tauscht ihre Ansicht aus, statt die Seite neu zu laden.
+ * Ohne diesen Sprung bliebe der Tastaturfokus dort, wo er war – meist
+ * auf einem Navigationsknopf –, und der nächste Tabulatorsprung führte
+ * wieder durch die ganze Navigation. Bildschirmleser bekämen vom
+ * Wechsel gar nichts mit.
+ *
+ * preventScroll, damit die Seite nicht springt: Der Bereich steht
+ * ohnehin oben.
+ */
+function fokusAufInhalt() {
+  const ziel = document.getElementById('hauptinhalt');
+  if (ziel) ziel.focus({ preventScroll: true });
 }
 
 function toggleAdminGruppe() {
@@ -1230,8 +1249,24 @@ async function exportCsv(typ) {
 // ============================================================
 // HILFSFUNKTIONEN
 // ============================================================
+/**
+ * Zeigt eine kurze Rückmeldung an einer bestimmten Stelle.
+ *
+ * role="status" und aria-live werden hier gesetzt statt im HTML: Die
+ * Meldungsziele liegen über die ganze Anwendung verteilt und werden
+ * teils erst zur Laufzeit erzeugt. Ohne die beiden Angaben erschien
+ * und verschwand eine Meldung, ohne dass ein Bildschirmleser etwas
+ * mitbekam – wer nicht sieht, erfuhr nicht, ob das Speichern geklappt
+ * hat.
+ *
+ * "polite" statt "assertive", damit die Ansage eine laufende Vorlesung
+ * nicht unterbricht.
+ */
 function showMsg(elId, txt, type) {
   const el = document.getElementById(elId);
+  if (!el) return;
+  el.setAttribute('role', 'status');
+  el.setAttribute('aria-live', 'polite');
   el.className = 'msg msg-' + (type === 'ok' ? 'ok' : 'err');
   el.textContent = txt;
   setTimeout(() => el.textContent = '', 4000);
