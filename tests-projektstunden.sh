@@ -103,6 +103,45 @@ GROESSE=$(wc -c < "$HTML" | tr -d ' ')
     || rot "index.html ist mit $GROESSE Bytes weiterhin groß"
 
 echo ""
+echo "Gerüst"
+grep -q 'class="ci-huelle"' "$HTML" \
+    && gruen "Seitenleisten-Variante eingebunden" || rot "kein ci-huelle"
+grep -q 'id="app-view" class="ci-huelle"' "$HTML" \
+    && gruen "Hülle ist app-view selbst" \
+    || rot "zusätzliche Hülle – die Anmeldemaske käme mit hinein"
+for D in ci-komponenten.css ci-shell.css ci-shell.js ci-icons.svg; do
+    [ -f "frontend/vendor/ci-css/$D" ] && gruen "$D vendored" || rot "$D fehlt"
+done
+grep -q 'ci-shell.js' "$HTML" && gruen "ci-shell.js eingebunden" || rot "ci-shell.js fehlt"
+grep -q 'data-ci-schalter' "$HTML" \
+    && gruen "Leiste ist einklappbar" || rot "kein Einklapp-Schalter"
+grep -q 'aria-current' "$JS" \
+    && gruen "aktiver Punkt über aria-current" || rot "aktiver Punkt nur über Klasse"
+grep -qE '^aside\{|^\.logo\{|^\.nv\{' "$CSS" \
+    && rot "eigene Shell-Regeln noch vorhanden" || gruen "keine doppelten Shell-Regeln"
+grep -q '^\.shell{' "$CSS" \
+    && rot ".shell noch da – zwei Flex-Hüllen kommen sich in die Quere" \
+    || gruen "keine zweite Flex-Hülle"
+# Untermenues kennt das Modul nicht; sie bleiben projekteigen.
+grep -q '^\.nv-sub{' "$CSS" \
+    && gruen "Administrationsgruppe bleibt projekteigen" || rot "Untermenü verschwunden"
+grep -q 'el.hidden = false' "$JS" \
+    && gruen "Logo nutzt hidden, nicht style.display" \
+    || rot "style.display blendet den Platzhalter nicht aus"
+
+ALTE=$(grep -c '<svg width=' "$HTML" || true)
+[ "$ALTE" -le 2 ] \
+    && gruen "Navigationssymbole kommen aus dem Sprite ($ALTE außerhalb)" \
+    || rot "$ALTE eingebettete SVGs – Sprite nicht durchgängig"
+
+FEHLENDE=""
+for N in $(grep -oE "ci-i-[a-z]+" "$HTML" | sort -u); do
+    grep -q "id=\"$N\"" frontend/vendor/ci-css/ci-icons.svg || FEHLENDE="$FEHLENDE $N"
+done
+[ -z "$FEHLENDE" ] && gruen "alle benutzten Symbole existieren im Sprite" \
+    || rot "im Sprite fehlen:$FEHLENDE"
+
+echo ""
 echo "Behobene Mängel"
 grep -q 'class="skip-link"' "$HTML" && gruen "Sprungmarke vorhanden" || rot "keine Sprungmarke"
 grep -q 'id="hauptinhalt" tabindex="-1"' "$HTML" \
@@ -111,7 +150,9 @@ grep -q "fokusAufInhalt" "$JS" \
     && gruen "Fokus springt nach dem Ansichtswechsel" || rot "kein Fokussprung"
 grep -q "setAttribute('role', 'status')" "$JS" \
     && gruen "Meldungen werden angesagt" || rot "Meldungen ohne role=status"
-grep -q 'id="nav-logo" src="" alt=""' "$HTML" \
+# Das <img> traegt seit dem Geruest-Umbau zusaetzlich eine Klasse;
+# deshalb ueber die ganze Datei pruefen statt zeilenweise.
+perl -0777 -ne 'exit(!(/id="nav-logo"[^>]*alt=""/s))' "$HTML" \
     && gruen "Logo ist als dekorativ ausgezeichnet" || rot "alt am Logo prüfen"
 grep -q -- '--text3:var(--ci-text-schwach)' "$CSS" \
     && gruen "--text3 erreicht AA (4.62 statt 2.76)" || rot "--text3 mit eigenem Wert"

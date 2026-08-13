@@ -27,3 +27,4 @@ error_log
 # Node (falls je genutzt)
 node_modules/
 bundles/
+NEUES_PROJEKT_PROMPT.md

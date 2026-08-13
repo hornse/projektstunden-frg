@@ -118,14 +118,22 @@ function go(id) {
   if (id === 'klassen') id = 'schueler';
 
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
-  document.querySelectorAll('.nv, .nv-child').forEach(b => b.classList.remove('on'));
+  // aria-current statt einer eigenen Klasse: ci-shell.css und
+  // Bildschirmleser lesen dasselbe Attribut, der Zustand ist damit
+  // nicht nur sichtbar, sondern auch hörbar.
+  document.querySelectorAll('.nv, .nv-child').forEach(b => {
+    b.classList.remove('on');
+    b.removeAttribute('aria-current');
+  });
 
   const screen = document.getElementById('s-' + id);
   if (screen) screen.classList.add('on');
 
   // Hauptnav markieren
   document.querySelectorAll('.nv').forEach(b => {
-    if ((b.getAttribute('onclick') || '').includes("'" + id + "'")) b.classList.add('on');
+    if ((b.getAttribute('onclick') || '').includes("'" + id + "'")) {
+      b.setAttribute('aria-current', 'page');
+    }
   });
 
   // Admin-Sub: aufklappen wenn Admin-Screen aktiv
@@ -137,7 +145,9 @@ function go(id) {
     if (toggle) toggle.classList.add('open');
     // Kind-Button markieren
     document.querySelectorAll('.nv-child').forEach(b => {
-      if ((b.getAttribute('onclick') || '').includes("'" + id + "'")) b.classList.add('on');
+      if ((b.getAttribute('onclick') || '').includes("'" + id + "'")) {
+        b.setAttribute('aria-current', 'page');
+      }
     });
   }
 
@@ -2585,17 +2595,28 @@ function applyEinstellungen(data) {
 
 async function ladeNavLogo() {
   const el = document.getElementById('nav-logo');
+  const platz = document.getElementById('nav-platzhalter');
   if (!el) return;
-  // Cache-Busting via Timestamp
-  const r = await fetch(`/api/einstellungen/logo?v=${Date.now()}`, {credentials:'include'});
-  if (r.ok) {
-    const blob = await r.blob();
-    const url  = URL.createObjectURL(blob);
-    el.src   = url;
-    el.style.display = 'block';
-  } else {
-    el.style.display = 'none';
+
+  // hidden statt style.display: Das Modul blendet damit auch den
+  // Platzhalter aus (.ci-schild-logo[hidden] in ci-shell.css). Ohne
+  // das stuenden beide nebeneinander - in einem Flex-Behaelter setzt
+  // der Browser display sonst auf block und ueberschreibt hidden.
+  try {
+    // Cache-Busting via Timestamp
+    const r = await fetch(`/api/einstellungen/logo?v=${Date.now()}`, {credentials:'include'});
+    if (r.ok) {
+      const blob = await r.blob();
+      el.src = URL.createObjectURL(blob);
+      el.hidden = false;
+      if (platz) platz.hidden = true;
+      return;
+    }
+  } catch (e) {
+    /* Ohne Logo bleibt der Platzhalter - kein Grund fuer eine Meldung. */
   }
+  el.hidden = true;
+  if (platz) platz.hidden = false;
 }
 
 async function ladeEinstellungenApp() {

@@ -88,17 +88,12 @@
    Bildschirm wäre nur verwirrend. */
 main:focus,main:focus-visible{outline:none}
 body{font-family:var(--ci-schrift);background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
-.shell{display:flex;min-height:100vh}
-aside{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
-.logo{padding:20px 20px 16px;border-bottom:1px solid var(--border)}
-.logo-mark{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:2px}
-.logo-sub{font-size:12px;color:var(--text3);font-weight:300}
+/* .shell und die eigene main-Breite sind entfallen: Das uebernimmt
+   ci-shell.css (.ci-huelle, .ci-inhalt, .ci-inhalt-innen). Zwei
+   ineinandergeschachtelte Flex-Huellen wuerden sich in die Quere
+   kommen. */
 nav{padding:12px 10px;flex:1}
-.nv{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r);font-size:13px;color:var(--text2);cursor:pointer;transition:all .15s;margin-bottom:2px;border:none;background:none;width:100%;text-align:left}
-.nv:hover{background:var(--surface2);color:var(--text)}
-.nv.on{background:var(--accent-bg);color:var(--accent-text);font-weight:500}
-.aside-foot{padding:14px 16px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);line-height:1.6}
-main{flex:1;padding:32px 36px;max-width:1000px}
+
 h1{font-size:22px;font-weight:500;margin-bottom:4px}
 h2{font-size:15px;font-weight:500;margin-bottom:12px}
 .sub{font-size:13px;color:var(--text3);margin-bottom:24px}
@@ -250,16 +245,24 @@ select[multiple]{height:100px}
 .admin-only{display:none}
 .is-admin .admin-only{display:flex}
 .is-admin .nv-group{display:block}
+/* ---- Aufklappbare Administrationsgruppe --------------------
+   Untermenues kennt ci-shell.css nicht: Nur projektstunden und
+   sprechtag haben welche. Sie bleiben deshalb hier. Die Klasse .nv
+   traegt keine eigenen Regeln mehr - sie ist nur noch der Haken, an
+   dem app.js die Punkte findet; die Gestaltung kommt aus ci-nav.
+   ------------------------------------------------------------ */
 .nv-group{display:none}
 .nv-group-toggle{width:100%;text-align:left}
 .nv-group-toggle.open{background:var(--surface2);color:var(--text);font-weight:500}
+.nv-child[aria-current="page"],
+.nv[aria-current="page"]{background:var(--accent-bg);color:var(--accent-text);font-weight:500}
 .nv-group-toggle.open .nv-chev{transform:rotate(180deg)}
 .nv-chev{transition:transform .2s}
 .nv-sub{padding-left:8px;border-left:2px solid var(--border);margin-left:12px;margin-top:2px}
 .nv-child{font-size:12px;padding:7px 10px;color:var(--text2)}
 .nv-child:hover{background:var(--surface2);color:var(--text)}
-.nv-child.on{background:var(--accent-bg);color:var(--accent-text);font-weight:500}
-@media(max-width:700px){aside{display:none}main{padding:16px}}
+
+
 
 /* Schuljahr-Karte */
 .sj-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px}
