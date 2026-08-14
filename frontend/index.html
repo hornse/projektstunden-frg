@@ -27,8 +27,17 @@
 <!-- LOGIN -->
 <div id="login-view" class="login-wrap" style="display:flex">
   <div class="login-box">
-    <h2>Projektstunden NRW</h2>
-    <p class="sub">Gymnasium G9 – Kompetenz- und Stunden-Tracking</p>
+    <!-- Marke über der Maske: Ohne sie schwebt das Formular im Nichts,
+         während sprechtag und signage zeigen, wo man ist. Das Logo
+         kommt aus dem öffentlichen Endpunkt; fehlt es, bleibt es beim
+         Titel allein. -->
+    <div class="login-marke">
+      <img id="login-logo" src="/api/einstellungen/logo" alt="" hidden>
+      <div>
+        <h2 id="login-titel">Projektstunden NRW</h2>
+        <p class="sub" id="login-schule">Gymnasium G9 – Kompetenz- und Stunden-Tracking</p>
+      </div>
+    </div>
     <label>E-Mail oder WebUntis-Kürzel</label>
     <input type="text" id="l-email" placeholder="lehrer@schule.de oder Kürzel" autocomplete="username">
     <label>Passwort</label>

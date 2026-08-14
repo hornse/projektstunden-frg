@@ -192,6 +192,11 @@ select[multiple]{height:100px}
 .empty{text-align:center;color:var(--text3);padding:36px 20px;font-size:13px}
 .login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)}
 .login-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:36px 40px;width:360px;max-width:95vw}
+/* Marke über der Anmeldemaske. */
+.login-marke{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.login-marke img{max-height:44px;max-width:64px;object-fit:contain;flex:0 0 auto}
+.login-marke h2{margin:0}
+.login-marke .sub{margin:2px 0 0}
 .login-box h2{font-size:18px;font-weight:500;margin-bottom:4px}
 .login-box .sub{margin-bottom:20px}
 /* Benutzerverwaltung */

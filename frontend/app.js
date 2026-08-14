@@ -76,6 +76,7 @@ async function checkAuth() {
 function showLogin() {
   document.getElementById('login-view').style.display = 'flex';
   document.getElementById('app-view').style.display   = 'none';
+  ladeLoginLogo();
 }
 async function showApp() {
   document.getElementById('login-view').style.display = 'none';
@@ -2591,6 +2592,25 @@ function applyEinstellungen(data) {
     if (el) el.textContent = data.app_titel;
     document.title = data.app_titel;
   }
+}
+
+/**
+ * Zeigt das Logo ueber der Anmeldemaske, falls eines hinterlegt ist.
+ *
+ * Der Endpunkt ist oeffentlich - er muss es sein, denn hier ist noch
+ * niemand angemeldet. Er liefert nur das Bild, keine weiteren Daten.
+ *
+ * complete pruefen statt nur auf 'load' warten: Das src-Attribut steht
+ * im HTML, das Bild laedt also schon beim Parsen. Wenn dieser Code
+ * laeuft, ist das Ereignis unter Umstaenden vorbei.
+ */
+function ladeLoginLogo() {
+  const bild = document.getElementById('login-logo');
+  if (!bild) return;
+  const entscheiden = () => { bild.hidden = !(bild.naturalWidth > 0); };
+  if (bild.complete) { entscheiden(); return; }
+  bild.addEventListener('load', entscheiden);
+  bild.addEventListener('error', () => { bild.hidden = true; });
 }
 
 async function ladeNavLogo() {
