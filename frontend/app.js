@@ -73,14 +73,41 @@ async function checkAuth() {
     } else showLogin();
   } catch { showLogin(); }
 }
+/**
+ * Zeigt die Anmeldemaske INNERHALB der Huelle.
+ *
+ * Vorher lag sie daneben, und die Huelle wurde ausgeblendet - die
+ * Maske schwebte dann ohne Leiste im Nichts. Jetzt bleibt die Leiste
+ * mit der Marke stehen, nur die Navigationspunkte verschwinden: Wer
+ * nicht angemeldet ist, kann keinen davon nutzen.
+ */
 function showLogin() {
   document.getElementById('login-view').style.display = 'flex';
-  document.getElementById('app-view').style.display   = 'none';
+  document.getElementById('app-view').style.display   = 'flex';
+  // Alle Ansichten aus, sonst stuende der letzte Bildschirm unter der
+  // Anmeldemaske.
+  document.querySelectorAll('.screen').forEach(e => e.classList.remove('on'));
+  navSichtbar(false);
   ladeLoginLogo();
+}
+
+/**
+ * Blendet die Navigationspunkte aus oder ein.
+ *
+ * Die Leiste selbst bleibt stehen - sie zeigt mit Logo und Titel, wo
+ * man ist. Verborgen wird nur, was ohne Anmeldung nicht nutzbar ist;
+ * „Abmelden" ohne Anmeldung waere schlicht falsch.
+ */
+function navSichtbar(an) {
+  const nav = document.querySelector('.ci-nav');
+  if (nav) nav.hidden = !an;
+  const schalter = document.querySelector('[data-ci-schalter]');
+  if (schalter) schalter.hidden = !an;
 }
 async function showApp() {
   document.getElementById('login-view').style.display = 'none';
   document.getElementById('app-view').style.display   = 'flex';
+  navSichtbar(true);
   if (STATE.user && STATE.user.rolle === 'admin') {
     document.getElementById('app-view').classList.add('is-admin');
   } else {

@@ -87,7 +87,7 @@
    ist per Tastatur dorthin navigiert - ein Rahmen um den halben
    Bildschirm wäre nur verwirrend. */
 main:focus,main:focus-visible{outline:none}
-body{font-family:var(--ci-schrift);background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+body{font-family:var(--ci-schrift);background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
 /* .shell und die eigene main-Breite sind entfallen: Das uebernimmt
    ci-shell.css (.ci-huelle, .ci-inhalt, .ci-inhalt-innen). Zwei
    ineinandergeschachtelte Flex-Huellen wuerden sich in die Quere
@@ -190,7 +190,10 @@ select[multiple]{height:100px}
 .msg-ok{background:var(--accent-bg);color:var(--accent-text)}
 .msg-err{background:var(--danger-bg);color:var(--danger)}
 .empty{text-align:center;color:var(--text3);padding:36px 20px;font-size:13px}
-.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)}
+/* Die Anmeldemaske liegt seit dem Geruest-Umbau INNERHALB der Huelle.
+   min-height statt 100vh: Die Leiste daneben bestimmt jetzt die
+   Hoehe, sonst entstuende ein Bildlauf. */
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:70vh;background:var(--bg)}
 .login-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:36px 40px;width:360px;max-width:95vw}
 /* Marke über der Anmeldemaske. */
 .login-marke{display:flex;align-items:center;gap:12px;margin-bottom:20px}

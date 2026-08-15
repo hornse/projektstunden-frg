@@ -107,8 +107,19 @@ echo "Gerüst"
 grep -q 'class="ci-huelle"' "$HTML" \
     && gruen "Seitenleisten-Variante eingebunden" || rot "kein ci-huelle"
 grep -q 'id="app-view" class="ci-huelle"' "$HTML" \
-    && gruen "Hülle ist app-view selbst" \
-    || rot "zusätzliche Hülle – die Anmeldemaske käme mit hinein"
+    && gruen "Hülle ist app-view selbst" || rot "keine Hülle an app-view"
+# Die Anmeldemaske liegt INNERHALB der Hülle, damit die Leiste mit der
+# Marke stehen bleibt. Lag sie daneben, schwebte das Formular im Nichts.
+perl -0777 -ne 'exit(!(/ci-inhalt-innen.*?id="login-view"/s))' "$HTML" \
+    && gruen "Anmeldemaske liegt in der Hülle" \
+    || rot "Anmeldemaske außerhalb – Leiste fehlt beim Anmelden"
+# Die Attribute stehen ueber zwei Zeilen, deshalb ueber die ganze Datei.
+perl -0777 -ne 'exit(!(/id="app-view"[^>]*display:flex/s))' "$HTML" \
+    && gruen "Hülle ist von Anfang an sichtbar" \
+    || rot "Hülle startet verborgen – die Marke fehlt beim Anmelden"
+grep -q "navSichtbar" "$JS" \
+    && gruen "Navigationspunkte werden gesteuert" \
+    || rot "keine Steuerung der Navigationspunkte"
 for D in ci-komponenten.css ci-shell.css ci-shell.js ci-icons.svg; do
     [ -f "frontend/vendor/ci-css/$D" ] && gruen "$D vendored" || rot "$D fehlt"
 done

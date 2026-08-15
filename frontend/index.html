@@ -24,42 +24,18 @@
 <body class="ci-seite">
     <a href="#hauptinhalt" class="skip-link">Zum Inhalt springen</a>
 
-<!-- LOGIN -->
-<div id="login-view" class="login-wrap" style="display:flex">
-  <div class="login-box">
-    <!-- Marke über der Maske: Ohne sie schwebt das Formular im Nichts,
-         während sprechtag und signage zeigen, wo man ist. Das Logo
-         kommt aus dem öffentlichen Endpunkt; fehlt es, bleibt es beim
-         Titel allein. -->
-    <div class="login-marke">
-      <img id="login-logo" src="/api/einstellungen/logo" alt="" hidden>
-      <div>
-        <h2 id="login-titel">Projektstunden NRW</h2>
-        <p class="sub" id="login-schule">Gymnasium G9 – Kompetenz- und Stunden-Tracking</p>
-      </div>
-    </div>
-    <label>E-Mail oder WebUntis-Kürzel</label>
-    <input type="text" id="l-email" placeholder="lehrer@schule.de oder Kürzel" autocomplete="username">
-    <label>Passwort</label>
-    <input type="password" id="l-pass" autocomplete="current-password">
-    <button class="btn btn-p btn-full" onclick="doLogin()">Anmelden</button>
-    <div id="l-msg" role="status" aria-live="polite"></div>
-    <p style="font-size:11px;color:var(--text3);margin-top:12px;text-align:center">
-      Lehrer: E-Mail/Passwort oder WebUntis-Kürzel<br>Schüler: WebUntis-Login
-    </p>
-  </div>
-</div>
-
 <!-- HAUPTANWENDUNG -->
 <!-- Gerüst aus hornse/ci-css, Variante Seitenleiste: acht
      Navigationspunkte plus aufklappbare Administration. Kopfleisten
      brechen ab etwa sieben Punkten in horizontales Scrollen um.
 
-     Die Hülle ist #app-view selbst: Sie wird zwischen Anmeldung und
-     Anwendung umgeschaltet, und eine zweite Hülle darum würde die
-     Anmeldemaske mit einschließen. -->
+     Die Hülle ist #app-view selbst und bleibt IMMER sichtbar – auch
+     vor der Anmeldung. Die Maske liegt darin, damit die Leiste mit
+     der Marke stehen bleibt; verborgen werden nur die
+     Navigationspunkte. Vorher schwebte das Formular ohne Leiste im
+     Nichts. -->
 <div id="app-view" class="ci-huelle" data-ci-huelle data-leiste="voll"
-     data-ci-icons="/vendor/ci-css/ci-icons.svg?v=DEV" style="display:none">
+     data-ci-icons="/vendor/ci-css/ci-icons.svg?v=DEV" style="display:flex">
 <aside class="ci-leiste">
   <div class="ci-schild">
     <span class="ci-schild-platzhalter" id="nav-platzhalter" aria-hidden="true">P</span>
@@ -151,6 +127,33 @@
       <svg class="ci-symbol" aria-hidden="true"><use href="/vendor/ci-css/ci-icons.svg#ci-i-menue"></use></svg>
       Menü
     </button>
+
+<!-- LOGIN -->
+<div id="login-view" class="login-wrap" style="display:flex">
+  <div class="login-box">
+    <!-- Marke über der Maske: Ohne sie schwebt das Formular im Nichts,
+         während sprechtag und signage zeigen, wo man ist. Das Logo
+         kommt aus dem öffentlichen Endpunkt; fehlt es, bleibt es beim
+         Titel allein. -->
+    <div class="login-marke">
+      <img id="login-logo" src="/api/einstellungen/logo" alt="" hidden>
+      <div>
+        <h2 id="login-titel">Projektstunden NRW</h2>
+        <p class="sub" id="login-schule">Gymnasium G9 – Kompetenz- und Stunden-Tracking</p>
+      </div>
+    </div>
+    <label>E-Mail oder WebUntis-Kürzel</label>
+    <input type="text" id="l-email" placeholder="lehrer@schule.de oder Kürzel" autocomplete="username">
+    <label>Passwort</label>
+    <input type="password" id="l-pass" autocomplete="current-password">
+    <button class="btn btn-p btn-full" onclick="doLogin()">Anmelden</button>
+    <div id="l-msg" role="status" aria-live="polite"></div>
+    <p style="font-size:11px;color:var(--text3);margin-top:12px;text-align:center">
+      Lehrer: E-Mail/Passwort oder WebUntis-Kürzel<br>Schüler: WebUntis-Login
+    </p>
+  </div>
+</div>
+
   <!-- DASHBOARD -->
   <div id="s-dashboard" class="screen on">
     <h1>Dashboard</h1>
