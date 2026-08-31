@@ -1,201 +1,146 @@
-# CLAUDE.md – Projektstunden NRW
+# Projektgedächtnis: Projektstunden NRW
 
-Diese Datei gibt Claude (und anderen KI-Assistenten) sofortigen Kontext
-über das Projekt, die Infrastruktur und alle bekannten Fallstricke.
-**Bitte zu Beginn jeder Session lesen.**
+Diese Datei wird bei jedem Sessionstart automatisch gelesen. Was hier
+steht, muss nicht mehr erklärt werden.
 
----
+Ergänzend:
+- Entscheidungen mit Begründung: @docs/ENTSCHEIDUNGEN.md
+- Serverkonfiguration: @deploy/uberspace.md
+- Konfigurationsreferenz: @docs/CONFIG.md
 
-## Projektkontext
+## Was das Projekt ist
 
-| Was | Wert |
-|---|---|
-| **App** | Projektstunden NRW – Verwaltung von Projektstunden an NRW-Schulen |
-| **Schule** | Friedrich-Rückert-Gymnasium Düsseldorf |
-| **Entwickler** | Sebastian Horn (IT-Administrator und Lehrer) |
-| **Lokaler Pfad** | `/Users/sebastianhorn/Projekte/projektstunden` |
-| **Server** | `hornse@halimede.uberspace.de` |
-| **Work-Tree** | `/home/hornse/projektstunden` |
-| **Bare Repo** | `/home/hornse/repos/projektstunden.git` |
-| **Domain** | `projektstunden.hornse.de` |
-| **Port** | `8082` |
-| **Datenbank** | `hornse_projektstunden` (MariaDB) |
-| **GitHub** | `hornse/projektstunden` (privat) |
-| **Deploy** | `./deploy.sh "commit message"` |
+Webanwendung zur Verwaltung von Projektstunden am Friedrich-Rückert-Gymnasium
+Düsseldorf. Lernbegleiter legen Werkstätten an, ordnen Schüler zu, rechnen
+Projektstunden auf Fächer an, dokumentieren Kompetenzen aus KLP und MKR,
+bewerten vierstufig und schreiben Rückmeldungen. Schüler sehen ihre eigenen
+Werkstätten und geben eine Selbsteinschätzung ab.
 
----
+Stand: v0.7.x, im Produktivbetrieb unter `projektstunden.hornse.de`.
+Der Kompetenzkatalog ist inhaltlich unbrauchbar (siehe E8) und wird neu
+aufgebaut.
 
-## Stack
+## Der Stack — nicht verhandelbar
 
 | Schicht | Technologie |
 |---|---|
-| Frontend | Vanilla JS, HTML, CSS – kein Build-Schritt |
-| Backend | PHP 8.1+, kein Framework, eigener Router |
-| Datenbank | MariaDB 10.6, PDO |
-| Auth | WebUntis JSON-RPC + lokales E-Mail/Passwort |
-| Hosting | Uberspace 7, PHP built-in Server, supervisord |
+| Frontend | Vanilla JS, HTML, CSS — kein Build-Schritt, kein Framework |
+| Backend | PHP 8.1+, kein Framework, eigener Router in `backend/router.php` |
+| Datenbank | MariaDB 10.6 über PDO, Datenbank `hornse_projektstunden` |
+| Auth | WebUntis JSON-RPC **und** lokales bcrypt-Passwort (beides, siehe E1) |
+| Auslieferung | Uberspace 7, PHP built-in Server hinter SSL-Proxy, supervisord, Port 8082 |
+| Lizenz | GPL v3 |
 
----
+Arbeitsverzeichnis lokal: `/Users/sebastianhorn/Projekte/projektstunden`
+Work-Tree auf dem Server: `/home/hornse/projektstunden`
+Zwei Remotes: `github` und `uberspace`. `deploy.sh` pusht auf beide.
 
-## Dateistruktur
+## Regeln, die schon einmal Schaden angerichtet haben
 
-```
-projektstunden/
-├── backend/
-│   ├── router.php          ← HTTPS + session_name GANZ OBEN (kritisch!)
-│   ├── config.php          ← NICHT in git (.gitignore)
-│   ├── config.example.php  ← Vorlage in git
-│   ├── auth/
-│   │   └── WebUntisAuth.php
-│   └── api/
-│       └── index.php       ← API-Router + alle Handler
-├── frontend/
-│   ├── index.html          ← SPA
-│   └── app.js              ← Vanilla JS
-├── sql/
-│   ├── 01_schema.sql
-│   ├── 02_seed.sql
-│   ├── 03_migration_schuljahr_schueler_werkstatt.sql
-│   ├── 04_migration_werkstatt_detail.sql
-│   ├── 05_migration_rueckmeldungen.sql
-│   ├── 06_migration_webuntis_auth.sql
-│   └── 09_seed_sport_konkrete_erwartungen.sql
-├── docs/
-│   ├── INSTALL.md
-│   ├── BENUTZERHANDBUCH.md
-│   └── CONFIG.md
-├── deploy/
-│   └── uberspace.md
-├── deploy.sh
-├── CHANGELOG.md
-├── README.md
-├── LICENSE (GPL v3)
-└── .gitignore
-```
+**`session_name()` und `$_SERVER['HTTPS']` stehen in `backend/router.php`
+ganz oben, vor jedem `require`.**
+Vorfall (08.07.2026): Der Login gab 200 zurück, der Cookie war im Browser
+gesetzt, die Session-Datei lag korrekt in `~/tmp/sessions` — und trotzdem
+antwortete jeder Folgeaufruf mit 401. Ursache: PHP liest den Cookie-Namen
+beim ersten Session-Zugriff; `session_name()` kam zu spät und PHP legte bei
+jedem Request eine neue leere Session an. Ohne `HTTPS = 'on'` fehlt zusätzlich
+das `Secure`-Flag, weil Uberspace SSL vor dem PHP-Prozess terminiert — Chrome
+verwirft solche Cookies auf HTTPS-Seiten stillschweigend. Die Suche hat einen
+halben Tag gekostet.
 
----
-
-## WebUntis-Konfiguration
-
-| Was | Wert |
-|---|---|
-| `base_url` | `https://frg-dusseldorf.webuntis.com` |
-| `school` | `frg-dusseldorf` |
-| `client` | `ProjektstundenNRW` |
-| `allowed_person_types` | `[2, 16, 5]` |
-| `admin_kuerzel` | `['Hor']` |
-| personType 2 | Lehrkraft → `lernbegleiter` |
-| personType 16 | WebUntis-Admin → `admin`, personId = **-1** |
-| personType 5 | Schüler → Schüler-Portal |
-| Schüler `key` | = `schild_id` in der DB (aus Schild-NRW) |
-
----
-
-## Rollen
-
-| Rolle | Rechte |
-|---|---|
-| `admin` | Alles inkl. Schuljahre, Import, alle Werkstätten |
-| `lernbegleiter` | Eigene Werkstätten, Bewertungen, Rückmeldungen |
-| `schueler` | Schüler-Portal (nur lesen + Selbsteinschätzung) |
-
----
-
-## Kritische Regeln (IMMER beachten)
-
-### 1. router.php – zwei Zeilen GANZ OBEN
+**Für `benutzer_id` niemals `empty()`.**
+Vorfall (08.07.2026): WebUntis-Lehrer ohne lokalen Datenbankeintrag bekommen
+`benutzer_id = 0`. `empty(0)` ist in PHP `true`, also galten sie als
+ausgeloggt. Der Fehler war unsichtbar, weil die Session-Datei nachweislich
+korrekt war — erst ein `error_log(json_encode($_SESSION))` in `require_auth()`
+hat es gezeigt. Richtig ist:
 ```php
-$_SERVER['HTTPS'] = 'on';
-session_name('proj_session');
-// DANN erst require bootstrap/config
+if (!isset($_SESSION['benutzer_id']) || $_SESSION['benutzer_id'] === null)
 ```
-Uberspace terminiert SSL vor PHP. Ohne diese Zeilen:
-- Kein `Secure`-Flag → Browser verwirft Cookie auf HTTPS
-- Falscher Cookie-Name → Session-Wiederherstellung schlägt fehl
+Dasselbe gilt im Frontend: `if (me && me.id)` wirft den WebUntis-Lehrer zurück
+auf den Login. Es muss `if (me && (me.id || me.id === 0))` heißen.
 
-### 2. require_auth() – NIEMALS empty()
-```php
-// ✗ FALSCH – WebUntis-Lehrer haben benutzer_id=0
-if (empty($_SESSION['benutzer_id'])) { /* 401 */ }
+**`session.save_path` gehört nach `~/etc/php.d/sessions.ini`, nicht in
+`ini_set()`.**
+Vorfall (08.07.2026): `ini_set('session.save_path', ...)` in der `config.php`
+greift bei PHP-FPM zu spät. Global setzen und `uberspace tools restart php`.
 
-// ✓ RICHTIG
-if (!isset($_SESSION['benutzer_id']) || $_SESSION['benutzer_id'] === null) { /* 401 */ }
-```
+**Der JSESSIONID-Cookie aus `authenticate` muss an alle Folgeaufrufe.**
+Vorfall (08.07.2026): `getTeachers()` lieferte eine leere Antwort, weil der
+Aufruf ohne Session-Cookie ging. Ergebnis war ein Login mit leerem Vor- und
+Nachnamen — ohne Fehlermeldung. In `WebUntisAuth.php` wird der Cookie aus dem
+`Set-Cookie`-Header gelesen und intern gehalten.
 
-### 3. session.save_path – per php.d
-```bash
-# ~/etc/php.d/sessions.ini
-session.save_path = /home/hornse/tmp/sessions
-```
-`ini_set()` greift bei PHP-FPM zu spät.
+**WebUntis-Admins haben `personId = -1`.**
+Vorfall (08.07.2026): personType 16 taucht nicht in `getTeachers()` auf, weil
+Admins keine Stundenplan-Personen sind. Die Suche nach `personId` lief ins
+Leere. Bei `personId <= 0` wird `getTeachers()` übersprungen und der Name über
+das Kürzel aus der lokalen Datenbank geholt.
 
-### 4. WebUntis-Admin (personType 16) hat personId = -1
-Kein Eintrag in `getTeachers()`. Name aus DB per Kürzel nachschlagen.
+**Ein `UPDATE` darf keine Fremdschlüsselspalte auf 0 setzen.**
+Vorfall (07.07.2026): Das Bearbeiten-Formular schickte kein `klasse_id`, der
+Handler machte daraus `0`, der Fremdschlüssel schlug fehl. Der PHP-Fehler kam
+als HTML zurück, im Browser erschien
+`Unexpected token '<', "<!DOCTYPE "... is not valid JSON` — eine Meldung, die
+nichts über die Ursache sagt. Bei fehlendem Wert die Spalte aus dem `UPDATE`
+weglassen, nicht auf 0 setzen. Im selben Block war `$schuljahr_id` undefiniert.
 
-### 5. WebUntis JSESSIONID-Cookie
-Nach `authenticate` den `JSESSIONID`-Cookie aus `Set-Cookie` speichern
-und bei `getTeachers()`, `getStudents()`, `logout()` als Header mitschicken.
-→ In `WebUntisAuth.php` bereits implementiert (`$this->sessionCookie`).
+**JavaScript-Variablen überleben keinen Deploy.**
+Vorfall (07.07.2026): Die Werkstatt-ID lag in `WS_EDIT_ID`. Nach einem Deploy
+lud der Browser die Seite neu, die Variable war `undefined`, das Speichern
+schlug fehl. Kritische IDs gehören in ein verstecktes `<input>` im DOM, die
+Variable bleibt nur Fallback.
 
-### 6. getStudents() liefert kein idOfClass
-Bei `frg-dusseldorf.webuntis.com` kein `idOfClass`-Feld in `getStudents()`.
-`klasseId` kommt nur beim Schüler-Login in `authenticate`-Antwort zurück.
+**Von einer KI erzeugte Fachdaten gelten als unbelegt, bis sie gegen die
+Quelle geprüft sind.**
+Vorfall (10.07.2026): Die Kompetenzrahmen aller Fächer stammten aus einer
+früheren KI-Sitzung. Die Struktur sah plausibel aus und war vollständig falsch
+— G8-Kompetenzbereiche statt der G9-Inhaltsfelder, bei Sport 227 „Bereiche"
+mit je genau einer Kompetenz. Aufgefallen ist es erst beim Abgleich mit dem
+PDF des Kernlehrplans, Monate später. Siehe E8.
 
-### 7. WebUntis-Lehrer ohne DB-Eintrag haben id=0
-```javascript
-// ✗ FALSCH – springt zurück zum Login
-if (me && me.id) { showApp(); }
-
-// ✓ RICHTIG
-if (me && (me.id || me.id === 0)) { showApp(); }
-```
-
----
-
-## Bekannte Bugs und Fixes (bereits behoben)
-
-| Bug | Fix |
-|---|---|
-| Session geht nach Login verloren | `session_name()` in router.php ganz oben |
-| Cookie ohne Secure-Flag | `$_SERVER['HTTPS'] = 'on'` in router.php |
-| 401 obwohl Session vorhanden | `empty(0)` → `!isset() || === null` |
-| `<!DOCTYPE` statt JSON | 500-Fehler: `supervisorctl tail projektstunden stderr` |
-| WebUntis-Admin Name leer | personId=-1 → aus DB per Kürzel nachschlagen |
-| Bearbeiten-Seite 500 | `$schuljahr_id` undefined + `klasse_id=0` FK-Violation |
-
----
-
-## Häufige Debug-Befehle
+## Vor jeder Auslieferung wirklich prüfen
 
 ```bash
-# Server-Log
-supervisorctl tail projektstunden stderr | tail -20
+# 1. Läuft der Dienst?
+ssh hornse@halimede.uberspace.de 'supervisorctl status projektstunden'
 
-# Session prüfen
-cat ~/tmp/sessions/sess_SESSIONID
+# 2. Trägt eine Session über zwei Requests?  (deckt die Session-Fallen oben ab)
+curl -s -X POST https://projektstunden.hornse.de/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"<mail>","passwort":"<pw>"}' -c /tmp/c.txt > /dev/null && \
+curl -s https://projektstunden.hornse.de/api/auth/me -b /tmp/c.txt
+# Erwartet: JSON mit id/vorname/rolle. Bei {"error":"Nicht eingeloggt."} anhalten.
 
-# API direkt testen
-curl -s https://projektstunden.hornse.de/api/auth/me \
-  -H "Cookie: proj_session=SESSIONID"
+# 3. Hat der Cookie das Secure-Flag?
+curl -s -X POST https://projektstunden.hornse.de/api/auth/login \
+  -H "Content-Type: application/json" -d '{"username":"x","passwort":"x"}' \
+  -D - -o /dev/null | grep -i set-cookie
+# Erwartet: "; secure; HttpOnly; SameSite=Lax"
 
-# DB-Status
-mysql hornse_projektstunden -e "SHOW TABLES;"
+# 4. Serverfehler seit dem letzten Deploy?
+ssh hornse@halimede.uberspace.de 'supervisorctl tail projektstunden stderr' | tail -20
+
+# 5. Ausliefern
+./deploy.sh "<commit message>"
 ```
 
----
+**Offen: Dieses Projekt hat kein Testskript.** Solange das so ist, sind
+„Ausgangsstand" und „erwartete Prüfungszahl" in jedem Auftrag leer. Das ist
+eine bekannte Lücke, keine Nachlässigkeit im Einzelfall — siehe
+`docs/AUFTRAG-testskript.md`.
 
-## Aktueller Stand (v0.7.0 – Juli 2026)
+## Was nicht in git gehört
 
-**Fertig:**
-- Werkstätten (anlegen, bearbeiten, Details, Status, Abschluss)
-- Bewertungen (4-stufige Fremdeinschätzung, Kompetenz × Schüler)
-- Rückmeldungen (persistent, Sichtbarkeit steuerbar)
-- Dashboard (Stundenkontingent Soll/Ist, Kompetenzen)
-- WebUntis-Auth (Lehrer + Admin + Schüler)
-- Schüler-Portal (lesen + Selbsteinschätzung)
-- Hilfe-Seite (Schnellstart, FAQ, Handbuch)
-- CSV-Import aus Schild-NRW
+`backend/config.php` steht in `.gitignore` und enthält das Datenbankpasswort
+und die WebUntis-Konfiguration. Sie wird beim Deploy **nicht** überschrieben.
+Änderungen daran müssen auf dem Server von Hand nachgezogen und hier vermerkt
+werden, sonst gehen sie beim nächsten Aufsetzen verloren.
 
-**Noch offen:**
-- Schulanpassung (Logo, Schulname) – Priorität 4
-- WebUntis-Schüler-Sync (Bulk-Import via API) – zurückgestellt
+## Arbeitsweise
+
+- „Ich weiß es nicht" statt einer plausiblen Vermutung. Besonders bei
+  Fachdaten aus Lehrplänen: lieber die Quelle anfordern als rekonstruieren.
+- Rückfragen vor Entscheidungen mit Tragweite, nicht danach.
+- Gefundene Fehler werden mitbehoben und benannt, auch außerhalb des Auftrags.
+- Bei einem roten Testlauf anhalten und melden, nicht reparieren.
