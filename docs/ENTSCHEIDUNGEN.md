@@ -247,3 +247,18 @@ aus Kapitel 2.3 des Lehrplans sind als `Zweite Stufe` eingetragen, gelten aber
 für die gesamte Sekundarstufe I. Sie bekommen die Phase `sek1_uebergreifend`.
 Doppelt anlegen — je einmal für Erste und Zweite Stufe — wurde verworfen, weil
 dann jede Korrektur zweimal erfolgen müsste.
+
+---
+
+## E13 — Offene Punkte am Kompetenzkatalog (02.09.2026)
+
+Kein Beschluss, sondern eine Merkliste, damit die Lücken nicht im Chatverlauf
+verschwinden. Wird gestrichen, sobald jeder Punkt erledigt ist.
+
+- **WP Wirtschaft** (`WPWI_KLP`): Es gibt einen eigenen Lehrplan, er liegt noch
+  nicht vor. Der Rahmen bleibt bis dahin unbefüllt und wird nicht gestrichen.
+- **Latein Oberstufe**: wird an der Schule nicht unterrichtet. Kein GOSt-Rahmen
+  anlegen.
+- **Deutsch GOSt**: Grundlage ist `gost_klp_d_2026_08_24.pdf`, die verabschiedete
+  Fassung. Der Entwurf vom 31.07.2025, der in früheren Notizen auftaucht, ist
+  überholt und wird nicht verwendet.
