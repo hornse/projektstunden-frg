@@ -262,3 +262,29 @@ verschwinden. Wird gestrichen, sobald jeder Punkt erledigt ist.
 - **Deutsch GOSt**: Grundlage ist `gost_klp_d_2026_08_24.pdf`, die verabschiedete
   Fassung. Der Entwurf vom 31.07.2025, der in früheren Notizen auftaucht, ist
   überholt und wird nicht verwendet.
+
+---
+
+## E14 — Kompetenz-Codes werden mit der Phase korrigiert (02.09.2026)
+
+**Anlass:** Die 21 übergeordneten Erwartungen der Sekundarstufe I bekommen nach
+E12 die Phase `sek1_uebergreifend`. Ihre Codes lauten `DE_S2_UEB_REZ_01` ff. und
+behaupten weiterhin „Zweite Stufe".
+
+**Befund:** `projekt_schueler_kompetenzen` enthält null Zuweisungen für Deutsch —
+das Werkzeug ist noch nicht im Produktivbetrieb. Die Codes werden weder im
+Frontend noch im Backend gegen feste Werte geprüft; sie werden ausschließlich
+generisch gelesen und angezeigt. Die Zuordnung von Kompetenzen läuft über
+`kompetenz_id`, nicht über den Code.
+
+**Entscheidung:** Die Codes werden auf `DE_S1U_UEB_REZ_01` ff. umbenannt,
+zusammen mit der Phasenkorrektur und in derselben Transaktion.
+
+**Warum:** Ein Code, der etwas anderes behauptet als die Spalte daneben, wird
+irgendwann geglaubt. Solange nichts zugewiesen ist und die Codes nirgends
+außerhalb der Datenbank auftauchen, kostet die Umbenennung nichts. Nach der
+Inbetriebnahme kostet sie eine Datenmigration und die Frage, was in bereits
+ausgegebenen Nachweisen steht.
+
+**Was das nicht heißt:** Ob Codes später außerhalb der Anwendung sichtbar werden
+— in Exporten, Listen, Zeugnissen — ist offen. Genau deshalb jetzt.
