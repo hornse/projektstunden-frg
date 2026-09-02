@@ -221,3 +221,29 @@ Folge.
 Gliederung als Anzeigetext mitführen — wurde verworfen, weil sich damit nicht
 mehr abfragen lässt, welche Erwartungen zu einem Inhaltsfeld gehören. Genau das
 braucht die Zuordnung von Kompetenzen zu einer Werkstatt.
+
+---
+
+## E12 — Deutsch Sek I bleibt, E8 gilt nur noch für die übrigen Fächer (02.09.2026)
+
+**Anlass:** Zwischen E8 und heute wurde der Rahmen `DEU_KLP` von jemandem neu
+befüllt. Die Herkunft war zunächst unklar — dieselbe Lage, die zu E8 geführt
+hatte.
+
+**Befund:** Die Daten wurden gegen `g9_d_klp_3409_2019_06_23.pdf` geprüft. 28
+Bereiche, 226 Kompetenzerwartungen, Gliederung „Phase · Inhaltsfeld ·
+Kompetenzbereich", Codes nach dem Muster `DE_EP_UEB_REZ_01`. Vier Bereiche
+wurden ausgezählt und stimmen exakt; die Formulierungen sind wörtlich aus dem
+Lehrplan übernommen, keine Zusammenfassungen.
+
+**Entscheidung:** `DEU_KLP` bleibt erhalten. E8 gilt unverändert für alle
+übrigen Fachrahmen. Die Gliederung und das Code-Schema von Deutsch sind ab
+sofort die Vorlage für alle weiteren Fächer.
+
+**Warum:** Ein Neuaufbau würde geprüfte Daten durch ungeprüfte ersetzen.
+
+**Was das nicht heißt:** Ein Mangel bleibt. Die 21 übergeordneten Erwartungen
+aus Kapitel 2.3 des Lehrplans sind als `Zweite Stufe` eingetragen, gelten aber
+für die gesamte Sekundarstufe I. Sie bekommen die Phase `sek1_uebergreifend`.
+Doppelt anlegen — je einmal für Erste und Zweite Stufe — wurde verworfen, weil
+dann jede Korrektur zweimal erfolgen müsste.
