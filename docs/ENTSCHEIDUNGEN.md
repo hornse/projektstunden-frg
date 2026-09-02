@@ -187,3 +187,37 @@ woher sie stammen.
 
 **Was das nicht heißt:** Nicht jede Kleinigkeit wird ein Eintrag. Hier steht,
 wovon jemand später denken könnte „warum eigentlich so?".
+
+---
+
+## E11 — Kompetenzbereiche werden ein Baum, nicht drei feste Spalten (02.09.2026)
+
+**Anlass:** Für den Neuaufbau des Kompetenzkatalogs (E8) war ein Schema mit den
+Spalten `phase`, `inhaltsfeld` und `kompetenzbereich` vorgesehen. Vor der
+Umsetzung wurden alle 36 Kernlehrpläne auf ihre Gliederung hin ausgewertet.
+
+**Befund:** Die Fächer gliedern unterschiedlich tief. Deutsch, die
+Naturwissenschaften und die Gesellschaftswissenschaften haben zwei Ebenen
+(Inhaltsfeld, darunter der Kompetenzbereich). Englisch, Französisch und
+Spanisch haben drei (Funktionale kommunikative Kompetenz, darunter sieben
+Teilbereiche wie Hörverstehen und Sprachmittlung, darunter die Erwartungen) und
+kennen in dieser Achse gar kein Inhaltsfeld. Mathematik hat zwei gleichrangige
+Gliederungen nebeneinander — prozessbezogen (Operieren, Modellieren,
+Problemlösen, Argumentieren, Kommunizieren) und inhaltsbezogen
+(Arithmetik/Algebra, Funktionen, Geometrie, Stochastik). Sport führt zusätzlich
+zu den Inhaltsfeldern a bis f eine zweite Inhaltsachse mit Bewegungsfeldern.
+
+**Entscheidung:** `kompetenzbereiche` bekommt `parent_id` als Selbstreferenz.
+Dazu `phase` als eigene Spalte, weil die Phase quer zu allen Ebenen liegt, und
+`art`, damit die Oberfläche weiß, was ein Knoten darstellt.
+
+**Warum:** Drei feste Spalten hätten bei Englisch eine Ebene verloren und bei
+Mathematik eine der beiden Gliederungen. Beides wäre erst beim Befüllen des
+jeweiligen Fachs aufgefallen — also nach dem Import von Deutsch und mehreren
+anderen Fächern, mit einer erneuten Migration über den gesamten Bestand als
+Folge.
+
+**Was das nicht heißt:** Die Alternative — nur die Erwartungen speichern und die
+Gliederung als Anzeigetext mitführen — wurde verworfen, weil sich damit nicht
+mehr abfragen lässt, welche Erwartungen zu einem Inhaltsfeld gehören. Genau das
+braucht die Zuordnung von Kompetenzen zu einer Werkstatt.
