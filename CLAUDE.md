@@ -7,6 +7,8 @@ Ergänzend:
 - Entscheidungen mit Begründung: @docs/ENTSCHEIDUNGEN.md
 - Serverkonfiguration: @deploy/uberspace.md
 - Konfigurationsreferenz: @docs/CONFIG.md
+- Regeln der Reihe: @REIHENREGELN.md
+- Fallstricke PHP/Router/WebUntis: @FALLSTRICKE.md
 
 ## Was das Projekt ist
 
