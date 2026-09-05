@@ -117,6 +117,26 @@ try {
 // ============================================================
 //  AUTH
 // ============================================================
+/**
+ * Haelt den tatsaechlichen Grund einer Ablehnung fest, die nach aussen wie
+ * ein falsches Passwort aussieht. WebUntisAuth kennt diese Gruende nicht:
+ * Sie entstehen eine Ebene hoeher, nach erfolgreicher Anmeldung.
+ *
+ * Ohne diesen Eintrag waere die Frage "warum komme ich nicht rein" von
+ * niemandem mehr zu beantworten.
+ */
+function protokolliere_ablehnungsgrund(PDO $db, string $benutzername, string $grund, string $ip): void {
+    try {
+        $db->prepare(
+            'INSERT INTO webuntis_login_log (benutzername, erfolgreich, grund, ip)
+             VALUES (?, 0, ?, ?)'
+        )->execute([$benutzername, $grund, $ip]);
+    } catch (Throwable $e) {
+        error_log("Login abgelehnt ({$grund}) fuer '{$benutzername}' von {$ip}; "
+                  . 'Protokolltabelle nicht erreichbar: ' . $e->getMessage());
+    }
+}
+
 function handle_auth(string $method, string $sub, array $body): void {
     if ($method === 'POST' && $sub === 'login') {
         $username = trim($body['username'] ?? $body['email'] ?? '');
@@ -219,7 +239,13 @@ function handle_auth(string $method, string $sub, array $body): void {
                     $nachname    = $result['nachname']          ?? '';
 
                     if (!$schildId) {
-                        json_error('WebUntis-Login erfolgreich, aber Schüler-ID fehlt.', 403);
+                        // Nach aussen wie ein falsches Passwort. Ein eigener
+                        // Wortlaut verriete, dass das Passwort stimmte, und
+                        // machte die Anwendung zum Pruefstand fuer fremde
+                        // Zugangsdaten (FALLSTRICKE.md 8). Der Grund steht im
+                        // Protokoll, nicht in der Antwort.
+                        protokolliere_ablehnungsgrund($db, $username, 'schueler_id_fehlt', $ip);
+                        json_error('Ungültige Anmeldedaten.', 401);
                     }
 
                     // Schüler in DB suchen
@@ -275,7 +301,10 @@ function handle_auth(string $method, string $sub, array $body): void {
                     }
 
                     if (!$schueler) {
-                        json_error('Schüler nicht gefunden. Bitte Administrator informieren.', 403);
+                        // Siehe oben: gleicher Wortlaut, gleicher Statuscode
+                        // wie beim falschen Passwort.
+                        protokolliere_ablehnungsgrund($db, $username, 'schueler_nicht_gefunden', $ip);
+                        json_error('Ungültige Anmeldedaten.', 401);
                     }
 
                     session_start_secure();

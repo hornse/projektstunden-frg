@@ -169,5 +169,49 @@ grep -q -- '--text3:var(--ci-text-schwach)' "$CSS" \
     && gruen "--text3 erreicht AA (4.62 statt 2.76)" || rot "--text3 mit eigenem Wert"
 
 echo ""
+echo "Anmeldung"
+# Nachdem ein Passwort geprueft wurde, darf kein Fehlschlag anders aussehen
+# als ein falsches Passwort. Sonst unterscheidet ein Angreifer "Passwort
+# falsch" von "Passwort richtig, kein Datensatz" — hier auf Konten
+# Minderjaehriger. FALLSTRICKE.md Abschnitt 8.
+#
+# Der Bereich wird ueber CODE abgegrenzt, nicht ueber einen Kommentar: ab dem
+# Aufruf, der das Passwort prueft, bis zum Ende des Login-Zweigs. Eine
+# Abgrenzung an einer Ueberschrift wuerde die Beschreibung der Regel messen
+# statt der Sache (REIHENREGELN.md 2).
+#
+# Rechtepruefungen an einer bestehenden Sitzung liegen ausserhalb und
+# duerfen unterscheiden — dort war kein Passwort im Spiel.
+API=backend/api/index.php
+ZWEIG=$(awk '
+    /if \(\$method === .POST. && \$sub === .login.\) \{/ { f = 1 }
+    f {
+        buf = buf $0 "\n"
+        n = gsub(/\{/, "{"); m = gsub(/\}/, "}"); tiefe += n - m
+        if (tiefe == 0) { printf "%s", buf; exit }
+    }' "$API" 2>/dev/null)
+NACH_PASSWORT=$(printf '%s\n' "$ZWEIG" | awk '/authenticateAndGetDetails\(/ {f=1} f {print}' | tr '\n' ' ')
+if [ -z "$NACH_PASSWORT" ]; then
+    rot "Anmeldung: Login-Zweig oder Passwortpruefung nicht gefunden – die Pruefung fand ihre Voraussetzung nicht"
+else
+    ALLE=$(printf '%s' "$NACH_PASSWORT" | awk '{
+        n = split($0, t, /json_error\(/)
+        for (i = 2; i <= n; i++) {
+            u = t[i]; sub(/\);.*/, "", u)
+            if (match(u, /[0-9][0-9][0-9][ \t]*$/)) print substr(u, RSTART, 3)
+        }
+    }' | sort -u)
+    VIERER=$(printf '%s\n' "$ALLE" | grep '^4' | tr '\n' ' ' | sed 's/ *$//')
+    FUENFER=$(printf '%s\n' "$ALLE" | grep '^5' | tr '\n' ' ' | sed 's/ *$//')
+    if [ -z "$VIERER" ]; then
+        rot "Anmeldung: kein 4xx nach der Passwortpruefung gefunden – prueft die Pruefung noch etwas?"
+    elif [ "$VIERER" = "401" ]; then
+        gruen "Anmeldung lehnt einheitlich mit 401 ab${FUENFER:+ (unberührt: $FUENFER)}"
+    else
+        rot "Anmeldung lehnt uneinheitlich ab (Statuscodes: $VIERER)"
+    fi
+fi
+
+echo ""
 if [ "$FEHLER" -eq 0 ]; then echo "ALLES GRÜN"; exit 0; fi
 echo "$FEHLER FEHLER"; exit 1
