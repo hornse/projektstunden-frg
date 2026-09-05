@@ -288,3 +288,68 @@ ausgegebenen Nachweisen steht.
 
 **Was das nicht heißt:** Ob Codes später außerhalb der Anwendung sichtbar werden
 — in Exporten, Listen, Zeugnissen — ist offen. Genau deshalb jetzt.
+
+---
+
+## E15 — Testskript um die Fallstricke erweitern (05.09.2026)
+
+**Vorbemerkung zur Nummer:** E10 ist nie geschrieben worden — der Block blieb
+unausgeführt. Die Nummer bleibt unbesetzt, ihr Inhalt steht als E16.
+
+**Anlass:** Schritt 0 des Auftrags `docs/AUFTRAG-testskript.md` hat die Annahme
+widerlegt, es gebe kein Testskript. `tests-projektstunden.sh` liegt seit fd0412e
+im Repo, 47 Prüfungen, alle grün, Exit-Code 0.
+
+**Befund:** Der Schwerpunkt liegt auf dem CI-Umbau. Von den Fallstricken aus
+`FALLSTRICKE.md` prüft es einen einzigen, und den als reine Vorkommensprüfung:
+`grep -q "session_name('proj_session')"` geht auch dann grün, wenn die Zeile ans
+Dateiende rutscht — also im Fehlerfall. Nicht geprüft: `empty()` auf eine ID,
+die 0 sein kann, `session.save_path` per `ini_set()`, JSESSIONID-Weitergabe,
+`personId <= 0`, Fremdschlüssel auf 0 im `UPDATE`, kritische IDs im DOM.
+
+Zwei weitere Befunde sind keine Entscheidung, sondern Verstöße gegen
+REIHENREGELN 2: Fehlt `node` oder `php`, zählt die Prüfung weder grün noch rot;
+und das Skript wird nirgends aufgerufen — weder in `deploy.sh` noch in
+`CLAUDE.md`.
+
+**Entscheidung:** `tests-projektstunden.sh` bekommt eine Rubrik „Fallstricke".
+Die Vorkommensprüfung auf `session_name` und `$_SERVER['HTTPS']` wird durch eine
+Reihenfolgeprüfung **ersetzt**, nicht ergänzt. `deploy.sh` ruft das Skript vor
+dem Push auf und bricht bei Exit-Code ungleich 0 ab. Kein zweites Skript
+daneben.
+
+**Warum:** Eine Vorkommensprüfung, die im Fehlerfall grün geht, ist schlechter
+als keine — sie sieht aus wie Absicherung. Ein zweiter Aufruf beim Deploy würde
+vergessen; die 47 vorhandenen Prüfungen belegen das, sie laufen heute nirgends.
+
+**Was das nicht heißt:** Die CI-Prüfungen bleiben unangetastet. Sie stammen aus
+einem anderen Arbeitsstrang.
+
+---
+
+## E16 — WebUntisAuth ist auseinandergelaufen, Zusammenführung wird vertagt (05.09.2026)
+
+**Anlass:** Ein Vergleich der Projektstunden-Kopie mit `hornse/webuntis-auth-php`
+zeigte drei verschiedene Stände. Das Modul-Repo hat genau einen Commit, c257d19
+vom 09.07.2026. In den Projekten wurde seither weitergearbeitet, ohne dass etwas
+zurückfloss — entgegen REIHENREGELN 6.
+
+**Befund:** Die Projektstunden-Kopie hat `authenticateAndGetDetails()` als
+öffentliche Methode und `authenticate()` nur als Alias; im Modul ist es umgekehrt
+und `authenticateAndGetDetails()` fehlt ganz. Ein Überschreiben der Datei gäbe
+einen Fatal Error beim ersten Anmeldeversuch. In **beiden** Fassungen fehlt die
+Auswertung von `klasseId` und die Selbstanlage des Schülers beim ersten Login —
+beides am 09.07.2026 gebaut, nie ausgeliefert. E3 beschreibt damit einen Zustand,
+den der Code nicht hat.
+
+**Entscheidung:** Die Zusammenführung wird nicht nebenbei erledigt, sondern als
+eigener Auftrag, nachdem E15 umgesetzt ist. Bis dahin bleibt jede Kopie, wie sie
+ist.
+
+**Warum:** Drei Stände zusammenzuführen ist kein Kopiervorgang, und die
+betroffene Stelle ist die Anmeldung — ein Fehler dort sperrt alle aus, auch den,
+der ihn beheben müsste. Ohne die Prüfungen aus E15 wäre das Ergebnis nicht
+belegbar.
+
+**Was das nicht heißt:** E7 gilt weiter. Das Modul bleibt der Ort, an dem
+gepflegt wird; es ist nur derzeit nicht der aktuelle Stand.

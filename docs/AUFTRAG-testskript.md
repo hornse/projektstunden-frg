@@ -110,3 +110,35 @@ Bei Rot: anhalten und melden.
 - Vermutungen als Vermutungen kennzeichnen, mit dem Versuch dazu.
 - „Ich weiß es nicht" statt einer plausiblen Vermutung.
 - Bei Unklarheit nachfragen statt vermuten.
+
+---
+
+## Nachtrag (05.09.2026) — Prämisse war falsch
+
+Schritt 0 hat ergeben, dass entgegen Schritt 1 bereits ein Testskript existiert:
+`tests-projektstunden.sh`, 47 Prüfungen, alle grün. Der ursprüngliche Text oben
+bleibt unverändert stehen. Zusätzlich gilt, mit Begründung in E15:
+
+- Erweitert wird `tests-projektstunden.sh`. Kein zweites Skript, keine
+  Umbenennung.
+- Neue Rubrik „Fallstricke".
+- Die Vorkommensprüfung auf `session_name` und `$_SERVER['HTTPS']` (Zeilen 69/71)
+  wird durch eine Reihenfolgeprüfung **ersetzt**: die Zeilennummer beider
+  Zuweisungen muss kleiner sein als die des ersten `require` in
+  `backend/router.php`.
+- Fehlende Voraussetzungen (`node`, `php` nicht vorhanden) zählen als Fehlschlag.
+  Das ist keine neue Entscheidung, sondern REIHENREGELN 2.
+- Die Ausgabe endet mit einer Prüfungszahl, damit REIHENREGELN 2 überhaupt
+  anwendbar ist.
+- `deploy.sh` ruft das Skript vor dem Push auf und bricht bei Exit-Code ungleich
+  0 ab — REIHENREGELN 2, letzter Satz.
+- Ausgangswert der Prüfungszahl: **47**, belegt durch den Bericht zu Schritt 0.
+  Die erwartete Zahl nach der Erweiterung wird in Schritt 2 genannt, nachdem
+  feststeht, welche Prüfungen geschrieben werden — nicht vorab geschätzt.
+
+Grundlage für die Fallstricke ist `FALLSTRICKE.md`, nicht `CLAUDE.md`. Schritt 2
+geht dessen Abschnitte 1, 3, 4 und 8 durch.
+
+Schritt 2 ist damit **nicht** erledigt: Welche Fallstricke statisch prüfbar sind,
+mit welchem Ausdruck und mit welcher Gegenprobe je Prüfung — dort erneut anhalten
+und berichten.

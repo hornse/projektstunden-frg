@@ -87,7 +87,8 @@ Zwei neue Prüfungen in `test.sh`:
 2. Jede Datei in `sql/` hat eine eindeutige führende Nummer.
    Gegenprobe: Datei mit doppelter Nummer anlegen, Test muss rot werden.
 
-Erwartete Prüfungszahl: Ausgangswert **+2**.
+Die erwartete Prüfungszahl wird genannt, nachdem feststeht, welche Prüfungen
+geschrieben werden (REIHENREGELN 2) – nicht vorab geschätzt.
 
 Migration gegen eine Kopie der Produktivdatenbank fahren, nicht gegen die
 Produktivdatenbank:
