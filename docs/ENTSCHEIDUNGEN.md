@@ -353,3 +353,33 @@ belegbar.
 
 **Was das nicht heißt:** E7 gilt weiter. Das Modul bleibt der Ort, an dem
 gepflegt wird; es ist nur derzeit nicht der aktuelle Stand.
+
+---
+
+## E17 — Ein 401 beim Login erzeugt einen TypeError statt einer Meldung (05.09.2026)
+
+**Anlass:** Beim Durchsehen des Frontends im Zuge der Prüfungserweiterung
+gefunden, nicht gesucht.
+
+**Befund:** `api()` gibt bei Status 401 `null` zurück. Für `auth/login` und
+`auth/me` unterbleibt dabei der Sprung zurück auf die Anmeldemaske — sonst
+verließe der Benutzer sie beim ersten Tippfehler. Der Rückgabewert bleibt aber
+`null`. `doLogin()` liest anschließend `me.typ` ohne Nullprüfung. Der TypeError
+wird von der umgebenden Fehlerbehandlung gefangen und als Meldung ausgegeben.
+Wer sein Passwort falsch eingibt, liest also eine JavaScript-Fehlermeldung statt
+„Ungültige Anmeldedaten."
+
+**Herkunft:** Die Ausnahme in `api()` stammt aus einer Änderung vom 07.07.2026.
+Sie behebt ein echtes Problem — der Sprung zurück zur Anmeldemaske beim ersten
+Fehlversuch — und hat die Folge für `doLogin()` nicht mitbedacht.
+
+**Entscheidung:** Wird festgehalten, nicht jetzt behoben. Die Behebung ist ein
+eigener Vorgang mit eigener Prüfung.
+
+**Warum nicht jetzt:** Es ist keine Sicherheitslücke und kein Datenverlust,
+sondern eine unbrauchbare Meldung im häufigsten Fehlerfall. Sie nebenbei zu
+beheben hieße, an der Anmeldung zu arbeiten, während eine andere Sache läuft —
+und die Anmeldung ist die Stelle, an der ein Fehler alle aussperrt.
+
+**Was das nicht heißt:** Die Ausnahme in `api()` wird nicht zurückgenommen. Sie
+ist richtig; fehlerhaft ist die fehlende Nullprüfung in `doLogin()`.
