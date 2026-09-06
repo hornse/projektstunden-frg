@@ -213,5 +213,88 @@ else
 fi
 
 echo ""
+echo "Fachdaten"
+# E19: erzeugte Fachdaten fuehren Quelle, Pruefsumme und Erzeuger im Kopf.
+# E21: geprueft wird an der Deklaration. Jeder Seed, der eine "-- Quelle:"-Zeile
+# fuehrt, muss sie einloesen; Seeds ohne Quellenangabe fallen nicht durch. Der
+# Rueckstand bei 10_seed_deutsch_klp.sql und 12_seed_sport_klp.sql ist in E21
+# festgehalten, nicht hier verschwiegen.
+#
+# Der Bestand wird ermittelt, nicht aufgezaehlt (REIHENREGELN 4): kein
+# Dateiname steht in dieser Pruefung.
+summe_von() {
+    if command -v shasum > /dev/null 2>&1; then
+        shasum -a 256 "$1" | awk '{print $1}'
+    elif command -v sha256sum > /dev/null 2>&1; then
+        sha256sum "$1" | awk '{print $1}'
+    fi
+}
+if ! command -v shasum > /dev/null 2>&1 && ! command -v sha256sum > /dev/null 2>&1; then
+    rot "Fachdaten: weder shasum noch sha256sum vorhanden – die Prüfung fand ihre Voraussetzung nicht"
+    rot "Fachdaten: Erzeuger nicht prüfbar – kein Prüfsummenwerkzeug"
+else
+    MIT_QUELLE=$(grep -l '^-- Quelle:' sql/*.sql 2>/dev/null || true)
+    if [ -z "$MIT_QUELLE" ]; then
+        # Null Funde sind ein Fehler, kein Ergebnis (REIHENREGELN 2).
+        rot "Fachdaten: kein Seed nennt eine Quelle – die Prüfung fand ihre Voraussetzung nicht"
+        rot "Fachdaten: kein Seed nennt einen Erzeuger – die Prüfung fand ihre Voraussetzung nicht"
+    else
+        # --- Prüfung 1: Quelle liegt unter docs/curricula/ und die Summe stimmt
+        MANGEL=""
+        ANZ_Q=0
+        for SEED in $MIT_QUELLE; do
+            Q=$(sed -n 's/^-- Quelle: *//p' "$SEED" | head -1)
+            S_SOLL=$(sed -n 's/^-- SHA256: *//p' "$SEED" | head -1)
+            # E23: Eine Angabe mit Schema ist ein Literaturhinweis, kein
+            # Dateiverweis. Eine Webadresse hat keine Pruefsumme; sie hier zu
+            # verlangen hiesse, einen Gegenstand zu fordern, den es nicht gibt.
+            case "$Q" in
+                http://*|https://*) continue ;;
+            esac
+            ANZ_Q=$((ANZ_Q + 1))
+            case "$Q" in
+                docs/curricula/*) ;;
+                *) MANGEL="$MANGEL $(basename "$SEED"):Quelle-nicht-unter-docs/curricula"; continue ;;
+            esac
+            # Anwesenheit durch Auflisten, nicht durch grep (REIHENREGELN 3)
+            if ! ls -1 "$Q" > /dev/null 2>&1; then
+                MANGEL="$MANGEL $(basename "$SEED"):Quelldatei-fehlt"; continue
+            fi
+            if [ -z "$S_SOLL" ]; then
+                MANGEL="$MANGEL $(basename "$SEED"):keine-SHA256-Zeile"; continue
+            fi
+            S_IST=$(summe_von "$Q")
+            [ "$S_IST" = "$S_SOLL" ] || MANGEL="$MANGEL $(basename "$SEED"):Summe-weicht-ab"
+        done
+        if [ "$ANZ_Q" -eq 0 ]; then
+            # Alle Angaben waren Literaturhinweise – dann hat die Prüfung
+            # nichts geprüft. Null Funde sind ein Fehler (REIHENREGELN 2).
+            rot "Fachdaten: kein Seed nennt eine Datei als Quelle – die Prüfung fand ihre Voraussetzung nicht"
+        else
+            [ -z "$MANGEL" ] \
+                && gruen "Quellenangabe und Prüfsumme stimmen ($ANZ_Q Seed(s) mit Dateiquelle)" \
+                || rot "Quellennachweis mangelhaft:$MANGEL"
+        fi
+
+        # --- Prüfung 2: ein genannter Erzeuger existiert auch
+        FEHLT=""
+        ANZ_E=0
+        for SEED in $MIT_QUELLE; do
+            E=$(sed -n 's/^-- Erzeugt von: *//p' "$SEED" | head -1)
+            [ -n "$E" ] || continue
+            ANZ_E=$((ANZ_E + 1))
+            ls -1 "$E" > /dev/null 2>&1 || FEHLT="$FEHLT $(basename "$SEED")→$E"
+        done
+        if [ "$ANZ_E" -eq 0 ]; then
+            rot "Fachdaten: kein Seed mit Quelle nennt einen Erzeuger – die Prüfung fand ihre Voraussetzung nicht"
+        else
+            [ -z "$FEHLT" ] \
+                && gruen "jeder genannte Erzeuger existiert ($ANZ_E geprüft)" \
+                || rot "Erzeuger fehlt:$FEHLT"
+        fi
+    fi
+fi
+
+echo ""
 if [ "$FEHLER" -eq 0 ]; then echo "ALLES GRÜN"; exit 0; fi
 echo "$FEHLER FEHLER"; exit 1

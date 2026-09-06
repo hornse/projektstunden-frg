@@ -1,9 +1,16 @@
 -- =============================================================================
--- Seed 11: Deutsch – KLP-ENTWURF Gymnasiale Oberstufe (GOSt) NRW (Stand 31.07.2025)
--- Automatisch generiert aus gen_deutsch_sii.py – wörtliche Kompetenzerwartungen.
--- ACHTUNG: Entwurfsstand (Verbändebeteiligung), noch nicht in Kraft.
--- Voraussetzung: Migration 08 (phase/inhaltsfeld/kompetenzbereich, eltern_kompetenz_id, schule_id).
--- Idempotent: löscht vorhandenen DEU_KLP_SII-Rahmen und baut ihn neu auf.
+-- Seed 11: Deutsch – Kernlehrplan Gymnasiale Oberstufe (GOSt) NRW
+-- Verabschiedete Fassung vom 24.08.2026.
+--
+-- Quelle: docs/curricula/gost_klp_d_2026_08_24.pdf
+-- SHA256: 00694903d6a16447989fd476d9ce91c8e0e7b8cb0e114fa3cfd3ed773d981c29
+-- Erzeugt von: sql/gen/gen_deutsch_sii.py
+--
+-- NICHT VON HAND AENDERN: Korrekturen gehoeren in den Erzeuger, die Datei
+-- wird daraus neu geschrieben (E19).
+-- Voraussetzung: Migration 08 (phase/inhaltsfeld/kompetenzbereich,
+--               eltern_kompetenz_id, schule_id) ist eingespielt.
+-- Idempotent: loescht vorhandenen DEU_KLP_SII-Rahmen und baut ihn neu auf.
 -- =============================================================================
 
 SET NAMES utf8mb4;
@@ -12,10 +19,11 @@ START TRANSACTION;
 SET @schule := 1;
 SET @fach := (SELECT id FROM faecher WHERE schule_id = @schule AND kuerzel = 'DE' LIMIT 1);
 
+-- Nur der eigene Rahmen wird geloescht; CASCADE raeumt Bereiche und Kompetenzen.
 DELETE FROM kompetenzrahmen WHERE schule_id = @schule AND kuerzel = 'DEU_KLP_SII';
 
 INSERT INTO kompetenzrahmen (schule_id, name, kuerzel, beschreibung, quelle_url, fach_id)
-VALUES (@schule, 'Deutsch KLP NRW SII/GOSt (Entwurf 2025)', 'DEU_KLP_SII', 'Kernlehrplan-ENTWURF Deutsch für die gymnasiale Oberstufe (GOSt), NRW, Stand Verbändebeteiligung 31.07.2025. Kompetenzbereiche Rezeption/Produktion, Inhaltsfelder Sprache/Texte/Kommunikation/Medien; Phasen Einführungsphase, Qualifikationsphase Grundkurs und Leistungskurs. Vorläufige Daten (Entwurf).', 'Entwurf (Verbändebeteiligung 31.07.2025) – klp_entwurf_vb_sii_gost_deutsch.pdf', @fach);
+VALUES (@schule, 'Deutsch KLP NRW SII/GOSt (2026)', 'DEU_KLP_SII', 'Kernlehrplan Deutsch für die gymnasiale Oberstufe (GOSt), NRW, verabschiedete Fassung vom 24.08.2026. Kompetenzbereiche Rezeption/Produktion, Inhaltsfelder Sprache/Texte/Kommunikation/Medien; Phasen Einführungsphase, Qualifikationsphase Grundkurs und Leistungskurs.', 'docs/curricula/gost_klp_d_2026_08_24.pdf', @fach);
 SET @rahmen := LAST_INSERT_ID();
 
 -- --------------------------------------------------------------------------
@@ -101,7 +109,7 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_EF_UEB_PRO_10' AS code, 'überarbeiten Texte im Hinblick auf eine normgerechte Verwendung der Sprache (Rechtschreibung, Grammatik und …' AS kurzname, 'überarbeiten Texte im Hinblick auf eine normgerechte Verwendung der Sprache (Rechtschreibung, Grammatik und Zeichensetzung) und nach weiteren vorgegebenen Kriterien, auch unter Verwendung von KI-Werkzeugen' AS beschreibung
   UNION ALL
-  SELECT 'DE_EF_UEB_PRO_11' AS code, 'gestalten bei einer produktiven Verwendung von KI-Werkzeugen Texte auch kritisch im Hinblick auf Fragen der …' AS kurzname, 'gestalten bei einer produktiven Verwendung von KI-Werkzeugen Texte auch kritisch im Hinblick auf Fragen der Autorenschaft.' AS beschreibung
+  SELECT 'DE_EF_UEB_PRO_11' AS code, 'gestalten auch bei einer kritisch-produktiven Verwendung von KI-Werkzeugen Texte eigenständig und verantwortlich.' AS kurzname, 'gestalten auch bei einer kritisch-produktiven Verwendung von KI-Werkzeugen Texte eigenständig und verantwortlich.' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_EF_UEB_PRO';
 
 -- Einführungsphase · Sprache · Rezeption (6)
@@ -112,7 +120,7 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_EF_SPR_REZ_02' AS code, 'beurteilen anhand von Beispielen Strukturen und Funktionen verschiedener Sprachvarietäten (Sprache als …' AS kurzname, 'beurteilen anhand von Beispielen Strukturen und Funktionen verschiedener Sprachvarietäten (Sprache als Distinktionsmerkmal, Identifikation über Sprache)' AS beschreibung
   UNION ALL
-  SELECT 'DE_EF_SPR_REZ_03' AS code, 'beurteilen die gesellschaftliche Bedeutung sprachlicher Zuschreibungen (u. a. Diskriminierung durch Sprache)' AS kurzname, 'beurteilen die gesellschaftliche Bedeutung sprachlicher Zuschreibungen (u. a. Diskriminierung durch Sprache)' AS beschreibung
+  SELECT 'DE_EF_SPR_REZ_03' AS code, 'beurteilen die gesellschaftliche Bedeutung sprachlicher Zuschreibungen (u. a. Diskriminierung durch Sprache, …' AS kurzname, 'beurteilen die gesellschaftliche Bedeutung sprachlicher Zuschreibungen (u. a. Diskriminierung durch Sprache, Geschlechterstereotype in der Sprache)' AS beschreibung
   UNION ALL
   SELECT 'DE_EF_SPR_REZ_04' AS code, 'erläutern das Verhältnis von Mündlichkeit und Schriftlichkeit unter Berücksichtigung aktueller Veränderungen von Sprache' AS kurzname, 'erläutern das Verhältnis von Mündlichkeit und Schriftlichkeit unter Berücksichtigung aktueller Veränderungen von Sprache' AS beschreibung
   UNION ALL
@@ -219,7 +227,7 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_EF_MED_PRO_02' AS code, 'erstellen Beiträge in medialen Kommunikationssituationen unter Berücksichtigung von Urheber- und Persönlichkeitsrechten' AS kurzname, 'erstellen Beiträge in medialen Kommunikationssituationen unter Berücksichtigung von Urheber- und Persönlichkeitsrechten' AS beschreibung
   UNION ALL
-  SELECT 'DE_EF_MED_PRO_03' AS code, 'gestalten Texte mithilfe digitaler Werkzeuge multimodal. 2.3 Kompetenzerwartungen und inhaltliche Schwerpunkte bis zum …' AS kurzname, 'gestalten Texte mithilfe digitaler Werkzeuge multimodal. 2.3 Kompetenzerwartungen und inhaltliche Schwerpunkte bis zum Ende der Qualifikationsphase' AS beschreibung
+  SELECT 'DE_EF_MED_PRO_03' AS code, 'gestalten Texte mithilfe digitaler Werkzeuge multimodal.' AS kurzname, 'gestalten Texte mithilfe digitaler Werkzeuge multimodal.' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_EF_MED_PRO';
 
 -- Qualifikationsphase (Grundkurs) · Übergeordnet · Rezeption (9)
@@ -253,7 +261,7 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_QGK_UEB_PRO_02' AS code, 'verwenden zielgerichtet verschiedene Schreibformate zur Reorganisation von Vorwissen und Aneignung von Fachwissen' AS kurzname, 'verwenden zielgerichtet verschiedene Schreibformate zur Reorganisation von Vorwissen und Aneignung von Fachwissen' AS beschreibung
   UNION ALL
-  SELECT 'DE_QGK_UEB_PRO_03' AS code, 'formulieren mündlich und schriftlich dem kommunikativen Ziel entsprechend formal sicher, (fach)sprachlich differenziert …' AS kurzname, 'formulieren mündlich und schriftlich dem kommunikativen Ziel entsprechend formal sicher, (fach)sprachlich differenziert und stilistisch angemessen eigene Texte' AS beschreibung
+  SELECT 'DE_QGK_UEB_PRO_03' AS code, 'formulieren mündlich und schriftlich dem kommunikativen Ziel entsprechend formal sicher, (fach-)sprachlich …' AS kurzname, 'formulieren mündlich und schriftlich dem kommunikativen Ziel entsprechend formal sicher, (fach-)sprachlich differenziert und stilistisch angemessen eigene Texte' AS beschreibung
   UNION ALL
   SELECT 'DE_QGK_UEB_PRO_04' AS code, 'formulieren argumentativ eigene Positionen zu fachspezifischen Sachverhalten vor dem Hintergrund ihres Fachwissens' AS kurzname, 'formulieren argumentativ eigene Positionen zu fachspezifischen Sachverhalten vor dem Hintergrund ihres Fachwissens' AS beschreibung
   UNION ALL
@@ -267,9 +275,9 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_QGK_UEB_PRO_09' AS code, 'präsentieren mithilfe geeigneter digitaler Werkzeuge selbstständig fachlich komplexe Zusammenhänge unter Beachtung des …' AS kurzname, 'präsentieren mithilfe geeigneter digitaler Werkzeuge selbstständig fachlich komplexe Zusammenhänge unter Beachtung des Urheberrechts' AS beschreibung
   UNION ALL
-  SELECT 'DE_QGK_UEB_PRO_10' AS code, 'überarbeiten Texte im Hinblick auf eine normgerechte Verwendung der Sprache (Rechtschreibung, Grammatik und …' AS kurzname, 'überarbeiten Texte im Hinblick auf eine normgerechte Verwendung der Sprache (Rechtschreibung, Grammatik und Zeichensetzung) und nach weiteren Kriterien auch unter Verwendung von KI-Werkzeugen' AS beschreibung
+  SELECT 'DE_QGK_UEB_PRO_10' AS code, 'überarbeiten Texte im Hinblick auf eine normgerechte Verwendung der Sprache (Rechtschreibung, Grammatik und …' AS kurzname, 'überarbeiten Texte im Hinblick auf eine normgerechte Verwendung der Sprache (Rechtschreibung, Grammatik und Zeichensetzung) und nach weiteren Kriterien, auch unter Verwendung von KI-Werkzeugen' AS beschreibung
   UNION ALL
-  SELECT 'DE_QGK_UEB_PRO_11' AS code, 'gestalten bei einer produktiven Verwendung von KI-Werkzeugen Texte auch kritisch im Hinblick auf Fragen der Autorschaft.' AS kurzname, 'gestalten bei einer produktiven Verwendung von KI-Werkzeugen Texte auch kritisch im Hinblick auf Fragen der Autorschaft.' AS beschreibung
+  SELECT 'DE_QGK_UEB_PRO_11' AS code, 'gestalten auch bei einer kritisch-produktiven Verwendung von KI-Werkzeugen Texte eigenständig und verantwortlich.' AS kurzname, 'gestalten auch bei einer kritisch-produktiven Verwendung von KI-Werkzeugen Texte eigenständig und verantwortlich.' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_QGK_UEB_PRO';
 
 -- Qualifikationsphase (Grundkurs) · Sprache · Rezeption (6)
@@ -356,7 +364,7 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_QGK_KOM_REZ_02' AS code, 'setzen in der Analyse rhetorisch gestalteter Kommunikation verbale, nonverbale und paraverbale Aspekte miteinander in …' AS kurzname, 'setzen in der Analyse rhetorisch gestalteter Kommunikation verbale, nonverbale und paraverbale Aspekte miteinander in Beziehung' AS beschreibung
   UNION ALL
-  SELECT 'DE_QGK_KOM_REZ_03' AS code, 'untersuchen die Kommunikation in literarischen Texten (symmetrische und asymmetrische Kommunikation, auch unter …' AS kurzname, 'untersuchen die Kommunikation in literarischen Texten (symmetrische und asymmetrische Kommunikation, auch unter Berücksichtigung gesellschaftlicher Rollen und Positionen)' AS beschreibung
+  SELECT 'DE_QGK_KOM_REZ_03' AS code, 'untersuchen die Kommunikation in literarischen Texten (symmetrische und asymmetrische Kommunikation, auch unter …' AS kurzname, 'untersuchen die Kommunikation in literarischen Texten (symmetrische und asymmetrische Kommunikation, auch unter Berücksichtigung gesellschaftlicher Rollen und Positionen sowie Genderaspekten)' AS beschreibung
   UNION ALL
   SELECT 'DE_QGK_KOM_REZ_04' AS code, 'erklären Merkmale verständigungsorientierter und manipulativer Kommunikation (u. a. im politischen Kontext)' AS kurzname, 'erklären Merkmale verständigungsorientierter und manipulativer Kommunikation (u. a. im politischen Kontext)' AS beschreibung
   UNION ALL
@@ -439,7 +447,7 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_QLK_UEB_PRO_02' AS code, 'vergleichen verschiedene Schreibformate zur Reorganisation von Vorwissen und Aneignung von Fachwissen' AS kurzname, 'vergleichen verschiedene Schreibformate zur Reorganisation von Vorwissen und Aneignung von Fachwissen' AS beschreibung
   UNION ALL
-  SELECT 'DE_QLK_UEB_PRO_03' AS code, 'formulieren mündlich und schriftlich dem kommunikativen Ziel entsprechend formal sicher, (fach)sprachlich differenziert …' AS kurzname, 'formulieren mündlich und schriftlich dem kommunikativen Ziel entsprechend formal sicher, (fach)sprachlich differenziert und stilistisch angemessen eigene Texte' AS beschreibung
+  SELECT 'DE_QLK_UEB_PRO_03' AS code, 'formulieren mündlich und schriftlich dem kommunikativen Ziel entsprechend formal sicher, (fach-)sprachlich …' AS kurzname, 'formulieren mündlich und schriftlich dem kommunikativen Ziel entsprechend formal sicher, (fach-)sprachlich differenziert und stilistisch angemessen eigene Texte' AS beschreibung
   UNION ALL
   SELECT 'DE_QLK_UEB_PRO_04' AS code, 'formulieren argumentativ eigene Positionen zu fachspezifischen Sachverhalten vor dem Hintergrund ihres Fachwissens und …' AS kurzname, 'formulieren argumentativ eigene Positionen zu fachspezifischen Sachverhalten vor dem Hintergrund ihres Fachwissens und theoretischer Bezüge' AS beschreibung
   UNION ALL
@@ -453,9 +461,9 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_QLK_UEB_PRO_09' AS code, 'präsentieren mithilfe geeigneter digitaler Werkzeuge selbstständig fachlich komplexe Zusammenhänge unter Beachtung des …' AS kurzname, 'präsentieren mithilfe geeigneter digitaler Werkzeuge selbstständig fachlich komplexe Zusammenhänge unter Beachtung des Urheberrechts' AS beschreibung
   UNION ALL
-  SELECT 'DE_QLK_UEB_PRO_10' AS code, 'überarbeiten eigenständig Texte im Hinblick auf eine normgerechte Verwendung der Sprache (Rechtschreibung, Grammatik …' AS kurzname, 'überarbeiten eigenständig Texte im Hinblick auf eine normgerechte Verwendung der Sprache (Rechtschreibung, Grammatik und Zeichensetzung) und nach weiteren Kriterien auch unter Verwendung von KI-Werkzeugen' AS beschreibung
+  SELECT 'DE_QLK_UEB_PRO_10' AS code, 'überarbeiten eigenständig Texte im Hinblick auf eine normgerechte Verwendung der Sprache (Rechtschreibung, Grammatik …' AS kurzname, 'überarbeiten eigenständig Texte im Hinblick auf eine normgerechte Verwendung der Sprache (Rechtschreibung, Grammatik und Zeichensetzung) und nach weiteren Kriterien, auch unter Verwendung von KI-Werkzeugen' AS beschreibung
   UNION ALL
-  SELECT 'DE_QLK_UEB_PRO_11' AS code, 'gestalten bei einer produktiven Verwendung von KI-Werkzeugen Texte auch kritisch im Hinblick auf Fragen der Autorschaft.' AS kurzname, 'gestalten bei einer produktiven Verwendung von KI-Werkzeugen Texte auch kritisch im Hinblick auf Fragen der Autorschaft.' AS beschreibung
+  SELECT 'DE_QLK_UEB_PRO_11' AS code, 'gestalten auch bei einer kritisch-produktiven Verwendung von KI-Werkzeugen Texte eigenständig und verantwortlich.' AS kurzname, 'gestalten auch bei einer kritisch-produktiven Verwendung von KI-Werkzeugen Texte eigenständig und verantwortlich.' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_QLK_UEB_PRO';
 
 -- Qualifikationsphase (Leistungskurs) · Sprache · Rezeption (7)
@@ -546,7 +554,7 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_QLK_KOM_REZ_02' AS code, 'deuten in der Analyse rhetorisch gestalteter Kommunikation verbale, nonverbale und paraverbale Aspekte in Beziehung …' AS kurzname, 'deuten in der Analyse rhetorisch gestalteter Kommunikation verbale, nonverbale und paraverbale Aspekte in Beziehung zueinander' AS beschreibung
   UNION ALL
-  SELECT 'DE_QLK_KOM_REZ_03' AS code, 'untersuchen symmetrische und asymmetrische Kommunikation in Gesprächssituationen und literarischen Texten, auch unter …' AS kurzname, 'untersuchen symmetrische und asymmetrische Kommunikation in Gesprächssituationen und literarischen Texten, auch unter Berücksichtigung gesellschaftlicher Rollen und Positionen' AS beschreibung
+  SELECT 'DE_QLK_KOM_REZ_03' AS code, 'untersuchen symmetrische und asymmetrische Kommunikation in Gesprächssituationen und literarischen Texten, auch unter …' AS kurzname, 'untersuchen symmetrische und asymmetrische Kommunikation in Gesprächssituationen und literarischen Texten, auch unter Berücksichtigung gesellschaftlicher Rollen und Positionen sowie Genderaspekten' AS beschreibung
   UNION ALL
   SELECT 'DE_QLK_KOM_REZ_04' AS code, 'erläutern Merkmale verständigungsorientierter und manipulativer Kommunikation (u. a. im politischen Kontext)' AS kurzname, 'erläutern Merkmale verständigungsorientierter und manipulativer Kommunikation (u. a. im politischen Kontext)' AS beschreibung
   UNION ALL

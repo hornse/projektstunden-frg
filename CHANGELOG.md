@@ -7,7 +7,38 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Deutsch GOSt aus der verabschiedeten Fassung** – `DEU_KLP_SII` wird
+  nicht mehr aus dem Entwurf vom 31.07.2025 aufgebaut, sondern aus
+  `docs/curricula/gost_klp_d_2026_08_24.pdf`. 197 Kompetenzerwartungen in
+  30 Bereichen, Zahlen unverändert; geändert hat sich der Wortlaut in
+  **11 Einträgen** – 6 inhaltliche Änderungen der neuen Fassung,
+  5 Extraktionsfehler des alten Bestands.
+- **`sql/gen/gen_deutsch_sii.py`** – Erzeuger, der die Seed-Datei aus dem
+  PDF schreibt (E19). Prüft die SHA256 der Quelle und die Zählwerte je
+  Gliederungseinheit; weicht eine ab, wird nichts geschrieben.
+- **`sql/gen/README.md`** – Ablage und Regeln für alle künftigen
+  Fachimporte.
+- **Rubrik „Fachdaten" in `tests-projektstunden.sh`** – zwei Prüfungen:
+  Quellenangabe samt Prüfsumme, und Existenz eines genannten Erzeugers
+  (E19/E21/E23).
+
+### Behoben
+- **`(fach)sprachlich` → `(fach-)sprachlich`** (2 Einträge) – ein echter
+  Bindestrich war beim früheren Lauf der Entsilbentrennung verlorengegangen.
+- **Kapitelüberschrift im Eintrag** – `DE_EF_MED_PRO_03` schleppte
+  „2.3 Kompetenzerwartungen und inhaltliche Schwerpunkte bis zum Ende der
+  Qualifikationsphase" mit.
+- **Unvollständige Klammern** – `DE_EF_SPR_REZ_03` fehlte
+  „Geschlechterstereotype in der Sprache"; zwei weitere Einträge fehlte ein
+  Komma vor „auch unter Verwendung von KI-Werkzeugen".
+
+**Prüfungen: 48 → 50.**
+
 Geplant:
+- Prüfungszahl in der Ausgabe von `tests-projektstunden.sh` (E24)
+- Quelle und Erzeuger für `10_seed_deutsch_klp.sql` und
+  `12_seed_sport_klp.sql` nachziehen (E21)
 - Schulanpassung (Logo, Schulname) – eigener Admin-Bereich
 - Schüler-Sync direkt aus WebUntis (ohne CSV-Import)
 
