@@ -17,6 +17,13 @@ shasum -a 256 docs/curricula/*.pdf
 Fachbezeichnung und Stufe stammen aus der Titelseite der jeweiligen Datei, nicht
 aus dem Dateikürzel — `g9_s_klp` ist Spanisch, `g9_sp_klp` ist Sport.
 
+**Aufbau und Extraktionseigenheiten stehen in [`STRUKTUR.md`](STRUKTUR.md).**
+Dort ist je Plan erhoben, welche Aufzählungsmarker die Kompetenzerwartungen
+tragen, ob der Kompetenzteil zweispaltig gesetzt ist, wie tief die Gliederung
+reicht und welche Steuerzeichen im Text stehen. Wer einen Fachimport vorbereitet,
+liest das vor dem Bauen — jedes bisher importierte Fach hat eine Eigenheit
+mitgebracht, die niemand vermutet hatte.
+
 ⚠ = Inhalt bisher nicht ausgewertet.
 
 Bestand: 37 Dateien, rund 16 MB.

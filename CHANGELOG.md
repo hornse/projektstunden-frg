@@ -48,6 +48,15 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
   `kompetenzen` oder `kompetenzbereiche` schreibt, deklariert eine Quelle
   (E27). Erkannt wird sie am Inhalt, nicht am Dateinamen. Zusammen mit der
   ersten Prüfung schließt sie das Schlupfloch aus E21/E23.
+- **`docs/curricula/STRUKTUR.md`** – Strukturerhebung über alle 37
+  Kernlehrpläne: Aufzählungsmarker mit Codepoint, Spaltigkeit des
+  Kompetenzteils, Gliederungstiefe, Steuerzeichen und Zählwerte je Plan.
+  21 Pläne gelesen und durch zwei Zählwege gestützt, **16 als unsicher
+  gekennzeichnet** mit der jeweils offenen Frage. Grundlage für die
+  Entscheidung über das Datenmodell — keine Empfehlung dazu.
+  Neu gefunden: vier Markerarten, die in den bisher importierten Fächern nicht
+  vorkommen (`U+F0FA`, `U+F0A7`, `U+25CF`, nummerierte Klammern), sowie
+  übergeordnete Erwartungen ganz ohne Marker in Tabellenform.
 
 ### Behoben
 - **`(fach)sprachlich` → `(fach-)sprachlich`** (2 Einträge) – ein echter
@@ -71,7 +80,8 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 - **Ellipsenregel auch innerhalb der Zeile** (E28) – `Satz-und Textebene` statt
   `Satz- und Textebene`; `pdftotext` verschluckt dort den Wortabstand.
 
-**Prüfungen: 48 → 50 → 51 → 52.**
+**Prüfungen: 48 → 50 → 51 → 52.** Die Strukturerhebung bringt keine neue
+Prüfung mit — sie ist ein Dokument, kein Code.
 
 Geplant:
 - `teilbereich` befüllen (Englisch, E18)
