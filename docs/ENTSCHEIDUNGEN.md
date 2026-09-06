@@ -743,3 +743,35 @@ sind das 42 zu 184.
 
 **Was das nicht heißt:** Regel 4 bleibt der ungestützte Zweig. Ihre Fälle
 gehören weiterhin einzeln in den Bericht.
+
+---
+
+## E29 — E12, E14 und der Rückstand aus E21 sind erledigt (06.09.2026)
+
+**Anlass:** Drei Festlegungen standen offen, alle am selben Seed. Dieser
+Eintrag hält fest, dass sie umgesetzt sind — nach REIHENREGELN 10 als neuer
+Eintrag, nicht als Änderung der alten.
+
+**E12 und E14, offen seit dem 02.09.2026:** Die 21 übergeordneten
+Kompetenzerwartungen aus Kapitel 2.3 des Deutsch-Lehrplans Sek I trugen die
+Phase `zweite_stufe`, gelten aber für die gesamte Sekundarstufe I. Sie haben
+jetzt `sek1_uebergreifend` und die Codes `DE_S1U_UEB_REZ_01` bis `_08` sowie
+`DE_S1U_UEB_PRO_01` bis `_13`. Migration 14 hat den ENUM erweitert; der neue
+Wert steht zwischen `erprobungsstufe` und `erste_stufe`, weil die Reihenfolge
+eines ENUM in MariaDB die Sortierreihenfolge ist.
+
+Die Umbenennung kostete nichts, weil `projekt_schueler_kompetenzen` null
+Zuweisungen auf `DEU_KLP` führt — geprüft, nicht angenommen. Alle 228
+vorhandenen Zuweisungen hängen am MKR, den der Seed nicht berührt. Nach der
+Inbetriebnahme wäre dieselbe Änderung eine Datenmigration gewesen; genau das
+war die Begründung von E14.
+
+**Der Rückstand aus E21:** `10_seed_deutsch_klp.sql` war die letzte Datei mit
+Fachdaten ohne Quellennachweis. Sie hat jetzt einen Erzeuger, Quelle und
+Prüfsumme im Kopf. Damit ist die zweite Quellenprüfung (E27) überhaupt erst
+grün zu bekommen — sie lief beim Bau nachweislich rot und wurde es durch diese
+Umsetzung.
+
+**Was das nicht heißt:** Der Kompetenzkatalog ist damit nicht fertig. Von 21
+Fachrahmen sind drei befüllt und belegt; `teilbereich` (E18) wartet weiterhin
+auf Englisch, und WP Wirtschaft aus E13 liegt weiterhin nicht vor.

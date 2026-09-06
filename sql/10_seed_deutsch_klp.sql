@@ -1,9 +1,14 @@
 -- =============================================================================
 -- Seed 10: Deutsch – Kernlehrplan Gymnasium Sek I (G9), NRW 2019 (Heft 3409)
--- Automatisch generiert aus gen_deutsch_klp.py – wörtliche Kompetenzerwartungen.
--- Voraussetzung: Migration 08 (Spalten phase/inhaltsfeld/kompetenzbereich,
---               eltern_kompetenz_id, schule_id) ist eingespielt.
--- Idempotent: löscht vorhandenen DEU_KLP-Rahmen und baut ihn neu auf.
+--
+-- Quelle: docs/curricula/g9_d_klp_3409_2019_06_23.pdf
+-- SHA256: 844fdfe8c875433c2775c899b74a2d83d466a19a4d3cc5d88630d7b7d66cb94c
+-- Erzeugt von: sql/gen/gen_deutsch_klp.py
+--
+-- NICHT VON HAND AENDERN: Korrekturen gehoeren in den Erzeuger, die Datei
+-- wird daraus neu geschrieben (E19).
+-- Voraussetzung: Migration 08 und Migration 14 (Phase sek1_uebergreifend).
+-- Idempotent: loescht vorhandenen DEU_KLP-Rahmen und baut ihn neu auf.
 -- =============================================================================
 
 SET NAMES utf8mb4;
@@ -12,15 +17,21 @@ START TRANSACTION;
 SET @schule := 1;
 SET @fach := (SELECT id FROM faecher WHERE schule_id = @schule AND kuerzel = 'DE' LIMIT 1);
 
--- Alten (ggf. fehlerhaften) DEU_KLP-Rahmen entfernen (CASCADE räumt Bereiche/Kompetenzen).
+-- Nur der eigene Rahmen wird geloescht; CASCADE raeumt Bereiche und Kompetenzen.
 DELETE FROM kompetenzrahmen WHERE schule_id = @schule AND kuerzel = 'DEU_KLP';
 
 INSERT INTO kompetenzrahmen (schule_id, name, kuerzel, beschreibung, quelle_url, fach_id)
-VALUES (@schule, 'Deutsch KLP NRW G9 Sek I (FRG)', 'DEU_KLP', 'Kernlehrplan Deutsch, Gymnasium Sekundarstufe I (G9), NRW 2019. Kompetenzbereiche Rezeption/Produktion, Inhaltsfelder Sprache/Texte/Kommunikation/Medien, gegliedert nach Erprobungs-, Erster und Zweiter Stufe.', 'https://lehrplannavigator.nrw.de/system/files/media/document/file/g9_d_klp_3409_2019_06_23.pdf', @fach);
+VALUES (@schule, 'Deutsch KLP NRW G9 Sek I (FRG)', 'DEU_KLP', 'Kernlehrplan Deutsch, Gymnasium Sekundarstufe I (G9), NRW 2019. Kompetenzbereiche Rezeption/Produktion, Inhaltsfelder Sprache/Texte/Kommunikation/Medien, gegliedert nach Erprobungsstufe, Erster und Zweiter Stufe; dazu die für die gesamte Sekundarstufe I geltenden übergeordneten Erwartungen aus Kapitel 2.3.', 'docs/curricula/g9_d_klp_3409_2019_06_23.pdf', @fach);
 SET @rahmen := LAST_INSERT_ID();
 
 -- --------------------------------------------------------------------------
--- Kompetenzbereiche (phase · inhaltsfeld · kompetenzbereich)
+-- Kompetenzbereiche
+--
+-- Die uebergeordneten Erwartungen aus Kapitel 2.3 tragen die Phase
+-- `sek1_uebergreifend` (E12) und die Codes DE_S1U_… (E14). Sie stehen vor
+-- der Ersten Stufe, weil sie im Lehrplan dort stehen und fuer beide Stufen
+-- gelten. `art` und `teilbereich` bleiben leer -- Deutsch fuehrt nur eine
+-- Inhaltsachse und keine dritte Ebene.
 -- --------------------------------------------------------------------------
 INSERT INTO kompetenzbereiche (rahmen_id, code, name, reihenfolge, phase, inhaltsfeld, kompetenzbereich) VALUES
 (@rahmen, 'DE_EP_UEB_REZ', 'Erprobungsstufe · Übergeordnet · Rezeption', 1, 'erprobungsstufe', 'Übergeordnet', 'Rezeption'),
@@ -33,8 +44,8 @@ INSERT INTO kompetenzbereiche (rahmen_id, code, name, reihenfolge, phase, inhalt
 (@rahmen, 'DE_EP_KOM_PRO', 'Erprobungsstufe · Kommunikation · Produktion', 8, 'erprobungsstufe', 'Kommunikation', 'Produktion'),
 (@rahmen, 'DE_EP_MED_REZ', 'Erprobungsstufe · Medien · Rezeption', 9, 'erprobungsstufe', 'Medien', 'Rezeption'),
 (@rahmen, 'DE_EP_MED_PRO', 'Erprobungsstufe · Medien · Produktion', 10, 'erprobungsstufe', 'Medien', 'Produktion'),
-(@rahmen, 'DE_S2_UEB_REZ', 'Zweite Stufe · Übergeordnet · Rezeption', 11, 'zweite_stufe', 'Übergeordnet', 'Rezeption'),
-(@rahmen, 'DE_S2_UEB_PRO', 'Zweite Stufe · Übergeordnet · Produktion', 12, 'zweite_stufe', 'Übergeordnet', 'Produktion'),
+(@rahmen, 'DE_S1U_UEB_REZ', 'Sekundarstufe I übergreifend · Übergeordnet · Rezeption', 11, 'sek1_uebergreifend', 'Übergeordnet', 'Rezeption'),
+(@rahmen, 'DE_S1U_UEB_PRO', 'Sekundarstufe I übergreifend · Übergeordnet · Produktion', 12, 'sek1_uebergreifend', 'Übergeordnet', 'Produktion'),
 (@rahmen, 'DE_S1_SPR_REZ', 'Erste Stufe · Sprache · Rezeption', 13, 'erste_stufe', 'Sprache', 'Rezeption'),
 (@rahmen, 'DE_S1_SPR_PRO', 'Erste Stufe · Sprache · Produktion', 14, 'erste_stufe', 'Sprache', 'Produktion'),
 (@rahmen, 'DE_S1_TXT_REZ', 'Erste Stufe · Texte · Rezeption', 15, 'erste_stufe', 'Texte', 'Rezeption'),
@@ -53,7 +64,7 @@ INSERT INTO kompetenzbereiche (rahmen_id, code, name, reihenfolge, phase, inhalt
 (@rahmen, 'DE_S2_MED_PRO', 'Zweite Stufe · Medien · Produktion', 28, 'zweite_stufe', 'Medien', 'Produktion');
 
 -- --------------------------------------------------------------------------
--- Kompetenzerwartungen (flach: eltern_kompetenz_id = NULL)
+-- Kompetenzerwartungen (flach)
 -- --------------------------------------------------------------------------
 -- Erprobungsstufe · Übergeordnet · Rezeption (8)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
@@ -75,7 +86,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_EP_UEB_REZ_08' AS code, 'zu fachlichen Gegenständen persönlich Stellung beziehen' AS kurzname, 'zu fachlichen Gegenständen persönlich Stellung beziehen' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_EP_UEB_REZ';
-
 -- Erprobungsstufe · Übergeordnet · Produktion (13)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -106,7 +116,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_EP_UEB_PRO_13' AS code, 'Feedback geben und annehmen' AS kurzname, 'Feedback geben und annehmen' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_EP_UEB_PRO';
-
 -- Erprobungsstufe · Sprache · Rezeption (10)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -131,7 +140,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_EP_SPR_REZ_10' AS code, 'angeleitet Gemeinsamkeiten und Unterschiede (Satzstrukturen, Wörter und Wortgebrauch) verschiedener Sprachen (der …' AS kurzname, 'angeleitet Gemeinsamkeiten und Unterschiede (Satzstrukturen, Wörter und Wortgebrauch) verschiedener Sprachen (der Lerngruppe) untersuchen' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_EP_SPR_REZ';
-
 -- Erprobungsstufe · Sprache · Produktion (6)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -148,7 +156,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_EP_SPR_PRO_06' AS code, 'angeleitet zu Fehlerschwerpunkten passende Rechtschreibstrategien (u.a. silbierendes Sprechen, Verlängern, Ableiten, …' AS kurzname, 'angeleitet zu Fehlerschwerpunkten passende Rechtschreibstrategien (u.a. silbierendes Sprechen, Verlängern, Ableiten, Wörter zerlegen, Nachschlagen, Ausnahmeschreibung merken) zur Textüberarbeitung einsetzen' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_EP_SPR_PRO';
-
 -- Erprobungsstufe · Texte · Rezeption (10)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -173,7 +180,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_EP_TXT_REZ_10' AS code, 'Informationen aus Sachtexten aufeinander beziehen und miteinander vergleichen' AS kurzname, 'Informationen aus Sachtexten aufeinander beziehen und miteinander vergleichen' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_EP_TXT_REZ';
-
 -- Erprobungsstufe · Texte · Produktion (6)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -190,7 +196,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_EP_TXT_PRO_06' AS code, 'beim Verfassen eines eigenen Textes verschiedene Textfunktionen (appellieren, argumentieren, berichten, beschreiben, …' AS kurzname, 'beim Verfassen eines eigenen Textes verschiedene Textfunktionen (appellieren, argumentieren, berichten, beschreiben, erklären, informieren) unterscheiden und situationsangemessen einsetzen' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_EP_TXT_PRO';
-
 -- Erprobungsstufe · Kommunikation · Rezeption (7)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -209,7 +214,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_EP_KOM_REZ_07' AS code, 'aktiv zuhören, gezielt nachfragen und Gehörtes zutreffend wiedergeben – auch unter Nutzung eigener Notizen' AS kurzname, 'aktiv zuhören, gezielt nachfragen und Gehörtes zutreffend wiedergeben – auch unter Nutzung eigener Notizen' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_EP_KOM_REZ';
-
 -- Erprobungsstufe · Kommunikation · Produktion (7)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -228,7 +232,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_EP_KOM_PRO_07' AS code, 'nonverbale Mittel (u.a. Gestik, Mimik, Körperhaltung) und paraverbale Mittel (u.a. Intonation) unterscheiden und …' AS kurzname, 'nonverbale Mittel (u.a. Gestik, Mimik, Körperhaltung) und paraverbale Mittel (u.a. Intonation) unterscheiden und situationsangemessen einsetzen' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_EP_KOM_PRO';
-
 -- Erprobungsstufe · Medien · Rezeption (7)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -247,7 +250,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_EP_MED_REZ_07' AS code, 'angeleitet die Qualität verschiedener altersgemäßer Quellen prüfen und bewerten (Autor/in, Ausgewogenheit, …' AS kurzname, 'angeleitet die Qualität verschiedener altersgemäßer Quellen prüfen und bewerten (Autor/in, Ausgewogenheit, Informationsgehalt, Belege)' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_EP_MED_REZ';
-
 -- Erprobungsstufe · Medien · Produktion (8)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -268,59 +270,56 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_EP_MED_PRO_08' AS code, 'Möglichkeiten und Grenzen digitaler Unterstützungsmöglichkeiten bei der Textproduktion beurteilen …' AS kurzname, 'Möglichkeiten und Grenzen digitaler Unterstützungsmöglichkeiten bei der Textproduktion beurteilen (Rechtschreibprogramme, Thesaurus)' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_EP_MED_PRO';
-
--- Zweite Stufe · Übergeordnet · Rezeption (8)
+-- Sekundarstufe I übergreifend · Übergeordnet · Rezeption (8)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
 FROM kompetenzbereiche kb JOIN (
-  SELECT 'DE_S2_UEB_REZ_01' AS code, 'verschiedene Lesestrategien sowie Techniken der Informationsrecherche funktional einsetzen' AS kurzname, 'verschiedene Lesestrategien sowie Techniken der Informationsrecherche funktional einsetzen' AS beschreibung
+  SELECT 'DE_S1U_UEB_REZ_01' AS code, 'verschiedene Lesestrategien sowie Techniken der Informationsrecherche funktional einsetzen' AS kurzname, 'verschiedene Lesestrategien sowie Techniken der Informationsrecherche funktional einsetzen' AS beschreibung
   UNION ALL
-  SELECT 'DE_S2_UEB_REZ_02' AS code, 'Verfahren der Textuntersuchung zielgerichtet einsetzen' AS kurzname, 'Verfahren der Textuntersuchung zielgerichtet einsetzen' AS beschreibung
+  SELECT 'DE_S1U_UEB_REZ_02' AS code, 'Verfahren der Textuntersuchung zielgerichtet einsetzen' AS kurzname, 'Verfahren der Textuntersuchung zielgerichtet einsetzen' AS beschreibung
   UNION ALL
-  SELECT 'DE_S2_UEB_REZ_03' AS code, 'schriftliche und mündliche Texte zusammenfassen' AS kurzname, 'schriftliche und mündliche Texte zusammenfassen' AS beschreibung
+  SELECT 'DE_S1U_UEB_REZ_03' AS code, 'schriftliche und mündliche Texte zusammenfassen' AS kurzname, 'schriftliche und mündliche Texte zusammenfassen' AS beschreibung
   UNION ALL
-  SELECT 'DE_S2_UEB_REZ_04' AS code, 'schreibproduktive Formen der Texterschließung für vertieftes Leseverstehen einsetzen' AS kurzname, 'schreibproduktive Formen der Texterschließung für vertieftes Leseverstehen einsetzen' AS beschreibung
+  SELECT 'DE_S1U_UEB_REZ_04' AS code, 'schreibproduktive Formen der Texterschließung für vertieftes Leseverstehen einsetzen' AS kurzname, 'schreibproduktive Formen der Texterschließung für vertieftes Leseverstehen einsetzen' AS beschreibung
   UNION ALL
-  SELECT 'DE_S2_UEB_REZ_05' AS code, 'sprachliche Darstellungsstrategien in Texten untersuchen' AS kurzname, 'sprachliche Darstellungsstrategien in Texten untersuchen' AS beschreibung
+  SELECT 'DE_S1U_UEB_REZ_05' AS code, 'sprachliche Darstellungsstrategien in Texten untersuchen' AS kurzname, 'sprachliche Darstellungsstrategien in Texten untersuchen' AS beschreibung
   UNION ALL
-  SELECT 'DE_S2_UEB_REZ_06' AS code, 'in Gesprächssituationen aktiv zuhören und Sprechabsichten identifizieren' AS kurzname, 'in Gesprächssituationen aktiv zuhören und Sprechabsichten identifizieren' AS beschreibung
+  SELECT 'DE_S1U_UEB_REZ_06' AS code, 'in Gesprächssituationen aktiv zuhören und Sprechabsichten identifizieren' AS kurzname, 'in Gesprächssituationen aktiv zuhören und Sprechabsichten identifizieren' AS beschreibung
   UNION ALL
-  SELECT 'DE_S2_UEB_REZ_07' AS code, 'Printmedien und digitale Medien gezielt auswerten und die Informationen aus verschiedenen Quellen bezüglich ihrer …' AS kurzname, 'Printmedien und digitale Medien gezielt auswerten und die Informationen aus verschiedenen Quellen bezüglich ihrer Qualität und Relevanz bewerten' AS beschreibung
+  SELECT 'DE_S1U_UEB_REZ_07' AS code, 'Printmedien und digitale Medien gezielt auswerten und die Informationen aus verschiedenen Quellen bezüglich ihrer …' AS kurzname, 'Printmedien und digitale Medien gezielt auswerten und die Informationen aus verschiedenen Quellen bezüglich ihrer Qualität und Relevanz bewerten' AS beschreibung
   UNION ALL
-  SELECT 'DE_S2_UEB_REZ_08' AS code, 'fachliche Gegenstände aus persönlicher und gesellschaftlicher Perspektive beurteilen' AS kurzname, 'fachliche Gegenstände aus persönlicher und gesellschaftlicher Perspektive beurteilen' AS beschreibung
-) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_S2_UEB_REZ';
-
--- Zweite Stufe · Übergeordnet · Produktion (13)
+  SELECT 'DE_S1U_UEB_REZ_08' AS code, 'fachliche Gegenstände aus persönlicher und gesellschaftlicher Perspektive beurteilen' AS kurzname, 'fachliche Gegenstände aus persönlicher und gesellschaftlicher Perspektive beurteilen' AS beschreibung
+) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_S1U_UEB_REZ';
+-- Sekundarstufe I übergreifend · Übergeordnet · Produktion (13)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
 FROM kompetenzbereiche kb JOIN (
-  SELECT 'DE_S2_UEB_PRO_01' AS code, 'Verfahren zur Planung, Gestaltung und Überarbeitung eigener Texte unterscheiden und einsetzen' AS kurzname, 'Verfahren zur Planung, Gestaltung und Überarbeitung eigener Texte unterscheiden und einsetzen' AS beschreibung
+  SELECT 'DE_S1U_UEB_PRO_01' AS code, 'Verfahren zur Planung, Gestaltung und Überarbeitung eigener Texte unterscheiden und einsetzen' AS kurzname, 'Verfahren zur Planung, Gestaltung und Überarbeitung eigener Texte unterscheiden und einsetzen' AS beschreibung
   UNION ALL
-  SELECT 'DE_S2_UEB_PRO_02' AS code, 'die Möglichkeiten digitaler Textverarbeitung in Schreibprozessen zielgerichtet einsetzen' AS kurzname, 'die Möglichkeiten digitaler Textverarbeitung in Schreibprozessen zielgerichtet einsetzen' AS beschreibung
+  SELECT 'DE_S1U_UEB_PRO_02' AS code, 'die Möglichkeiten digitaler Textverarbeitung in Schreibprozessen zielgerichtet einsetzen' AS kurzname, 'die Möglichkeiten digitaler Textverarbeitung in Schreibprozessen zielgerichtet einsetzen' AS beschreibung
   UNION ALL
-  SELECT 'DE_S2_UEB_PRO_03' AS code, 'Gehörtes und Gelesenes zusammenfassen und sachgerecht dokumentieren' AS kurzname, 'Gehörtes und Gelesenes zusammenfassen und sachgerecht dokumentieren' AS beschreibung
+  SELECT 'DE_S1U_UEB_PRO_03' AS code, 'Gehörtes und Gelesenes zusammenfassen und sachgerecht dokumentieren' AS kurzname, 'Gehörtes und Gelesenes zusammenfassen und sachgerecht dokumentieren' AS beschreibung
   UNION ALL
-  SELECT 'DE_S2_UEB_PRO_04' AS code, 'die inhaltliche und sprachliche Gestaltung von Texten als Modell für eigenes Schreiben verwenden' AS kurzname, 'die inhaltliche und sprachliche Gestaltung von Texten als Modell für eigenes Schreiben verwenden' AS beschreibung
+  SELECT 'DE_S1U_UEB_PRO_04' AS code, 'die inhaltliche und sprachliche Gestaltung von Texten als Modell für eigenes Schreiben verwenden' AS kurzname, 'die inhaltliche und sprachliche Gestaltung von Texten als Modell für eigenes Schreiben verwenden' AS beschreibung
   UNION ALL
-  SELECT 'DE_S2_UEB_PRO_05' AS code, 'schriftliche sowie mündliche Texte adressatengerecht und funktional gestalten' AS kurzname, 'schriftliche sowie mündliche Texte adressatengerecht und funktional gestalten' AS beschreibung
+  SELECT 'DE_S1U_UEB_PRO_05' AS code, 'schriftliche sowie mündliche Texte adressatengerecht und funktional gestalten' AS kurzname, 'schriftliche sowie mündliche Texte adressatengerecht und funktional gestalten' AS beschreibung
   UNION ALL
-  SELECT 'DE_S2_UEB_PRO_06' AS code, 'Texte orthografisch sowie grammatisch korrekt und stilistisch angemessen verfassen' AS kurzname, 'Texte orthografisch sowie grammatisch korrekt und stilistisch angemessen verfassen' AS beschreibung
+  SELECT 'DE_S1U_UEB_PRO_06' AS code, 'Texte orthografisch sowie grammatisch korrekt und stilistisch angemessen verfassen' AS kurzname, 'Texte orthografisch sowie grammatisch korrekt und stilistisch angemessen verfassen' AS beschreibung
   UNION ALL
-  SELECT 'DE_S2_UEB_PRO_07' AS code, 'Quellen sinngetreu wiedergeben und korrekt zitieren' AS kurzname, 'Quellen sinngetreu wiedergeben und korrekt zitieren' AS beschreibung
+  SELECT 'DE_S1U_UEB_PRO_07' AS code, 'Quellen sinngetreu wiedergeben und korrekt zitieren' AS kurzname, 'Quellen sinngetreu wiedergeben und korrekt zitieren' AS beschreibung
   UNION ALL
-  SELECT 'DE_S2_UEB_PRO_08' AS code, 'fachbezogene Sachverhalte schriftlich und mündlich mit einer zunehmend differenzierten Fachsprache erläutern' AS kurzname, 'fachbezogene Sachverhalte schriftlich und mündlich mit einer zunehmend differenzierten Fachsprache erläutern' AS beschreibung
+  SELECT 'DE_S1U_UEB_PRO_08' AS code, 'fachbezogene Sachverhalte schriftlich und mündlich mit einer zunehmend differenzierten Fachsprache erläutern' AS kurzname, 'fachbezogene Sachverhalte schriftlich und mündlich mit einer zunehmend differenzierten Fachsprache erläutern' AS beschreibung
   UNION ALL
-  SELECT 'DE_S2_UEB_PRO_09' AS code, 'eigene Positionen schriftlich sowie mündlich adressaten- und situationsangemessen begründen' AS kurzname, 'eigene Positionen schriftlich sowie mündlich adressaten- und situationsangemessen begründen' AS beschreibung
+  SELECT 'DE_S1U_UEB_PRO_09' AS code, 'eigene Positionen schriftlich sowie mündlich adressaten- und situationsangemessen begründen' AS kurzname, 'eigene Positionen schriftlich sowie mündlich adressaten- und situationsangemessen begründen' AS beschreibung
   UNION ALL
-  SELECT 'DE_S2_UEB_PRO_10' AS code, 'sich in eigenen Gesprächsbeiträgen auf andere beziehen' AS kurzname, 'sich in eigenen Gesprächsbeiträgen auf andere beziehen' AS beschreibung
+  SELECT 'DE_S1U_UEB_PRO_10' AS code, 'sich in eigenen Gesprächsbeiträgen auf andere beziehen' AS kurzname, 'sich in eigenen Gesprächsbeiträgen auf andere beziehen' AS beschreibung
   UNION ALL
-  SELECT 'DE_S2_UEB_PRO_11' AS code, 'kommunikative Anforderungen verschiedener Gesprächssituationen identifizieren und eigene Beiträge situationsgerecht …' AS kurzname, 'kommunikative Anforderungen verschiedener Gesprächssituationen identifizieren und eigene Beiträge situationsgerecht gestalten' AS beschreibung
+  SELECT 'DE_S1U_UEB_PRO_11' AS code, 'kommunikative Anforderungen verschiedener Gesprächssituationen identifizieren und eigene Beiträge situationsgerecht …' AS kurzname, 'kommunikative Anforderungen verschiedener Gesprächssituationen identifizieren und eigene Beiträge situationsgerecht gestalten' AS beschreibung
   UNION ALL
-  SELECT 'DE_S2_UEB_PRO_12' AS code, 'Präsentationsmedien funktional einsetzen' AS kurzname, 'Präsentationsmedien funktional einsetzen' AS beschreibung
+  SELECT 'DE_S1U_UEB_PRO_12' AS code, 'Präsentationsmedien funktional einsetzen' AS kurzname, 'Präsentationsmedien funktional einsetzen' AS beschreibung
   UNION ALL
-  SELECT 'DE_S2_UEB_PRO_13' AS code, 'Feedback an Kriterien ausrichten und konstruktiv gestalten' AS kurzname, 'Feedback an Kriterien ausrichten und konstruktiv gestalten' AS beschreibung
-) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_S2_UEB_PRO';
-
+  SELECT 'DE_S1U_UEB_PRO_13' AS code, 'Feedback an Kriterien ausrichten und konstruktiv gestalten' AS kurzname, 'Feedback an Kriterien ausrichten und konstruktiv gestalten' AS beschreibung
+) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_S1U_UEB_PRO';
 -- Erste Stufe · Sprache · Rezeption (9)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -343,7 +342,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_S1_SPR_REZ_09' AS code, 'die gesellschaftliche Bedeutung von Sprache beschreiben' AS kurzname, 'die gesellschaftliche Bedeutung von Sprache beschreiben' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_S1_SPR_REZ';
-
 -- Erste Stufe · Sprache · Produktion (5)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -358,7 +356,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_S1_SPR_PRO_05' AS code, 'eigene und fremde Texte anhand von vorgegebenen Kriterien überarbeiten (u.a. Textkohärenz)' AS kurzname, 'eigene und fremde Texte anhand von vorgegebenen Kriterien überarbeiten (u.a. Textkohärenz)' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_S1_SPR_PRO';
-
 -- Erste Stufe · Texte · Rezeption (13)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -389,7 +386,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_S1_TXT_REZ_13' AS code, 'Sachtexte – auch in digitaler Form – unter vorgegebenen Aspekten vergleichen' AS kurzname, 'Sachtexte – auch in digitaler Form – unter vorgegebenen Aspekten vergleichen' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_S1_TXT_REZ';
-
 -- Erste Stufe · Texte · Produktion (9)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -412,7 +408,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_S1_TXT_PRO_09' AS code, 'Informationen aus verschiedenen Quellen (u.a. kontinuierliche, diskontinuierliche Sachtexte – auch in digitaler Form) …' AS kurzname, 'Informationen aus verschiedenen Quellen (u.a. kontinuierliche, diskontinuierliche Sachtexte – auch in digitaler Form) ermitteln und dem eigenen Schreibziel entsprechend nutzen' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_S1_TXT_PRO';
-
 -- Erste Stufe · Kommunikation · Rezeption (6)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -429,7 +424,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_S1_KOM_REZ_06' AS code, 'längeren Beiträgen aufmerksam zuhören, gezielt nachfragen und zentrale Aussagen des Gehörten wiedergeben – auch unter …' AS kurzname, 'längeren Beiträgen aufmerksam zuhören, gezielt nachfragen und zentrale Aussagen des Gehörten wiedergeben – auch unter Nutzung eigener Notizen' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_S1_KOM_REZ';
-
 -- Erste Stufe · Kommunikation · Produktion (4)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -442,7 +436,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_S1_KOM_PRO_04' AS code, 'sich an unterschiedlichen Gesprächsformen (u.a. Diskussion, Informationsgespräch, kooperative Arbeitsformen) …' AS kurzname, 'sich an unterschiedlichen Gesprächsformen (u.a. Diskussion, Informationsgespräch, kooperative Arbeitsformen) ergebnisorientiert beteiligen' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_S1_KOM_PRO';
-
 -- Erste Stufe · Medien · Rezeption (10)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -467,7 +460,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_S1_MED_REZ_10' AS code, 'die Qualität verschiedener Quellen an Kriterien (Autor/in, Ausgewogenheit, Informationsgehalt, Belege) prüfen und …' AS kurzname, 'die Qualität verschiedener Quellen an Kriterien (Autor/in, Ausgewogenheit, Informationsgehalt, Belege) prüfen und bewerten' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_S1_MED_REZ';
-
 -- Erste Stufe · Medien · Produktion (7)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -486,7 +478,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_S1_MED_PRO_07' AS code, 'digitale Möglichkeiten für die individuelle und kooperative Textproduktion einsetzen' AS kurzname, 'digitale Möglichkeiten für die individuelle und kooperative Textproduktion einsetzen' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_S1_MED_PRO';
-
 -- Zweite Stufe · Sprache · Rezeption (9)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -509,7 +500,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_S2_SPR_REZ_09' AS code, 'Mehrsprachigkeit in ihrer individuellen und gesellschaftlichen Bedeutung erläutern' AS kurzname, 'Mehrsprachigkeit in ihrer individuellen und gesellschaftlichen Bedeutung erläutern' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_S2_SPR_REZ';
-
 -- Zweite Stufe · Sprache · Produktion (6)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -526,7 +516,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_S2_SPR_PRO_06' AS code, 'selbstständig eigene und fremde Texte kriterienorientiert überarbeiten (u.a. stilistische Angemessenheit, …' AS kurzname, 'selbstständig eigene und fremde Texte kriterienorientiert überarbeiten (u.a. stilistische Angemessenheit, Verständlichkeit)' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_S2_SPR_PRO';
-
 -- Zweite Stufe · Texte · Rezeption (9)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -549,7 +538,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_S2_TXT_REZ_09' AS code, 'Sachtexte – auch in digitaler Form – im Hinblick auf Form, Inhalt und Funktion miteinander vergleichen und bewerten' AS kurzname, 'Sachtexte – auch in digitaler Form – im Hinblick auf Form, Inhalt und Funktion miteinander vergleichen und bewerten' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_S2_TXT_REZ';
-
 -- Zweite Stufe · Texte · Produktion (10)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -574,7 +562,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_S2_TXT_PRO_10' AS code, 'Bewerbungen – auch digital – verfassen (u.a. Bewerbungsschreiben, Lebenslauf)' AS kurzname, 'Bewerbungen – auch digital – verfassen (u.a. Bewerbungsschreiben, Lebenslauf)' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_S2_TXT_PRO';
-
 -- Zweite Stufe · Kommunikation · Rezeption (4)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -587,7 +574,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_S2_KOM_REZ_04' AS code, 'zentrale Informationen aus Präsentationen (u.a. Text-Bild-Relation) zu fachspezifischen Themen erschließen und …' AS kurzname, 'zentrale Informationen aus Präsentationen (u.a. Text-Bild-Relation) zu fachspezifischen Themen erschließen und weiterführende Fragestellungen formulieren' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_S2_KOM_REZ';
-
 -- Zweite Stufe · Kommunikation · Produktion (6)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -604,7 +590,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_S2_KOM_PRO_06' AS code, 'Anforderungen in Bewerbungssituationen identifizieren und das eigene Kommunikationsverhalten daran anpassen' AS kurzname, 'Anforderungen in Bewerbungssituationen identifizieren und das eigene Kommunikationsverhalten daran anpassen' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_S2_KOM_PRO';
-
 -- Zweite Stufe · Medien · Rezeption (9)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -627,7 +612,6 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'DE_S2_MED_REZ_09' AS code, 'die Qualität verschiedener Quellen an Kriterien (Autor/in, Ausgewogenheit, Informationsgehalt, Belege) prüfen und eine …' AS kurzname, 'die Qualität verschiedener Quellen an Kriterien (Autor/in, Ausgewogenheit, Informationsgehalt, Belege) prüfen und eine Bewertung schlüssig begründen' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'DE_S2_MED_REZ';
-
 -- Zweite Stufe · Medien · Produktion (7)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
@@ -649,6 +633,6 @@ FROM kompetenzbereiche kb JOIN (
 
 COMMIT;
 
--- Kontrolle:
--- SELECT COUNT(*) FROM kompetenzbereiche WHERE rahmen_id=@rahmen;  -- erwartet: 28
--- SELECT COUNT(*) FROM kompetenzen k JOIN kompetenzbereiche kb ON kb.id=k.bereich_id WHERE kb.rahmen_id=@rahmen;  -- erwartet: 226
+-- Kontrolle: erwartet Bereiche=28, Kompetenzen=226
+-- Erwartet je Phase: erprobungsstufe 10/82, sek1_uebergreifend 2/21,
+--                   erste_stufe 8/63, zweite_stufe 8/60.

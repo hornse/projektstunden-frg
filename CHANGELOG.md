@@ -33,6 +33,21 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
   unterscheidbar waren.
 - **Dritte Prüfung in der Rubrik „Fachdaten"** – wo ein Seed die Spalte `art`
   deklariert, führt jede Bereichszeile sie auch gefüllt mit.
+- **Migration 14** – Phase `sek1_uebergreifend` im ENUM von
+  `kompetenzbereiche.phase`, eingeordnet zwischen `erprobungsstufe` und
+  `erste_stufe` (E12/E14). Rein additiv, zweimal ausführbar.
+- **Deutsch Sek I mit Quellennachweis** – `sql/gen/gen_deutsch_klp.py` erzeugt
+  `10_seed_deutsch_klp.sql` aus `docs/curricula/g9_d_klp_3409_2019_06_23.pdf`.
+  226 Kompetenzerwartungen in 28 Bereichen, unverändert. Damit führt **jede**
+  Datei mit Fachdaten einen Quellennachweis; der Rückstand aus E21 ist
+  erledigt (E29).
+- **21 übergeordnete Erwartungen umgehängt** – Phase `zweite_stufe` →
+  `sek1_uebergreifend`, Codes `DE_S2_UEB_…` → `DE_S1U_UEB_…` (E12/E14). Der
+  Wortlaut aller 21 ist unverändert.
+- **Vierte Prüfung in der Rubrik „Fachdaten"** – jede Datei, die in
+  `kompetenzen` oder `kompetenzbereiche` schreibt, deklariert eine Quelle
+  (E27). Erkannt wird sie am Inhalt, nicht am Dateinamen. Zusammen mit der
+  ersten Prüfung schließt sie das Schlupfloch aus E21/E23.
 
 ### Behoben
 - **`(fach)sprachlich` → `(fach-)sprachlich`** (2 Einträge) – ein echter
@@ -49,12 +64,18 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
   gefunden hat es der Wortlautvergleich, nicht das Lesen.
 - **`Rollsport/Bootssport/Wintersport` → `Rollsport, Bootssport, Wintersport`**
   (2 Bereichsnamen) – der Bestand wich hier von seiner eigenen Quelle ab (E26).
+- **Silbentrennung: fünfte Regel** (E28) – beginnt die Fortsetzung mit einem
+  Großbuchstaben, bleibt der Bindestrich stehen. Sie steht hinter den beiden
+  Regeln, die das Dokument befragen. Fing `LautBuchstaben-Ebene` statt
+  `Laut-Buchstaben-Ebene`.
+- **Ellipsenregel auch innerhalb der Zeile** (E28) – `Satz-und Textebene` statt
+  `Satz- und Textebene`; `pdftotext` verschluckt dort den Wortabstand.
 
-**Prüfungen: 48 → 50 → 51.**
+**Prüfungen: 48 → 50 → 51 → 52.**
 
 Geplant:
-- Quelle und Erzeuger für `10_seed_deutsch_klp.sql` nachziehen (E21)
 - `teilbereich` befüllen (Englisch, E18)
+- WP Wirtschaft: Lehrplan liegt noch nicht vor (E13)
 - Schulanpassung (Logo, Schulname) – eigener Admin-Bereich
 - Schüler-Sync direkt aus WebUntis (ohne CSV-Import)
 

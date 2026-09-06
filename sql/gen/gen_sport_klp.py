@@ -291,11 +291,23 @@ def fuege_zusammen(rohzeilen, schatz, zeilennr, protokoll):
         elif mit_strich > 0 and verschmolzen > 0:
             text = text[:-1] + zeile
             grund = "beide Formen belegt -- aufgeloest"
+        elif folge[:1].isupper():                               # Regel 5 (E28)
+            # Eine Silbentrennung fuehrt nie zu einem Grossbuchstaben; ein
+            # Bindestrich davor ist ein Kompositum-Bindestrich. Die Regel steht
+            # HINTER 2 und 3: wo das Dokument einen Beleg liefert, gilt der
+            # Beleg, die Faustregel greift nur ohne einen solchen.
+            text += zeile
+            grund = "Regel 5 (Grossbuchstabe, echter Bindestrich)"
         else:                                                   # Regel 4
             text = text[:-1] + zeile
             grund = "Regel 4 (unbelegt, aufgeloest)"
         protokoll.append((zeilennr, anfang, folge, grund))
-    return re.sub(r"\s+", " ", text).strip()
+
+    text = re.sub(r"\s+", " ", text).strip()
+    # E28: Ellipsenregel auch innerhalb der Zeile. `Satz-und` ist keine
+    # moegliche deutsche Wortform, gleich woher die Luecke stammt.
+    text = re.sub(r"(?<=-)(?=(?:und|oder|bzw\.|sowie)\b)", " ", text)
+    return text
 
 
 # ---------------------------------------------------------------------------

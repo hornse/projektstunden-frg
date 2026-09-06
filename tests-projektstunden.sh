@@ -369,6 +369,48 @@ else
         || rot "art fehlt:$LUECKE"
 fi
 
+# --- Prüfung 4: jede Datei mit Fachdaten deklariert eine Quelle (E19/E27)
+# Diese Prüfung schliesst das Schlupfloch der Prüfung 1: dort entgeht der
+# Kontrolle, wer die "-- Quelle:"-Zeile einfach weglaesst. Erst beide zusammen
+# greifen -- die eine verlangt die Deklaration, die andere loest sie ein.
+#
+# Woran eine Datei Fachdaten fuehrt, entscheidet ihr Inhalt, nicht ihr Name
+# (E27, REIHENREGELN 4): Sie schreibt in `kompetenzen` oder `kompetenzbereiche`.
+# Der Name waere eine Konvention -- ein kuenftiger Import, der anders heisst,
+# entkaeme ihr, und Testdaten mit "seed" im Namen fielen grundlos durch.
+#
+# Geprueft wird dateiweit, nicht zeilenweise: ein `INSERT INTO`, dessen
+# Tabellenname erst in der naechsten Zeile steht, wuerde sonst entgehen.
+# Kommentarzeilen werden vorher entfernt, damit der Ausdruck nicht auf die
+# Beschreibung der Regel anschlaegt statt auf die Sache (REIHENREGELN 2).
+OHNE_QUELLE=""
+ANZ_F=0
+UNLESBAR=""
+for DATEI in sql/*.sql; do
+    # Anwesenheit durch Auflisten, nicht durch das Werkzeug daneben
+    # (REIHENREGELN 3). Ohne das meldete ein leergelaufenes Muster
+    # "ohne Quellenangabe" statt "Datei nicht da" – eine Auskunft in die
+    # falsche Richtung.
+    if ! ls -1 "$DATEI" > /dev/null 2>&1; then
+        UNLESBAR="$UNLESBAR $DATEI"; continue
+    fi
+    perl -0777 -ne 's{^\s*--.*$}{}gm;
+        exit(!(/INSERT\s+(?:IGNORE\s+)?INTO\s+(?:kompetenzen|kompetenzbereiche)\b/is))' \
+        "$DATEI" || continue
+    ANZ_F=$((ANZ_F + 1))
+    grep -q '^-- Quelle:' "$DATEI" || OHNE_QUELLE="$OHNE_QUELLE $(basename "$DATEI")"
+done
+if [ -n "$UNLESBAR" ]; then
+    rot "Fachdaten: Datei nicht lesbar:$UNLESBAR – die Prüfung fand ihre Voraussetzung nicht"
+elif [ "$ANZ_F" -eq 0 ]; then
+    # Null Funde sind ein Fehler, kein Ergebnis (REIHENREGELN 2).
+    rot "Fachdaten: keine Datei mit Fachdaten gefunden – die Prüfung fand ihre Voraussetzung nicht"
+else
+    [ -z "$OHNE_QUELLE" ] \
+        && gruen "jede Datei mit Fachdaten deklariert eine Quelle ($ANZ_F geprüft)" \
+        || rot "ohne Quellenangabe:$OHNE_QUELLE"
+fi
+
 echo ""
 GESAMT=$((GRUEN + FEHLER))
 echo "$GRUEN/$GESAMT bestanden, $FEHLER rot"
