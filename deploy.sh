@@ -8,6 +8,16 @@
 
 set -e
 
+# Tests vor allem anderen. Eine Pruefung ohne ihre Voraussetzung gilt nicht
+# als bestanden (REIHENREGELN 2) - ein fehlendes Skript bricht ab, statt
+# den Deploy stillschweigend durchzulassen.
+if [ -x ./tests-projektstunden.sh ]; then
+  ./tests-projektstunden.sh || { echo "Tests rot - kein Deploy." >&2; exit 1; }
+else
+  echo "FEHLER: tests-projektstunden.sh fehlt oder ist nicht ausfuehrbar." >&2
+  exit 1
+fi
+
 MSG="${1}"
 if [ -z "$MSG" ]; then
   read -p "Commit-Nachricht: " MSG
