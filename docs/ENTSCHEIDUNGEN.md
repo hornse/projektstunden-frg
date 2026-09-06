@@ -700,3 +700,46 @@ eine eigene Gegenprobe.
 **Was das nicht heißt:** Die Prüfung sagt nur, dass eine Quelle deklariert ist.
 Ob sie stimmt, prüft die Regel aus E21 — beide zusammen schließen das
 Schlupfloch, keine allein.
+
+---
+
+## E28 — E22 bekommt eine fünfte Regel, und E25 eine Grenze (06.09.2026)
+
+**Anlass:** Der Deutsch-Sek-I-Import erzeugte zwei falsche Kompetenztexte:
+`LautBuchstaben-Ebene` statt `Laut-Buchstaben-Ebene`, und `Satz-und Textebene`
+statt `Satz- und Textebene`. Beide wurden nur durch den Wortlautvergleich gegen
+den geprüften Bestand gefunden.
+
+**Erstens — Großbuchstabe heißt echter Bindestrich.** In E22 wird zwischen
+Regel 3 und Regel 4 eingeschoben: *Beginnt die Fortsetzung mit einem
+Großbuchstaben, gilt der Bindestrich als echt und bleibt stehen.*
+
+Begründung nicht statistisch, sondern orthografisch: Eine Silbentrennung führt
+nie zu einem Großbuchstaben; ein Bindestrich vor einem Großbuchstaben ist ein
+Kompositum-Bindestrich. Über die drei bisher importierten Fächer hinweg gibt es
+genau einen Regel-4-Fall mit Großbuchstaben-Fortsetzung — diesen, und er war
+falsch entschieden.
+
+Die Stellung ist nicht beliebig: Die neue Regel steht **hinter** den Regeln 2
+und 3, die das Dokument selbst befragen. Wo ein Beleg vorliegt, gilt der Beleg;
+die Faustregel greift nur, wo keiner vorliegt.
+
+**Zweitens — Ellipsenregel auch innerhalb der Zeile.** Wo ein Bindestrich
+unmittelbar an `und`, `oder`, `bzw.` oder `sowie` stößt, wird ein Leerzeichen
+eingefügt. Bisher galt E22 Regel 1 nur über Zeilengrenzen hinweg. `Satz-und`
+ist im Deutschen keine mögliche Wortform, gleich woher die Lücke stammt — hier
+verschluckt `pdftotext` den Wortabstand, im PDF ist er zu eng gesetzt. Im
+gesamten Dokument trifft die Regel genau eine Stelle.
+
+**Drittens — E25 gilt für C0, nicht für C1.** Der Deutsch-Sek-I-Plan verwendet
+`U+0083`, ein C1-Steuerzeichen, als Aufzählungsmarker für die 42 übergeordneten
+Kompetenzerwartungen. Eine Ausweitung der Steuerzeichen-Entfernung auf C1 hätte
+sie spurlos gelöscht — und die Gesamtzahl hätte weiter gestimmt, weil die
+Zählung dieselbe Quelle liest.
+
+Deshalb zusätzlich: Wo ein Plan mehrere Aufzählungsmarker führt, prüft der
+Erzeuger die Aufteilung je Marker, nicht nur die Summe. Beim Deutsch-Sek-I-Plan
+sind das 42 zu 184.
+
+**Was das nicht heißt:** Regel 4 bleibt der ungestützte Zweig. Ihre Fälle
+gehören weiterhin einzeln in den Bericht.

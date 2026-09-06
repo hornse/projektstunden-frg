@@ -271,3 +271,9 @@ Muster nur im Kommentar führt, ergibt null Treffer — gehört mit in den Beric
 Die Prüfung läuft zunächst rot, weil `10_seed_deutsch_klp.sql` keine Quelle
 deklariert, und wird mit Schritt 3b grün. Der rote Lauf dazwischen ist der Beleg
 (REIHENREGELN 2) und gehört in den Bericht.
+
+**Nachtrag 2 (06.09.2026):** Beide Abweichungen im Kompetenztext beheben, nach
+E28 — fünfte Trennregel (Großbuchstabe = echter Bindestrich, eingeordnet hinter
+Regel 3) und Ellipsenregel innerhalb der Zeile. Danach muss der
+Wortlautvergleich genau 21 Abweichungen zeigen, alle in Phase und Code, keine
+im Kompetenztext.
