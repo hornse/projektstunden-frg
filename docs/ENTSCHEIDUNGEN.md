@@ -619,3 +619,55 @@ jedes an seinem Ort. Damit sind alle 24 Regel-4-Fälle eindeutig.
 Verfahrenshinweis für künftige Fächer: Wo Regel 4 über ein inhaltlich relevantes
 Wort entscheidet, lohnt der Blick in eine frühere Fassung derselben Quelle. Ein
 anderer Satzspiegel bricht an anderer Stelle um und liefert das Wort ungetrennt.
+
+---
+
+## E25 — Steuerzeichen aus PDF-Text werden vor der Normalisierung entfernt (06.09.2026)
+
+**Anlass:** Der Wortlautvergleich beim Sport-Import meldete eine Abweichung, die
+im Text unsichtbar war: `… auf<U+0003>grundlegendem Niveau bewerten`. An dieser
+einen Stelle liefert `pdftotext` ein Steuerzeichen statt eines Leerzeichens.
+
+**Befund:** `U+0003` ist in Python kein `\s`; `re.sub(r"\s+", " ", …)` fasst es
+nicht. Im PDF kommt es 26-mal vor, davon 25-mal im Inhaltsverzeichnis und genau
+einmal im Kompetenzteil. Der Bestand enthält es nicht — der frühere Erzeuger hat
+es behandelt, ohne dass es irgendwo vermerkt war.
+
+Im selben Lauf fiel eine zweite Form auf: Drei von 120 Aufzählungszeilen
+beginnen mit einem Seitenumbruch `\x0c` statt einem Leerzeichen. Ein Ausdruck
+`^ *à` verliert sie. Aufgefallen ist es nicht durch Suche, sondern weil die Zahl
+117 nicht zu den erwarteten 120 passte.
+
+**Entscheidung:** Jeder Erzeuger wandelt vor der Normalisierung alle
+C0-Steuerzeichen außer Tabulator, Zeilen- und Seitenumbruch in Leerzeichen. Die
+Erkennung von Aufzählungszeilen berücksichtigt einen führenden Seitenumbruch.
+
+**Warum:** Beides ist unsichtbar und wandert stillschweigend in die Daten. Nur
+der Wortlautvergleich gegen einen vorhandenen Bestand hat es gefangen — bei
+einem Fach ohne Vorgänger gäbe es diesen Vergleich nicht.
+
+**Was das nicht heißt:** Die Liste der Steuerzeichen ist aus einem Dokument
+gewonnen. Bei jedem weiteren Fach gehört eine Auszählung der Zeichen oberhalb
+des druckbaren Bereichs in den Bericht.
+
+---
+
+## E26 — Bei Widerspruch zwischen Bestand und Quelle gilt die Quelle (06.09.2026)
+
+**Anlass:** Der Sport-Import fand zwei Bereichsnamen, in denen der Bestand von
+seiner eigenen Quelle abweicht: `Rollsport/Bootssport/Wintersport` gegenüber
+`Rollsport, Bootssport, Wintersport` im Lehrplan. Beide Fundstellen im PDF
+führen Kommas; eine dritte Schreibweise gibt es nicht.
+
+**Entscheidung:** Der Erzeuger folgt der Quelle. Die Anweisung in Auftragsdateien
+„Codes und Anzeigenamen aus dem Bestand rekonstruieren, nicht neu erfinden"
+gilt für Formregeln — Codeschema, Kürzungsgrenzen, Sortierung —, also für
+Festlegungen, die im Lehrplan nicht stehen. Wo der Lehrplan etwas sagt, gilt er.
+
+**Warum:** Eine Ausnahme im Erzeuger, die eine abweichende Schreibweise erhält,
+schreibt einen Übertragungsfehler fest und macht ihn unauffindbar.
+
+**Was das nicht heißt:** Abweichungen werden nicht stillschweigend übernommen.
+Sie werden vorgelegt und einzeln entschieden — bei Deutsch GOSt waren fünf von
+elf Fehler des Bestands, bei Sport zwei von drei. Ohne den Vergleich wäre keiner
+davon aufgefallen.

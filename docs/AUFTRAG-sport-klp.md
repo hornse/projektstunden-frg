@@ -246,3 +246,18 @@ wenn sie leer ist —, und die nach E22 Regel 4 entschiedenen Trennfälle.
 - Vermutungen als Vermutungen kennzeichnen, mit dem Versuch dazu.
 - „Ich weiß es nicht" statt einer plausiblen Vermutung.
 - Bei Unklarheit nachfragen statt vermuten.
+
+---
+
+## Nachtrag (06.09.2026) — die drei Wortlautabweichungen
+
+**Abweichung 1** (`SPO_EP_IFE_UK_01`, Steuerzeichen `U+0003`): beheben, der
+Bestand hat recht. Nicht nur dieses Zeichen abfangen, sondern alle
+C0-Steuerzeichen außer Tabulator, Zeilen- und Seitenumbruch (E25).
+
+**Abweichungen 2 und 3** (`SPO_EP_BF8_BWK`, `SPO_SI_BF8_BWK`): der Quelle
+folgen, also Kommas statt Schrägstrichen (E26). Der Bestand weicht hier von
+seiner eigenen Quelle ab.
+
+Danach Schritt 4 zu Ende führen. Der Wortlautvergleich muss dann leer ausgehen
+bis auf die beiden Bereichsnamen; diese Liste gehört in den Bericht.
