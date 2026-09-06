@@ -11,7 +11,8 @@ export LC_ALL=C
 cd "$(dirname "$0")"
 
 FEHLER=0
-gruen() { echo "  ✓ $1"; }
+GRUEN=0
+gruen() { echo "  ✓ $1"; GRUEN=$((GRUEN + 1)); }
 rot()   { echo "  ✗ $1"; FEHLER=$((FEHLER + 1)); }
 
 CSS=frontend/style.css
@@ -296,5 +297,7 @@ else
 fi
 
 echo ""
+GESAMT=$((GRUEN + FEHLER))
+echo "$GRUEN/$GESAMT bestanden, $FEHLER rot"
 if [ "$FEHLER" -eq 0 ]; then echo "ALLES GRÜN"; exit 0; fi
-echo "$FEHLER FEHLER"; exit 1
+exit 1
