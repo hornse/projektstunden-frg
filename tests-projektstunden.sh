@@ -218,8 +218,8 @@ echo "Fachdaten"
 # E19: erzeugte Fachdaten fuehren Quelle, Pruefsumme und Erzeuger im Kopf.
 # E21: geprueft wird an der Deklaration. Jeder Seed, der eine "-- Quelle:"-Zeile
 # fuehrt, muss sie einloesen; Seeds ohne Quellenangabe fallen nicht durch. Der
-# Rueckstand bei 10_seed_deutsch_klp.sql und 12_seed_sport_klp.sql ist in E21
-# festgehalten, nicht hier verschwiegen.
+# Rueckstand bei 10_seed_deutsch_klp.sql ist in E21 festgehalten, nicht hier
+# verschwiegen.
 #
 # Der Bestand wird ermittelt, nicht aufgezaehlt (REIHENREGELN 4): kein
 # Dateiname steht in dieser Pruefung.
@@ -294,6 +294,79 @@ else
                 || rot "Erzeuger fehlt:$FEHLT"
         fi
     fi
+fi
+
+# --- Prüfung 3: wo `art` deklariert ist, führt jede Wertezeile sie auch (E18)
+# Sport ist das einzige Fach, in dem `inhaltsfeld` zwei Dinge enthält --
+# Inhaltsfelder und Bewegungsfelder. `art` hält fest, welches von beiden.
+# Bleibt sie in einer Zeile leer, ist der Unterschied wieder nur an der
+# Namenskonvention erkennbar, und genau das sollte die Spalte beenden.
+#
+# Geprüft wird an der Deklaration, nicht an einem Dateinamen (REIHENREGELN 4):
+# betroffen ist jeder Seed, dessen Spaltenliste `art` nennt. Seeds ohne die
+# Spalte -- Deutsch führt sie nicht -- fallen nicht durch.
+MIT_ART=$(grep -l 'INSERT INTO kompetenzbereiche (.*[ (]art[,)]' sql/*.sql 2>/dev/null || true)
+if [ -z "$MIT_ART" ]; then
+    rot "Fachdaten: kein Seed deklariert die Spalte art – die Prüfung fand ihre Voraussetzung nicht"
+else
+    LUECKE=""
+    ANZ_A=0
+    for SEED in $MIT_ART; do
+        ANZ_A=$((ANZ_A + 1))
+        BEFUND=$(awk '
+            # Zählt Felder auf oberster Ebene; SQL-Hochkommata werden dabei
+            # beachtet, weil Bereichsnamen selbst Kommata enthalten
+            # ("Gleiten, Fahren, Rollen"). Ein verdoppeltes '\''\'''\'' ist
+            # ein Zeichen im String, kein Ende.
+            function felder(s,   i, c, inq, n) {
+                n = 1; inq = 0
+                for (i = 1; i <= length(s); i++) {
+                    c = substr(s, i, 1)
+                    if (c == "'\''") {
+                        if (inq && substr(s, i + 1, 1) == "'\''") i++
+                        else inq = !inq
+                    } else if (c == "," && !inq) n++
+                }
+                return n
+            }
+            function feld(s, k,   i, c, inq, n, aus) {
+                n = 1; inq = 0; aus = ""
+                for (i = 1; i <= length(s); i++) {
+                    c = substr(s, i, 1)
+                    if (c == "'\''") {
+                        if (inq && substr(s, i + 1, 1) == "'\''") { aus = aus "'\''"; i++ }
+                        else inq = !inq
+                    } else if (c == "," && !inq) { n++; if (n > k) break }
+                    else if (n == k) aus = aus c
+                }
+                gsub(/^[ \t]+|[ \t]+$/, "", aus)
+                return aus
+            }
+            /INSERT INTO kompetenzbereiche \(/ {
+                sp = $0
+                sub(/.*INSERT INTO kompetenzbereiche \(/, "", sp)
+                sub(/\).*/, "", sp)
+                spalten = felder(sp)
+                artpos = 0
+                for (i = 1; i <= spalten; i++) if (feld(sp, i) == "art") artpos = i
+                next
+            }
+            /^\(@rahmen,/ && artpos > 0 {
+                z = $0
+                sub(/^\(/, "", z); sub(/\)[,;]?[ \t]*$/, "", z)
+                if (felder(z) != spalten) { print "Feldzahl " felder(z) " statt " spalten " in Zeile " NR; fehler++ }
+                else {
+                    w = feld(z, artpos)
+                    if (w == "" || w == "NULL") { print "art leer in Zeile " NR; fehler++ }
+                }
+            }
+            END { if (artpos == 0) print "keine Spaltenliste mit art gefunden" }
+        ' "$SEED")
+        [ -n "$BEFUND" ] && LUECKE="$LUECKE $(basename "$SEED"):$(printf '%s' "$BEFUND" | head -1)"
+    done
+    [ -z "$LUECKE" ] \
+        && gruen "art ist in jeder Bereichszeile gesetzt ($ANZ_A Seed(s) mit art-Spalte)" \
+        || rot "art fehlt:$LUECKE"
 fi
 
 echo ""

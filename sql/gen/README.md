@@ -60,7 +60,31 @@ den Bericht des jeweiligen Auftrags und wird durchgesehen.
 | Erzeuger | Seed | Quelle |
 |---|---|---|
 | `gen_deutsch_sii.py` | `sql/11_seed_deutsch_sii.sql` | `gost_klp_d_2026_08_24.pdf` |
+| `gen_sport_klp.py` | `sql/12_seed_sport_klp.sql` | `g9_sp_klp_3426_2019_06_23.pdf` |
 
-`sql/10_seed_deutsch_klp.sql` und `sql/12_seed_sport_klp.sql` nennen im Kopf
-Erzeuger, die es nie ins Repo geschafft haben. Der Rückstand ist in E21
-festgehalten und noch offen.
+`sql/10_seed_deutsch_klp.sql` nennt im Kopf einen Erzeuger, der es nie ins Repo
+geschafft hat. Der Rückstand ist in E21 festgehalten und noch offen.
+
+## Was bei jedem neuen Fach zu prüfen ist
+
+Die beiden bisherigen Fächer haben je eine Falle mitgebracht, die vorher
+niemand vermutet hatte. Beide waren unsichtbar und wurden nur durch eine
+**Zahl** gefunden, nicht durch Hinsehen:
+
+- **Das Aufzählungszeichen ist nicht überall `•`.** Der Sport-Plan verwendet
+  `à` — einen falsch dekodierten Wingdings-Pfeil. `•` steht dort ebenfalls im
+  Dokument, nur an anderer Stelle. Vor dem Bauen auszählen, welches Zeichen
+  wie oft am Zeilenanfang steht.
+- **Steuerzeichen (E25).** `pdftotext` liefert vereinzelt `U+0003` statt eines
+  Leerzeichens und setzt Seitenumbrüche `\x0c` mitten vor eine
+  Aufzählungszeile. Beides ist im Text unsichtbar. Eine Auszählung der Zeichen
+  oberhalb des druckbaren Bereichs gehört in den Bericht jedes Fachimports.
+- **Der Wortlautvergleich gegen einen vorhandenen Bestand fängt beides.** Bei
+  einem Fach ohne Vorgänger gibt es diesen Vergleich nicht — dort ist die
+  Zeichenauszählung die einzige Absicherung.
+
+Die Formregeln — Codeschema, Kürzungsgrenze, Sortierung, Behandlung des
+Schlusszeichens — werden aus dem Bestand rekonstruiert und gegen ihn geprüft,
+nicht neu erfunden. Sie unterscheiden sich zwischen den Fächern: Deutsch
+behält den Schlusspunkt, Sport entfernt ihn. Wo dagegen der Lehrplan selbst
+etwas sagt, gilt der Lehrplan, auch gegen den Bestand (E26).

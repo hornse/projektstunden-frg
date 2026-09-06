@@ -22,6 +22,17 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 - **Rubrik „Fachdaten" in `tests-projektstunden.sh`** – zwei Prüfungen:
   Quellenangabe samt Prüfsumme, und Existenz eines genannten Erzeugers
   (E19/E21/E23).
+- **Migration 13** – `teilbereich VARCHAR(80) NULL` und `art VARCHAR(30) NULL`
+  auf `kompetenzbereiche` (E18). Rein additiv, zweimal ausführbar.
+  `teilbereich` bleibt vorerst leer und kommt mit Englisch.
+- **Sport mit Quellennachweis und gefüllter `art`** – `sql/gen/gen_sport_klp.py`
+  erzeugt `12_seed_sport_klp.sql` aus
+  `docs/curricula/g9_sp_klp_3426_2019_06_23.pdf`. 120 Kompetenzerwartungen in
+  54 Bereichen, unverändert; `art` trennt jetzt die 36 Inhaltsfeld- von den
+  18 Bewegungsfeld-Bereichen, die zuvor nur an der Namenskonvention
+  unterscheidbar waren.
+- **Dritte Prüfung in der Rubrik „Fachdaten"** – wo ein Seed die Spalte `art`
+  deklariert, führt jede Bereichszeile sie auch gefüllt mit.
 
 ### Behoben
 - **`(fach)sprachlich` → `(fach-)sprachlich`** (2 Einträge) – ein echter
@@ -32,13 +43,18 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 - **Unvollständige Klammern** – `DE_EF_SPR_REZ_03` fehlte
   „Geschlechterstereotype in der Sprache"; zwei weitere Einträge fehlte ein
   Komma vor „auch unter Verwendung von KI-Werkzeugen".
+- **Steuerzeichen aus PDF-Text** (E25) – an einer Stelle des Sport-Plans
+  lieferte `pdftotext` `U+0003` statt eines Leerzeichens, und drei von 120
+  Aufzählungszeilen begannen mit einem Seitenumbruch. Beides ist unsichtbar;
+  gefunden hat es der Wortlautvergleich, nicht das Lesen.
+- **`Rollsport/Bootssport/Wintersport` → `Rollsport, Bootssport, Wintersport`**
+  (2 Bereichsnamen) – der Bestand wich hier von seiner eigenen Quelle ab (E26).
 
-**Prüfungen: 48 → 50.**
+**Prüfungen: 48 → 50 → 51.**
 
 Geplant:
-- Prüfungszahl in der Ausgabe von `tests-projektstunden.sh` (E24)
-- Quelle und Erzeuger für `10_seed_deutsch_klp.sql` und
-  `12_seed_sport_klp.sql` nachziehen (E21)
+- Quelle und Erzeuger für `10_seed_deutsch_klp.sql` nachziehen (E21)
+- `teilbereich` befüllen (Englisch, E18)
 - Schulanpassung (Logo, Schulname) – eigener Admin-Bereich
 - Schüler-Sync direkt aus WebUntis (ohne CSV-Import)
 
