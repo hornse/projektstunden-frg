@@ -607,3 +607,15 @@ Commit-Meldung, damit auffällt, wenn eine Erweiterung nicht wirksam wird oder
 eine Prüfung verschwindet. Solange die Zahl abgezählt werden muss, hängt die
 Regel an der Sorgfalt des Einzelnen — und eine Angabe, die nicht gepflegt wird,
 ist schlechter als keine.
+
+**Nachtrag zu E22 (06.09.2026):** Der einzige Regel-4-Fall mit inhaltlichem
+Gewicht — `Autor-` / `schaft` in DE_QGK_UEB_REZ_08 und DE_QLK_UEB_REZ_08 — ist
+belegt, nicht mehr nur gestützt. Der Entwurf vom 31.07.2025 führt denselben Satz
+ungetrennt: „…sprachlich-stilistische Angemessenheit und im Hinblick auf Fragen
+der Autorschaft". Die einzige `Autorenschaft` steht in beiden Fassungen in
+Kapitel 3, außerhalb des Kompetenzteils. Der Lehrplan verwendet beide Wörter,
+jedes an seinem Ort. Damit sind alle 24 Regel-4-Fälle eindeutig.
+
+Verfahrenshinweis für künftige Fächer: Wo Regel 4 über ein inhaltlich relevantes
+Wort entscheidet, lohnt der Blick in eine frühere Fassung derselben Quelle. Ein
+anderer Satzspiegel bricht an anderer Stelle um und liefert das Wort ungetrennt.
