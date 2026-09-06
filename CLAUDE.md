@@ -85,10 +85,10 @@ ssh hornse@halimede.uberspace.de 'supervisorctl tail projektstunden stderr' | ta
 ./deploy.sh "<commit message>"
 ```
 
-**Offen: Dieses Projekt hat kein Testskript.** Solange das so ist, sind
-„Ausgangsstand" und „erwartete Prüfungszahl" in jedem Auftrag leer. Das ist
-eine bekannte Lücke, keine Nachlässigkeit im Einzelfall — siehe
-`docs/AUFTRAG-testskript.md`.
+**Vor dem Ausliefern läuft `./tests-projektstunden.sh`.** Es muss grün sein
+und gibt am Ende die Zahl der bestandenen Prüfungen aus. Diese Zahl gehört in
+die Commit-Meldung: Bleibt sie nach einer Erweiterung gleich oder sinkt sie,
+ist etwas verlorengegangen (REIHENREGELN 2).
 
 ## Was nicht in git gehört
 
