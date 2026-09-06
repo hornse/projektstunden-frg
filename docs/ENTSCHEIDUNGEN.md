@@ -671,3 +671,32 @@ schreibt einen Übertragungsfehler fest und macht ihn unauffindbar.
 Sie werden vorgelegt und einzeln entschieden — bei Deutsch GOSt waren fünf von
 elf Fehler des Bestands, bei Sport zwei von drei. Ohne den Vergleich wäre keiner
 davon aufgefallen.
+
+---
+
+## E27 — Fachdaten werden am Inhalt erkannt, nicht am Dateinamen (06.09.2026)
+
+**Anlass:** Für die zweite Quellenprüfung — jeder Seed deklariert eine Quelle —
+war offen, woran ein Seed zu erkennen ist. Drei Fassungen wurden in einem
+Probebaum gegen den Bestand und gegen drei erfundene Fälle durchgespielt.
+
+**Befund:** Alle drei treffen heute dieselben vier Dateien. Sie laufen erst in
+der Zukunft auseinander. Die Fassung über den Dateinamen (`*seed*`) hat beide
+Fehlerarten: Sie verfehlt einen künftigen Fachimport, der anders heißt, und
+verlangt eine Quelle von Testdaten, die keine Fachdaten führen. Die Fassung
+über den Inhalt, zeilenweise angewandt, verfehlt ein `INSERT INTO`, dessen
+Tabellenname in der nächsten Zeile steht.
+
+**Entscheidung:** Eine Datei unter `sql/` führt Fachdaten, wenn sie nach
+Entfernen aller Kommentarzeilen ein `INSERT [IGNORE] INTO kompetenzen` oder
+`… kompetenzbereiche` enthält — dateiweit geprüft, nicht zeilenweise. Nur diese
+Dateien müssen eine Quelle deklarieren.
+
+**Warum:** Der Name ist eine Konvention, das Schreiben in die Fachtabellen ein
+Wesensmerkmal (REIHENREGELN 4). Die Kommentarentfernung verhindert, dass der
+Ausdruck auf die Beschreibung der Regel anschlägt statt auf die Sache; sie hat
+eine eigene Gegenprobe.
+
+**Was das nicht heißt:** Die Prüfung sagt nur, dass eine Quelle deklariert ist.
+Ob sie stimmt, prüft die Regel aus E21 — beide zusammen schließen das
+Schlupfloch, keine allein.

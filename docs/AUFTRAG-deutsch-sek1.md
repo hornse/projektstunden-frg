@@ -259,3 +259,15 @@ entschiedenen Trennfälle, und die Zeichenauszählung nach E25.
 - Vermutungen als Vermutungen kennzeichnen, mit dem Versuch dazu.
 - „Ich weiß es nicht" statt einer plausiblen Vermutung.
 - Bei Unklarheit nachfragen statt vermuten.
+
+---
+
+## Nachtrag (06.09.2026) — Zuschnitt der zweiten Prüfung
+
+Fassung **B′** (E27): Erkennung am Inhalt, dateiweit, nach Entfernen der
+Kommentarzeilen. Die Gegenprobe zur Kommentarentfernung — eine Datei, die das
+Muster nur im Kommentar führt, ergibt null Treffer — gehört mit in den Bericht.
+
+Die Prüfung läuft zunächst rot, weil `10_seed_deutsch_klp.sql` keine Quelle
+deklariert, und wird mit Schritt 3b grün. Der rote Lauf dazwischen ist der Beleg
+(REIHENREGELN 2) und gehört in den Bericht.
