@@ -383,3 +383,77 @@ und die Anmeldung ist die Stelle, an der ein Fehler alle aussperrt.
 
 **Was das nicht heißt:** Die Ausnahme in `api()` wird nicht zurückgenommen. Sie
 ist richtig; fehlerhaft ist die fehlende Nullprüfung in `doLogin()`.
+
+---
+
+## E18 — E11 wird aufgehoben: benannte Spalten statt eines Baums (05.09.2026)
+
+**Anlass:** E11 hat entschieden, `kompetenzbereiche` eine Selbstreferenz zu
+geben. Begründet wurde das mit zwei Fächern: Englisch, weil es eine Ebene mehr
+habe, und Sport, weil es zwei Inhaltsachsen gleichzeitig führe.
+
+**Befund:** Beide Begründungen halten der Prüfung am Lehrplan nicht stand.
+
+Bei Sport hängt die Bewegungs- und Wahrnehmungskompetenz an den
+Bewegungsfeldern, Sach-, Methoden- und Urteilskompetenz hängen an den
+Inhaltsfeldern. Die Achsen liegen nebeneinander, nicht übereinander. Die
+Überschriften „Bewegungsfeld übergreifende" und „Bewegungsfeld spezifische
+Kompetenzerwartungen" (Kapitel 2.4.1 und 2.4.2) benennen genau diese beiden
+Achsen und sind keine weitere Ebene. Die Rechnung geht auf: 6 Inhaltsfelder × 3
+Kompetenzbereiche × 2 Phasen = 36, plus 9 Bewegungsfelder × 2 Phasen = 18,
+zusammen 54 — genau der Bestand in der Datenbank.
+
+Bei Englisch liegt unter der Funktionalen kommunikativen Kompetenz eine Ebene
+mit sieben Teilbereichen. Das ist eine fehlende Spalte, keine fehlende
+Struktur.
+
+Über alle 36 ausgewerteten Lehrpläne liegen unterhalb der Phase **nie mehr als
+zwei** Gruppierungsebenen. Nur ihre Bedeutung wechselt: bei Deutsch und Sport
+Inhaltsfeld und Kompetenzbereich, bei den Fremdsprachen Kompetenzbereich und
+Teilbereich.
+
+**Entscheidung:** E11 wird aufgehoben. Es bleibt bei benannten Spalten. Zu den
+vorhandenen `phase`, `inhaltsfeld` und `kompetenzbereich` kommen
+`teilbereich VARCHAR(80) NULL` für die Fremdsprachen und `art VARCHAR(30) NULL`,
+das festhält, was in `inhaltsfeld` steht — bei Sport stehen dort Inhaltsfelder
+und Bewegungsfelder nebeneinander, derzeit nur durch die Namenskonvention
+`a:` gegen `BF/SB 1:` unterscheidbar. `parent_id` entfällt.
+
+**Warum:** Eine Abfrage `WHERE inhaltsfeld = 'Sprache'` sagt einem Menschen, was
+sie tut; ein rekursiver Ausdruck über `parent_id` verlangt, dass er erst
+herausfindet, welche Knotenart auf welcher Ebene liegt. Dieses Datenmodell wird
+über Jahre von wenigen Leuten angefasst, meist nach längerer Pause. Dazu kommt:
+Jeder der siebzehn ausstehenden Fachimporte müsste beim Baum selbst für
+Konsistenz sorgen — Elternknoten anlegen, ID merken, Kinder daranhängen. Bei
+Spalten ist eine Zeile eine Zeile.
+
+**Was das nicht heißt:** Die Tiefe ist damit fest. Taucht in einem Fach eine
+dritte Gruppierungsebene auf, ist es wieder eine Migration. Die Auswertung
+stützt sich auf die Gliederungsüberschriften aller 36 Pläne, nicht auf eine
+vollständige Lektüre jedes einzelnen. Bei Sport hat sich eine Vermutung über
+eine vierte Ebene erst durch Nachsehen erledigt.
+
+---
+
+## E19 — Erzeugte Fachdaten führen ihren Erzeuger und ihre Quelle mit (05.09.2026)
+
+**Anlass:** `sql/11_seed_deutsch_sii.sql` nennt im Kopf `gen_deutsch_sii.py` als
+Erzeuger. Ein `find` über das gesamte Repo findet keine einzige Python-Datei.
+Die 197 Kompetenzerwartungen der Sekundarstufe II stehen in der Datenbank, ohne
+dass nachvollziehbar wäre, wie sie dorthin kamen.
+
+Derselbe Seed nennt als Quelle den Entwurf vom 31.07.2025 — überholt seit der
+verabschiedeten Fassung vom 24.08.2026. Erkennbar war das nur an einer
+Kommentarzeile, die ebenso gut hätte falsch sein können.
+
+**Entscheidung:** Wo Fachdaten maschinell aus einer Quelle erzeugt werden,
+gehören zwei Dinge ins Repo: das erzeugende Skript, und im Kopf der erzeugten
+Datei der Dateiname der Quelle samt ihrer SHA256-Summe.
+
+**Warum:** Ohne Erzeuger ist eine Korrektur nur von Hand möglich, und bei
+mehreren hundert Einträgen heißt das: gar nicht. Ohne Prüfsumme ist die
+Quellenangabe eine Behauptung — genau die, die hier ein Jahr lang falsch war,
+ohne dass es jemandem auffiel.
+
+**Was das nicht heißt:** Die Quell-PDFs selbst werden nicht mit versioniert. Die
+Prüfsumme genügt, um festzustellen, ob eine vorliegende Datei dieselbe ist.
