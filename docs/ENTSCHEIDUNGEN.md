@@ -457,3 +457,43 @@ ohne dass es jemandem auffiel.
 
 **Was das nicht heißt:** Die Quell-PDFs selbst werden nicht mit versioniert. Die
 Prüfsumme genügt, um festzustellen, ob eine vorliegende Datei dieselbe ist.
+
+---
+
+## E20 — Die Quell-PDFs werden doch versioniert (05.09.2026)
+
+**Anlass:** E19 hält fest, dass die Prüfsumme genüge und die PDFs draußen
+bleiben. Diese Festlegung stützte sich auf eine Größenannahme, die ich nie
+geprüft hatte.
+
+**Befund:** Der vollständige Bestand aus 37 Kernlehrplänen umfasst rund 16 MB;
+die größte Einzeldatei liegt bei 1,0 MB. Kernlehrpläne werden zudem nicht
+geändert, sondern durch eine neue Fassung unter neuem Dateinamen ersetzt — das
+Verzeichnis wächst durch Zugänge, nicht durch Änderungen.
+
+Geprüft wurde außerdem, ob die Ablage unter `docs/` erreichbar wäre: Neun
+Abrufe auf Dateien außerhalb von `frontend/` — darunter `sql/01_schema.sql`,
+`deploy.sh` und `backend/config.php` — liefern durchweg 500 mit der
+1250-Byte-Fehlerseite von Uberspace, keinen Inhalt.
+
+**Entscheidung:** Die PDFs liegen unter `docs/curricula/` im Repo, mit
+unveränderten Dateinamen. `docs/curricula/INDEX.md` führt Datei, Fach, Stufe,
+Stand und Prüfsumme zusammen. E19 gilt im Übrigen weiter — Erzeuger und
+Prüfsumme im Kopf jedes Seeds bleiben Pflicht.
+
+**Warum:** Ohne die Quelle ist der Erzeuger aus E19 nutzlos; ein Skript, das
+ein PDF verarbeitet, das nirgends liegt, lässt sich nicht erneut ausführen. Die
+Verweise auf die Lehrplannavigator-Seiten sind zudem unzuverlässig — sie zeigen
+mal auf `schulentwicklung.nrw.de`, mal auf `lehrplannavigator.nrw.de`, einer
+enthält ein URL-kodiertes Leerzeichen. Und bei Deutsch GOSt hat gerade das
+Fehlen der Quelle dazu geführt, dass ein Entwurf ein Jahr lang unbemerkt als
+verabschiedete Fassung galt.
+
+**Was das nicht heißt:** Der Schutz vor Auslieferung ist keine Regel, sondern
+eine Folge der Serverkonfiguration — `doc_root` ist beschränkt und der Dienst
+läuft aus der Projektwurzel. Ändert jemand das eine oder das andere, wird
+`docs/` erreichbar, und dann auch `backend/config.php`. Diese Abhängigkeit ist
+als Befund für `koordination` vorgemerkt.
+
+Die PDFs gehen über `deploy.sh` mit auf den Server. Bei 16 MB ist das
+hingenommen, nicht übersehen.
