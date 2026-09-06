@@ -239,3 +239,7 @@ fallen damit nicht durch; ihr Rückstand ist in E21 festgehalten.
 **Codeschema:** `DE_EF_…`, `DE_QGK_…`, `DE_QLK_…` wie im Bestand beibehalten.
 
 Erwartete Prüfungszahl: **48 + 2 = 50**.
+
+**Nachtrag 2 (06.09.2026):** Die Fachdatenprüfung übergeht Quellenangaben, die
+mit `http://` oder `https://` beginnen (E23). `02_seed.sql` fällt damit nicht
+durch.

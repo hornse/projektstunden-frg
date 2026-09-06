@@ -559,3 +559,51 @@ Bericht, damit sie durchgesehen werden kann.
 Nebenbefund: Zeichenzahlen aus `pdftotext` sind versionsabhängig — dieselbe
 Datei ergab 106 153 und 106 149 Zeichen bei verschiedenen poppler-Ständen.
 Als Sollwert taugen nur Strukturzahlen.
+
+---
+
+## E23 — Eine Quellenangabe mit Schema ist ein Literaturhinweis (06.09.2026)
+
+**Anlass:** Die Prüfung aus E21 meldete `02_seed.sql` rot. Die Datei führt seit
+jeher `-- Quelle: https://medienkompetenzrahmen.nrw`. Der Medienkompetenzrahmen
+ist der eine Rahmen, der laut E8 korrekt ist — er kam aus einer eigenen Vorlage
+und wurde nie aus einem PDF erzeugt.
+
+**Entscheidung:** Die Prüfung greift nur für Quellenangaben, die auf einen Pfad
+zeigen. Beginnt die Angabe mit `http://` oder `https://`, gilt sie als
+Literaturhinweis und wird übergangen.
+
+**Warum:** Eine Webadresse hat keine Prüfsumme. Die Prüfung auf sie anzuwenden
+hieße, einen Gegenstand zu verlangen, den es nicht gibt — und der einzige
+Rahmen, der von Anfang an stimmte, fiele als erster durch.
+
+**Verworfen:** `02_seed.sql` die Zeile in `-- Herkunft:` umzubenennen. Dann
+hinge die Bedeutung von `-- Quelle:` an einer Namenskonvention, die niemand
+kennt, und eine Datei außerhalb des laufenden Auftrags wäre geändert worden.
+
+**Was das nicht heißt:** E21 wird dadurch nicht dichter. Wer die Prüfung
+umgehen will, schreibt eine URL hin. Das ist dasselbe Schlupfloch, das E21
+bereits benennt, und es schließt erst die zweite Prüfung, die jeden Seed zur
+Quellenangabe verpflichtet.
+
+---
+
+## E24 — Das Testskript gibt keine Prüfungszahl aus (06.09.2026)
+
+**Anlass:** Beim Bau der Fachdatenprüfungen fiel auf, dass
+`tests-projektstunden.sh` „ALLES GRÜN" oder „n FEHLER" ausgibt, sonst nichts.
+Die Zahlen 48 und 50 in den Berichten dieser Sitzung wurden durch Abzählen der
+Häkchen ermittelt, nicht abgelesen.
+
+`CLAUDE.md` behauptet seit `f160c2a`, das Skript gebe die Zahl aus. Das ist
+falsch und stammt aus einem Text, der geschrieben und nicht nachgesehen wurde —
+in derselben Sitzung bereits der dritte Fall dieser Art.
+
+**Entscheidung:** Wird festgehalten, nicht in diesem Auftrag behoben. Die
+Behebung ist der erste Punkt des nächsten.
+
+**Warum das zählt:** REIHENREGELN 2 verlangt die Prüfungszahl in der
+Commit-Meldung, damit auffällt, wenn eine Erweiterung nicht wirksam wird oder
+eine Prüfung verschwindet. Solange die Zahl abgezählt werden muss, hängt die
+Regel an der Sorgfalt des Einzelnen — und eine Angabe, die nicht gepflegt wird,
+ist schlechter als keine.
