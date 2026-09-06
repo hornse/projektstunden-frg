@@ -497,3 +497,65 @@ als Befund für `koordination` vorgemerkt.
 
 Die PDFs gehen über `deploy.sh` mit auf den Server. Bei 16 MB ist das
 hingenommen, nicht übersehen.
+
+---
+
+## E21 — Der Quellennachweis wird an der Deklaration geprüft, nicht am Seed (06.09.2026)
+
+**Anlass:** E19 verlangt, dass erzeugte Fachdaten Quelle, Prüfsumme und Erzeuger
+im Kopf führen. Beim Bau der Prüfung stellte sich heraus, dass drei von vier
+Seeds das nicht tun: `10_seed_deutsch_klp.sql` und `12_seed_sport_klp.sql`
+nennen einen Erzeuger, der nicht existiert, und keiner der drei nennt Quelle
+oder Prüfsumme. `sql/gen/` gibt es noch nicht.
+
+**Entscheidung:** Die Prüfung greift für jeden Seed, der eine `-- Quelle:`-Zeile
+führt: Die genannte Datei muss unter `docs/curricula/` liegen, ihre SHA256 muss
+mit der angegebenen übereinstimmen, und ein genannter Erzeuger muss existieren.
+Seeds ohne Quellenangabe fallen nicht durch.
+
+**Warum:** Die Prüfung wörtlich zu bauen hieße, `deploy.sh` zu blockieren, bis
+Deutsch Sek I und Sport nachgezogen sind — zwei Fächer, die nicht beauftragt
+waren. Damit stünde auch der Auftrag still, in dessen Rahmen die Prüfung
+entsteht.
+
+**Was das nicht heißt:** Die Prüfung ist damit umgehbar, indem man die Zeile
+weglässt. Sie wird erst dicht, wenn eine zweite dazukommt, die jeden Seed zur
+Quellenangabe verpflichtet. Diese zweite Prüfung setzt voraus, dass
+`10_seed_deutsch_klp.sql` und `12_seed_sport_klp.sql` ihre Quellen und Erzeuger
+nachgetragen bekommen — offen, und hiermit festgehalten, damit der Rückstand
+nicht in dieser Entscheidung verschwindet.
+
+---
+
+## E22 — Silbentrennung wird am Dokument selbst entschieden (06.09.2026)
+
+**Anlass:** In den Kernlehrplan-PDFs ist der Trennstrich am Zeilenende dasselbe
+Zeichen wie ein echter Bindestrich. Geprüft am Deutsch-GOSt-Plan: 609× U+002D,
+kein einziger Soft Hyphen. Eine Regel, die alle Bindestriche am Zeilenende
+auflöst, zerstört `nicht-fiktionalen`, `historisch-gesellschaftliche` und
+`(fach-)sprachlich`.
+
+**Entscheidung:** Für jede Trennstelle `A-` / `B` entscheidet das Dokument
+selbst, in dieser Reihenfolge:
+
+1. `B` ∈ {und, oder, bzw., sowie} → Ellipse (`Figuren- und Handlungsebene`),
+   Bindestrich bleibt.
+2. `AB` kommt ungetrennt im Dokument vor, `A-B` nicht → Trennung auflösen.
+3. `A-B` kommt ungetrennt vor, `AB` nicht → echter Bindestrich, bleibt.
+4. Sonst → auflösen.
+
+Fortsetzungszeilen werden über die Einrückung erkannt, nicht über Satzzeichen.
+
+**Warum:** Die Ellipsenregel und die beiden Wörterbuchregeln decken im
+Deutsch-GOSt-Plan 106 von 130 Entscheidungen belegt ab. Regel 4 ist der einzige
+ungestützte Zweig; ihre 24 Fälle wurden einzeln durchgesehen. Eine Regel „bis
+zum nächsten Komma" für Fortsetzungszeilen ist nachweislich falsch — Einträge
+enthalten Kommata mitten im Satz.
+
+**Was das nicht heißt:** Regel 4 bleibt eine Vermutung je Einzelfall. Bei jedem
+weiteren Fach gehört die Liste der nach Regel 4 entschiedenen Fälle in den
+Bericht, damit sie durchgesehen werden kann.
+
+Nebenbefund: Zeichenzahlen aus `pdftotext` sind versionsabhängig — dieselbe
+Datei ergab 106 153 und 106 149 Zeichen bei verschiedenen poppler-Ständen.
+Als Sollwert taugen nur Strukturzahlen.

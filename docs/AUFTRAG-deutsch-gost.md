@@ -213,3 +213,29 @@ hat. Kommt sie leer zurück, wurde dieselbe Fassung ein zweites Mal verarbeitet.
 - Vermutungen als Vermutungen kennzeichnen, mit dem Versuch dazu.
 - „Ich weiß es nicht" statt einer plausiblen Vermutung.
 - Bei Unklarheit nachfragen statt vermuten.
+
+---
+
+## Nachtrag (06.09.2026) — zwei Stichproben waren falsch
+
+Der Bericht zu Schritt 2 hat zwei Angaben in Schritt 4 widerlegt. Der Text oben
+bleibt stehen, es gilt zusätzlich:
+
+**Stichprobe 1, Ortsangabe berichtigt.** Der Satz *„gestalten auch bei einer
+kritisch-produktiven Verwendung von KI-Werkzeugen Texte eigenständig und
+verantwortlich"* steht dreimal unter **Übergeordnet · Produktion** (EF, Q-GK,
+Q-LK), nicht unter Medien · Produktion. Der Wortlaut selbst stimmt.
+
+**Stichprobe 2 war falsch: richtig ist `nicht-fiktionalen`, mit Bindestrich.**
+Beleg: Zeile 938 (Q-GK) führt das Wort ungetrennt mitten in der Zeile mit
+Bindestrich. Die Sollvorgabe `nichtfiktionalen` entstand bei der Vorbereitung
+dieses Auftrags durch eine Normalisierung, die jeden Bindestrich am Zeilenende
+ungeprüft auflöste — genau die Falle, die Schritt 2 benennt.
+
+**Prüfung aus Schritt 4, Rubrik „Fachdaten":** greift nur für Seeds mit einer
+`-- Quelle:`-Zeile (E21). `10_seed_deutsch_klp.sql` und `12_seed_sport_klp.sql`
+fallen damit nicht durch; ihr Rückstand ist in E21 festgehalten.
+
+**Codeschema:** `DE_EF_…`, `DE_QGK_…`, `DE_QLK_…` wie im Bestand beibehalten.
+
+Erwartete Prüfungszahl: **48 + 2 = 50**.
