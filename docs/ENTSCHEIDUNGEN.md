@@ -775,3 +775,52 @@ Umsetzung.
 **Was das nicht heißt:** Der Kompetenzkatalog ist damit nicht fertig. Von 21
 Fachrahmen sind drei befüllt und belegt; `teilbereich` (E18) wartet weiterhin
 auf Englisch, und WP Wirtschaft aus E13 liegt weiterhin nicht vor.
+
+---
+
+## E29 — E18 wird aufgehoben: doch der Baum (06.09.2026)
+
+**Anlass:** Die Strukturerhebung über alle 37 Kernlehrpläne (Commit 65ef22a,
+`docs/curricula/STRUKTUR.md`). Sie wurde beauftragt, weil das Datenmodell
+zweimal auf einer Stichprobe der Gliederungsüberschriften entschieden und
+zweimal widerlegt worden war.
+
+**Befund:** Die größte belegte Tiefe ist 3 — Englisch, Französisch und Spanisch
+der Sekundarstufe I führen unter „Verfügen über sprachliche Mittel" eine vierte
+Ebene mit Wortschatz, Grammatik, Aussprache und Intonation, Orthografie.
+
+Wichtiger als diese Zahl ist eine andere: **Bei 16 der 37 Pläne ist die
+Gliederung nicht gelesen.** Marker, Spaltigkeit, Steuerzeichen und Zählwerte
+sind für alle erhoben, die Ebenen darunter bei 16 offen — darunter alle
+Naturwissenschaften der Oberstufe, Sozialwissenschaften mit 68 Seiten und zwei
+Fächern sowie beide Mathematikpläne.
+
+Drittens schwankt die Tiefe innerhalb eines Plans: Bei Englisch führen zwei der
+fünf Kompetenzbereiche eine dritte Ebene, drei haben Tiefe 1.
+
+**Entscheidung:** E18 wird aufgehoben. `kompetenzbereiche` bekommt `parent_id`
+als Selbstreferenz. `phase` und `art` bleiben eigene Spalten — die Phase liegt
+quer zur Schachtelung, `art` sagt, was ein Knoten ist. `inhaltsfeld`,
+`kompetenzbereich` und `teilbereich` entfallen, nachdem die vier vorhandenen
+Rahmen umgeformt sind.
+
+**Warum:** Ein Schema mit fester Tiefe setzt voraus, dass die größte Tiefe
+bekannt ist. Sie ist es bei 16 Plänen nicht, und sie zu ermitteln kostet einen
+zweiten Lesedurchgang — nach dem immer noch offen bliebe, ob eine künftige
+Lehrplanfassung eine Ebene ergänzt. Der Baum braucht diese Kenntnis nicht.
+
+Die Umformung ist heute so billig, wie sie je sein wird: Für Deutsch Sek I,
+Deutsch GOSt und Sport existieren Erzeuger, die sich neu laufen lassen; der MKR
+ist flach und wird zu sechs Wurzelknoten. Bei sechzehn weiteren Fächern wäre
+sie es nicht mehr.
+
+**Was das nicht heißt:** Die Gründe aus E18 gelten weiter. Eine Abfrage über
+`parent_id` ist schwerer zu lesen als eine über `inhaltsfeld`, und jeder
+Erzeuger muss die Baumkonsistenz selbst herstellen. Das ist der Preis, nicht
+ein Einwand, der sich erledigt hätte. Er ist über `art` und sprechende
+Knotennamen zu mildern, nicht aufzuheben.
+
+**Zur Vorgeschichte:** E11 hat den Baum beschlossen, E18 ihn verworfen, E29
+stellt ihn wieder her. Der Fehler lag beide Male in derselben Stelle — E18
+stützte sich auf eine Auswertung der Gliederungsüberschriften und hielt im
+selben Eintrag fest, dass diese keine vollständige Lektüre ersetzt.
