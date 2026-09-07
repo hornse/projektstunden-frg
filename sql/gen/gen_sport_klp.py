@@ -375,28 +375,59 @@ def schreibe_seed(eintraege, ziel: Path):
     a("-- --------------------------------------------------------------------------")
     a("-- Kompetenzbereiche")
     a("--")
-    a("-- `art` haelt fest, was in `inhaltsfeld` steht: Sport fuehrt als einziges")
-    a("-- Fach zwei Achsen im selben Feld -- sechs Inhaltsfelder (a-f) und neun")
-    a("-- Bewegungsfelder (BF/SB 1-9). Ohne die Spalte waeren sie nur an der")
-    a("-- Namenskonvention unterscheidbar (E18).")
+    a("-- Zwei Ebenen (E29b, E31): je Phase und Gegenstand ein Wurzelknoten,")
+    a("-- darunter die Kompetenzbereiche als Blaetter. Kompetenzen haengen nur")
+    a("-- an den Blaettern; die Phase steht als Spalte an jedem Knoten.")
+    a("--")
+    a("-- `art` sagt jetzt, was der KNOTEN ist -- nicht mehr, was in der Spalte")
+    a("-- `inhaltsfeld` steht. Sport ist das einzige Fach mit zwei Achsen: sechs")
+    a("-- Inhaltsfelder (a-f) und neun Bewegungsfelder (BF/SB 1-9) stehen")
+    a("-- nebeneinander auf derselben Ebene. Die Wurzelknoten tragen deshalb")
+    a("-- 'inhaltsfeld' bzw. 'bewegungsfeld', die Blaetter 'kompetenzbereich'.")
     a("-- --------------------------------------------------------------------------")
-    a("INSERT INTO kompetenzbereiche (rahmen_id, code, name, reihenfolge, phase, inhaltsfeld, kompetenzbereich, art) VALUES")
 
-    bereichszeilen = []
+    # Wurzelknoten: je (Phase, Gegenstand) einer, in der Reihenfolge des
+    # ersten zugehoerigen Blattes. Der Wurzelcode ist der gemeinsame Praefix
+    # der Blattcodes; die Blattcodes bleiben unveraendert, weil die
+    # Kompetenzcodes darauf aufbauen (SPO_EP_IFA_SK_01).
+    wurzeln = []
+    blaetter = []
     bereichsplan = []
-    for lauf, (phase, art, kurz, bereich) in enumerate(ordnung, start=1):
+    gesehen = {}
+    lauf = 0
+    for phase, art, kurz, bereich in ordnung:
         gegenstand = gegenstand_von.get((phase, kurz))
         if gegenstand is None:
             fehler(f"Kein Gegenstand fuer {phase}/{kurz} gefunden")
         feld_kuerzel = f"IF{kurz.upper()}" if art == ART_INHALTSFELD else kurz
-        code = f"SPO_{PHASEN_KUERZEL[phase]}_{feld_kuerzel}_{BEREICH_KUERZEL[bereich]}"
+        wcode = f"SPO_{PHASEN_KUERZEL[phase]}_{feld_kuerzel}"
+        if wcode not in gesehen:
+            lauf += 1
+            gesehen[wcode] = True
+            wname = f"{PHASEN_NAME[phase]} · {gegenstand}"
+            wurzeln.append(
+                f"(@rahmen, NULL, '{wcode}', '{sql_text(wname)}', {lauf}, "
+                f"'{phase}', '{art}')"
+            )
+        lauf += 1
+        code = f"{wcode}_{BEREICH_KUERZEL[bereich]}"
         name = f"{PHASEN_NAME[phase]} · {gegenstand} · {bereich}"
         bereichsplan.append((code, name, phase, art, kurz, bereich, gegenstand))
-        bereichszeilen.append(
-            f"(@rahmen, '{code}', '{sql_text(name)}', {lauf}, '{phase}', "
-            f"'{sql_text(gegenstand)}', '{bereich}', '{art}')"
+        blaetter.append(
+            f"  SELECT '{code}' AS code, '{sql_text(name)}' AS name, "
+            f"{lauf} AS reihenfolge, '{phase}' AS phase, "
+            f"'kompetenzbereich' AS art, '{wcode}' AS pcode"
         )
-    a(",\n".join(bereichszeilen) + ";")
+
+    a("INSERT INTO kompetenzbereiche (rahmen_id, parent_id, code, name, reihenfolge, phase, art) VALUES")
+    a(",\n".join(wurzeln) + ";")
+    a("")
+    a("-- Blaetter: parent_id wird ueber den Code des Wurzelknotens aufgeloest.")
+    a("INSERT INTO kompetenzbereiche (rahmen_id, parent_id, code, name, reihenfolge, phase, art)")
+    a("SELECT @rahmen, p.id, t.code, t.name, t.reihenfolge, t.phase, t.art")
+    a("FROM (")
+    a("\n  UNION ALL\n".join(blaetter))
+    a(") t JOIN kompetenzbereiche p ON p.rahmen_id = @rahmen AND p.code = t.pcode;")
     a("")
 
     a("-- --------------------------------------------------------------------------")
@@ -421,8 +452,11 @@ def schreibe_seed(eintraege, ziel: Path):
     a("")
     a("COMMIT;")
     a("")
-    a(f"-- Kontrolle: erwartet Bereiche={len(bereichsplan)}, Kompetenzen={len(eintraege)}")
-    a("-- Erwartet ausserdem: art='inhaltsfeld' 36, art='bewegungsfeld' 18.")
+    a(f"-- Kontrolle: erwartet Knoten={len(bereichsplan) + len(wurzeln)} "
+      f"({len(wurzeln)} Wurzeln + {len(bereichsplan)} Blaetter), "
+      f"Kompetenzen={len(eintraege)}")
+    a("-- Erwartet an den Wurzeln: art='inhaltsfeld' 12, art='bewegungsfeld' 18;")
+    a("-- an den Blaettern durchweg art='kompetenzbereich'.")
     ziel.write_text("\n".join(zeilen) + "\n", encoding="utf-8")
 
 

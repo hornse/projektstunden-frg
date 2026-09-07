@@ -28,66 +28,160 @@ SET @rahmen := LAST_INSERT_ID();
 -- --------------------------------------------------------------------------
 -- Kompetenzbereiche
 --
--- `art` haelt fest, was in `inhaltsfeld` steht: Sport fuehrt als einziges
--- Fach zwei Achsen im selben Feld -- sechs Inhaltsfelder (a-f) und neun
--- Bewegungsfelder (BF/SB 1-9). Ohne die Spalte waeren sie nur an der
--- Namenskonvention unterscheidbar (E18).
+-- Zwei Ebenen (E29b, E31): je Phase und Gegenstand ein Wurzelknoten,
+-- darunter die Kompetenzbereiche als Blaetter. Kompetenzen haengen nur
+-- an den Blaettern; die Phase steht als Spalte an jedem Knoten.
+--
+-- `art` sagt jetzt, was der KNOTEN ist -- nicht mehr, was in der Spalte
+-- `inhaltsfeld` steht. Sport ist das einzige Fach mit zwei Achsen: sechs
+-- Inhaltsfelder (a-f) und neun Bewegungsfelder (BF/SB 1-9) stehen
+-- nebeneinander auf derselben Ebene. Die Wurzelknoten tragen deshalb
+-- 'inhaltsfeld' bzw. 'bewegungsfeld', die Blaetter 'kompetenzbereich'.
 -- --------------------------------------------------------------------------
-INSERT INTO kompetenzbereiche (rahmen_id, code, name, reihenfolge, phase, inhaltsfeld, kompetenzbereich, art) VALUES
-(@rahmen, 'SPO_EP_IFA_SK', 'Erprobungsstufe · a: Bewegungsstruktur und Bewegungslernen · Sachkompetenz', 1, 'erprobungsstufe', 'a: Bewegungsstruktur und Bewegungslernen', 'Sachkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_EP_IFA_MK', 'Erprobungsstufe · a: Bewegungsstruktur und Bewegungslernen · Methodenkompetenz', 2, 'erprobungsstufe', 'a: Bewegungsstruktur und Bewegungslernen', 'Methodenkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_EP_IFA_UK', 'Erprobungsstufe · a: Bewegungsstruktur und Bewegungslernen · Urteilskompetenz', 3, 'erprobungsstufe', 'a: Bewegungsstruktur und Bewegungslernen', 'Urteilskompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_EP_IFB_SK', 'Erprobungsstufe · b: Bewegungsgestaltung · Sachkompetenz', 4, 'erprobungsstufe', 'b: Bewegungsgestaltung', 'Sachkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_EP_IFB_MK', 'Erprobungsstufe · b: Bewegungsgestaltung · Methodenkompetenz', 5, 'erprobungsstufe', 'b: Bewegungsgestaltung', 'Methodenkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_EP_IFB_UK', 'Erprobungsstufe · b: Bewegungsgestaltung · Urteilskompetenz', 6, 'erprobungsstufe', 'b: Bewegungsgestaltung', 'Urteilskompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_EP_IFC_SK', 'Erprobungsstufe · c: Wagnis und Verantwortung · Sachkompetenz', 7, 'erprobungsstufe', 'c: Wagnis und Verantwortung', 'Sachkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_EP_IFC_MK', 'Erprobungsstufe · c: Wagnis und Verantwortung · Methodenkompetenz', 8, 'erprobungsstufe', 'c: Wagnis und Verantwortung', 'Methodenkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_EP_IFC_UK', 'Erprobungsstufe · c: Wagnis und Verantwortung · Urteilskompetenz', 9, 'erprobungsstufe', 'c: Wagnis und Verantwortung', 'Urteilskompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_EP_IFD_SK', 'Erprobungsstufe · d: Leistung · Sachkompetenz', 10, 'erprobungsstufe', 'd: Leistung', 'Sachkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_EP_IFD_MK', 'Erprobungsstufe · d: Leistung · Methodenkompetenz', 11, 'erprobungsstufe', 'd: Leistung', 'Methodenkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_EP_IFD_UK', 'Erprobungsstufe · d: Leistung · Urteilskompetenz', 12, 'erprobungsstufe', 'd: Leistung', 'Urteilskompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_EP_IFE_SK', 'Erprobungsstufe · e: Kooperation und Konkurrenz · Sachkompetenz', 13, 'erprobungsstufe', 'e: Kooperation und Konkurrenz', 'Sachkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_EP_IFE_MK', 'Erprobungsstufe · e: Kooperation und Konkurrenz · Methodenkompetenz', 14, 'erprobungsstufe', 'e: Kooperation und Konkurrenz', 'Methodenkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_EP_IFE_UK', 'Erprobungsstufe · e: Kooperation und Konkurrenz · Urteilskompetenz', 15, 'erprobungsstufe', 'e: Kooperation und Konkurrenz', 'Urteilskompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_EP_IFF_SK', 'Erprobungsstufe · f: Gesundheit · Sachkompetenz', 16, 'erprobungsstufe', 'f: Gesundheit', 'Sachkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_EP_IFF_MK', 'Erprobungsstufe · f: Gesundheit · Methodenkompetenz', 17, 'erprobungsstufe', 'f: Gesundheit', 'Methodenkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_EP_IFF_UK', 'Erprobungsstufe · f: Gesundheit · Urteilskompetenz', 18, 'erprobungsstufe', 'f: Gesundheit', 'Urteilskompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_EP_BF1_BWK', 'Erprobungsstufe · BF/SB 1: Den Körper wahrnehmen und Bewegungsfähigkeiten ausprägen · Bewegungs- und Wahrnehmungskompetenz', 19, 'erprobungsstufe', 'BF/SB 1: Den Körper wahrnehmen und Bewegungsfähigkeiten ausprägen', 'Bewegungs- und Wahrnehmungskompetenz', 'bewegungsfeld'),
-(@rahmen, 'SPO_EP_BF2_BWK', 'Erprobungsstufe · BF/SB 2: Das Spielen entdecken und Spielräume nutzen · Bewegungs- und Wahrnehmungskompetenz', 20, 'erprobungsstufe', 'BF/SB 2: Das Spielen entdecken und Spielräume nutzen', 'Bewegungs- und Wahrnehmungskompetenz', 'bewegungsfeld'),
-(@rahmen, 'SPO_EP_BF3_BWK', 'Erprobungsstufe · BF/SB 3: Laufen, Springen, Werfen – Leichtathletik · Bewegungs- und Wahrnehmungskompetenz', 21, 'erprobungsstufe', 'BF/SB 3: Laufen, Springen, Werfen – Leichtathletik', 'Bewegungs- und Wahrnehmungskompetenz', 'bewegungsfeld'),
-(@rahmen, 'SPO_EP_BF4_BWK', 'Erprobungsstufe · BF/SB 4: Bewegen im Wasser – Schwimmen · Bewegungs- und Wahrnehmungskompetenz', 22, 'erprobungsstufe', 'BF/SB 4: Bewegen im Wasser – Schwimmen', 'Bewegungs- und Wahrnehmungskompetenz', 'bewegungsfeld'),
-(@rahmen, 'SPO_EP_BF5_BWK', 'Erprobungsstufe · BF/SB 5: Bewegen an Geräten – Turnen · Bewegungs- und Wahrnehmungskompetenz', 23, 'erprobungsstufe', 'BF/SB 5: Bewegen an Geräten – Turnen', 'Bewegungs- und Wahrnehmungskompetenz', 'bewegungsfeld'),
-(@rahmen, 'SPO_EP_BF6_BWK', 'Erprobungsstufe · BF/SB 6: Gestalten, Tanzen, Darstellen – Gymnastik/Tanz, Bewegungskünste · Bewegungs- und Wahrnehmungskompetenz', 24, 'erprobungsstufe', 'BF/SB 6: Gestalten, Tanzen, Darstellen – Gymnastik/Tanz, Bewegungskünste', 'Bewegungs- und Wahrnehmungskompetenz', 'bewegungsfeld'),
-(@rahmen, 'SPO_EP_BF7_BWK', 'Erprobungsstufe · BF/SB 7: Spielen in und mit Regelstrukturen – Sportspiele · Bewegungs- und Wahrnehmungskompetenz', 25, 'erprobungsstufe', 'BF/SB 7: Spielen in und mit Regelstrukturen – Sportspiele', 'Bewegungs- und Wahrnehmungskompetenz', 'bewegungsfeld'),
-(@rahmen, 'SPO_EP_BF8_BWK', 'Erprobungsstufe · BF/SB 8: Gleiten, Fahren, Rollen – Rollsport, Bootssport, Wintersport · Bewegungs- und Wahrnehmungskompetenz', 26, 'erprobungsstufe', 'BF/SB 8: Gleiten, Fahren, Rollen – Rollsport, Bootssport, Wintersport', 'Bewegungs- und Wahrnehmungskompetenz', 'bewegungsfeld'),
-(@rahmen, 'SPO_EP_BF9_BWK', 'Erprobungsstufe · BF/SB 9: Ringen und Kämpfen – Zweikampfsport · Bewegungs- und Wahrnehmungskompetenz', 27, 'erprobungsstufe', 'BF/SB 9: Ringen und Kämpfen – Zweikampfsport', 'Bewegungs- und Wahrnehmungskompetenz', 'bewegungsfeld'),
-(@rahmen, 'SPO_SI_IFA_SK', 'Sekundarstufe I · a: Bewegungsstruktur und Bewegungslernen · Sachkompetenz', 28, 'zweite_stufe', 'a: Bewegungsstruktur und Bewegungslernen', 'Sachkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_SI_IFA_MK', 'Sekundarstufe I · a: Bewegungsstruktur und Bewegungslernen · Methodenkompetenz', 29, 'zweite_stufe', 'a: Bewegungsstruktur und Bewegungslernen', 'Methodenkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_SI_IFA_UK', 'Sekundarstufe I · a: Bewegungsstruktur und Bewegungslernen · Urteilskompetenz', 30, 'zweite_stufe', 'a: Bewegungsstruktur und Bewegungslernen', 'Urteilskompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_SI_IFB_SK', 'Sekundarstufe I · b: Bewegungsgestaltung · Sachkompetenz', 31, 'zweite_stufe', 'b: Bewegungsgestaltung', 'Sachkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_SI_IFB_MK', 'Sekundarstufe I · b: Bewegungsgestaltung · Methodenkompetenz', 32, 'zweite_stufe', 'b: Bewegungsgestaltung', 'Methodenkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_SI_IFB_UK', 'Sekundarstufe I · b: Bewegungsgestaltung · Urteilskompetenz', 33, 'zweite_stufe', 'b: Bewegungsgestaltung', 'Urteilskompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_SI_IFC_SK', 'Sekundarstufe I · c: Wagnis und Verantwortung · Sachkompetenz', 34, 'zweite_stufe', 'c: Wagnis und Verantwortung', 'Sachkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_SI_IFC_MK', 'Sekundarstufe I · c: Wagnis und Verantwortung · Methodenkompetenz', 35, 'zweite_stufe', 'c: Wagnis und Verantwortung', 'Methodenkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_SI_IFC_UK', 'Sekundarstufe I · c: Wagnis und Verantwortung · Urteilskompetenz', 36, 'zweite_stufe', 'c: Wagnis und Verantwortung', 'Urteilskompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_SI_IFD_SK', 'Sekundarstufe I · d: Leistung · Sachkompetenz', 37, 'zweite_stufe', 'd: Leistung', 'Sachkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_SI_IFD_MK', 'Sekundarstufe I · d: Leistung · Methodenkompetenz', 38, 'zweite_stufe', 'd: Leistung', 'Methodenkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_SI_IFD_UK', 'Sekundarstufe I · d: Leistung · Urteilskompetenz', 39, 'zweite_stufe', 'd: Leistung', 'Urteilskompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_SI_IFE_SK', 'Sekundarstufe I · e: Kooperation und Konkurrenz · Sachkompetenz', 40, 'zweite_stufe', 'e: Kooperation und Konkurrenz', 'Sachkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_SI_IFE_MK', 'Sekundarstufe I · e: Kooperation und Konkurrenz · Methodenkompetenz', 41, 'zweite_stufe', 'e: Kooperation und Konkurrenz', 'Methodenkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_SI_IFE_UK', 'Sekundarstufe I · e: Kooperation und Konkurrenz · Urteilskompetenz', 42, 'zweite_stufe', 'e: Kooperation und Konkurrenz', 'Urteilskompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_SI_IFF_SK', 'Sekundarstufe I · f: Gesundheit · Sachkompetenz', 43, 'zweite_stufe', 'f: Gesundheit', 'Sachkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_SI_IFF_MK', 'Sekundarstufe I · f: Gesundheit · Methodenkompetenz', 44, 'zweite_stufe', 'f: Gesundheit', 'Methodenkompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_SI_IFF_UK', 'Sekundarstufe I · f: Gesundheit · Urteilskompetenz', 45, 'zweite_stufe', 'f: Gesundheit', 'Urteilskompetenz', 'inhaltsfeld'),
-(@rahmen, 'SPO_SI_BF1_BWK', 'Sekundarstufe I · BF/SB 1: Den Körper wahrnehmen und Bewegungsfähigkeiten ausprägen · Bewegungs- und Wahrnehmungskompetenz', 46, 'zweite_stufe', 'BF/SB 1: Den Körper wahrnehmen und Bewegungsfähigkeiten ausprägen', 'Bewegungs- und Wahrnehmungskompetenz', 'bewegungsfeld'),
-(@rahmen, 'SPO_SI_BF2_BWK', 'Sekundarstufe I · BF/SB 2: Das Spielen entdecken und Spielräume nutzen · Bewegungs- und Wahrnehmungskompetenz', 47, 'zweite_stufe', 'BF/SB 2: Das Spielen entdecken und Spielräume nutzen', 'Bewegungs- und Wahrnehmungskompetenz', 'bewegungsfeld'),
-(@rahmen, 'SPO_SI_BF3_BWK', 'Sekundarstufe I · BF/SB 3: Laufen, Springen, Werfen – Leichtathletik · Bewegungs- und Wahrnehmungskompetenz', 48, 'zweite_stufe', 'BF/SB 3: Laufen, Springen, Werfen – Leichtathletik', 'Bewegungs- und Wahrnehmungskompetenz', 'bewegungsfeld'),
-(@rahmen, 'SPO_SI_BF4_BWK', 'Sekundarstufe I · BF/SB 4: Bewegen im Wasser – Schwimmen · Bewegungs- und Wahrnehmungskompetenz', 49, 'zweite_stufe', 'BF/SB 4: Bewegen im Wasser – Schwimmen', 'Bewegungs- und Wahrnehmungskompetenz', 'bewegungsfeld'),
-(@rahmen, 'SPO_SI_BF5_BWK', 'Sekundarstufe I · BF/SB 5: Bewegen an Geräten – Turnen · Bewegungs- und Wahrnehmungskompetenz', 50, 'zweite_stufe', 'BF/SB 5: Bewegen an Geräten – Turnen', 'Bewegungs- und Wahrnehmungskompetenz', 'bewegungsfeld'),
-(@rahmen, 'SPO_SI_BF6_BWK', 'Sekundarstufe I · BF/SB 6: Gestalten, Tanzen, Darstellen – Gymnastik/Tanz, Bewegungskünste · Bewegungs- und Wahrnehmungskompetenz', 51, 'zweite_stufe', 'BF/SB 6: Gestalten, Tanzen, Darstellen – Gymnastik/Tanz, Bewegungskünste', 'Bewegungs- und Wahrnehmungskompetenz', 'bewegungsfeld'),
-(@rahmen, 'SPO_SI_BF7_BWK', 'Sekundarstufe I · BF/SB 7: Spielen in und mit Regelstrukturen – Sportspiele · Bewegungs- und Wahrnehmungskompetenz', 52, 'zweite_stufe', 'BF/SB 7: Spielen in und mit Regelstrukturen – Sportspiele', 'Bewegungs- und Wahrnehmungskompetenz', 'bewegungsfeld'),
-(@rahmen, 'SPO_SI_BF8_BWK', 'Sekundarstufe I · BF/SB 8: Gleiten, Fahren, Rollen – Rollsport, Bootssport, Wintersport · Bewegungs- und Wahrnehmungskompetenz', 53, 'zweite_stufe', 'BF/SB 8: Gleiten, Fahren, Rollen – Rollsport, Bootssport, Wintersport', 'Bewegungs- und Wahrnehmungskompetenz', 'bewegungsfeld'),
-(@rahmen, 'SPO_SI_BF9_BWK', 'Sekundarstufe I · BF/SB 9: Ringen und Kämpfen – Zweikampfsport · Bewegungs- und Wahrnehmungskompetenz', 54, 'zweite_stufe', 'BF/SB 9: Ringen und Kämpfen – Zweikampfsport', 'Bewegungs- und Wahrnehmungskompetenz', 'bewegungsfeld');
+INSERT INTO kompetenzbereiche (rahmen_id, parent_id, code, name, reihenfolge, phase, art) VALUES
+(@rahmen, NULL, 'SPO_EP_IFA', 'Erprobungsstufe · a: Bewegungsstruktur und Bewegungslernen', 1, 'erprobungsstufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'SPO_EP_IFB', 'Erprobungsstufe · b: Bewegungsgestaltung', 5, 'erprobungsstufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'SPO_EP_IFC', 'Erprobungsstufe · c: Wagnis und Verantwortung', 9, 'erprobungsstufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'SPO_EP_IFD', 'Erprobungsstufe · d: Leistung', 13, 'erprobungsstufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'SPO_EP_IFE', 'Erprobungsstufe · e: Kooperation und Konkurrenz', 17, 'erprobungsstufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'SPO_EP_IFF', 'Erprobungsstufe · f: Gesundheit', 21, 'erprobungsstufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'SPO_EP_BF1', 'Erprobungsstufe · BF/SB 1: Den Körper wahrnehmen und Bewegungsfähigkeiten ausprägen', 25, 'erprobungsstufe', 'bewegungsfeld'),
+(@rahmen, NULL, 'SPO_EP_BF2', 'Erprobungsstufe · BF/SB 2: Das Spielen entdecken und Spielräume nutzen', 27, 'erprobungsstufe', 'bewegungsfeld'),
+(@rahmen, NULL, 'SPO_EP_BF3', 'Erprobungsstufe · BF/SB 3: Laufen, Springen, Werfen – Leichtathletik', 29, 'erprobungsstufe', 'bewegungsfeld'),
+(@rahmen, NULL, 'SPO_EP_BF4', 'Erprobungsstufe · BF/SB 4: Bewegen im Wasser – Schwimmen', 31, 'erprobungsstufe', 'bewegungsfeld'),
+(@rahmen, NULL, 'SPO_EP_BF5', 'Erprobungsstufe · BF/SB 5: Bewegen an Geräten – Turnen', 33, 'erprobungsstufe', 'bewegungsfeld'),
+(@rahmen, NULL, 'SPO_EP_BF6', 'Erprobungsstufe · BF/SB 6: Gestalten, Tanzen, Darstellen – Gymnastik/Tanz, Bewegungskünste', 35, 'erprobungsstufe', 'bewegungsfeld'),
+(@rahmen, NULL, 'SPO_EP_BF7', 'Erprobungsstufe · BF/SB 7: Spielen in und mit Regelstrukturen – Sportspiele', 37, 'erprobungsstufe', 'bewegungsfeld'),
+(@rahmen, NULL, 'SPO_EP_BF8', 'Erprobungsstufe · BF/SB 8: Gleiten, Fahren, Rollen – Rollsport, Bootssport, Wintersport', 39, 'erprobungsstufe', 'bewegungsfeld'),
+(@rahmen, NULL, 'SPO_EP_BF9', 'Erprobungsstufe · BF/SB 9: Ringen und Kämpfen – Zweikampfsport', 41, 'erprobungsstufe', 'bewegungsfeld'),
+(@rahmen, NULL, 'SPO_SI_IFA', 'Sekundarstufe I · a: Bewegungsstruktur und Bewegungslernen', 43, 'zweite_stufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'SPO_SI_IFB', 'Sekundarstufe I · b: Bewegungsgestaltung', 47, 'zweite_stufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'SPO_SI_IFC', 'Sekundarstufe I · c: Wagnis und Verantwortung', 51, 'zweite_stufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'SPO_SI_IFD', 'Sekundarstufe I · d: Leistung', 55, 'zweite_stufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'SPO_SI_IFE', 'Sekundarstufe I · e: Kooperation und Konkurrenz', 59, 'zweite_stufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'SPO_SI_IFF', 'Sekundarstufe I · f: Gesundheit', 63, 'zweite_stufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'SPO_SI_BF1', 'Sekundarstufe I · BF/SB 1: Den Körper wahrnehmen und Bewegungsfähigkeiten ausprägen', 67, 'zweite_stufe', 'bewegungsfeld'),
+(@rahmen, NULL, 'SPO_SI_BF2', 'Sekundarstufe I · BF/SB 2: Das Spielen entdecken und Spielräume nutzen', 69, 'zweite_stufe', 'bewegungsfeld'),
+(@rahmen, NULL, 'SPO_SI_BF3', 'Sekundarstufe I · BF/SB 3: Laufen, Springen, Werfen – Leichtathletik', 71, 'zweite_stufe', 'bewegungsfeld'),
+(@rahmen, NULL, 'SPO_SI_BF4', 'Sekundarstufe I · BF/SB 4: Bewegen im Wasser – Schwimmen', 73, 'zweite_stufe', 'bewegungsfeld'),
+(@rahmen, NULL, 'SPO_SI_BF5', 'Sekundarstufe I · BF/SB 5: Bewegen an Geräten – Turnen', 75, 'zweite_stufe', 'bewegungsfeld'),
+(@rahmen, NULL, 'SPO_SI_BF6', 'Sekundarstufe I · BF/SB 6: Gestalten, Tanzen, Darstellen – Gymnastik/Tanz, Bewegungskünste', 77, 'zweite_stufe', 'bewegungsfeld'),
+(@rahmen, NULL, 'SPO_SI_BF7', 'Sekundarstufe I · BF/SB 7: Spielen in und mit Regelstrukturen – Sportspiele', 79, 'zweite_stufe', 'bewegungsfeld'),
+(@rahmen, NULL, 'SPO_SI_BF8', 'Sekundarstufe I · BF/SB 8: Gleiten, Fahren, Rollen – Rollsport, Bootssport, Wintersport', 81, 'zweite_stufe', 'bewegungsfeld'),
+(@rahmen, NULL, 'SPO_SI_BF9', 'Sekundarstufe I · BF/SB 9: Ringen und Kämpfen – Zweikampfsport', 83, 'zweite_stufe', 'bewegungsfeld');
+
+-- Blaetter: parent_id wird ueber den Code des Wurzelknotens aufgeloest.
+INSERT INTO kompetenzbereiche (rahmen_id, parent_id, code, name, reihenfolge, phase, art)
+SELECT @rahmen, p.id, t.code, t.name, t.reihenfolge, t.phase, t.art
+FROM (
+  SELECT 'SPO_EP_IFA_SK' AS code, 'Erprobungsstufe · a: Bewegungsstruktur und Bewegungslernen · Sachkompetenz' AS name, 2 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_IFA' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_IFA_MK' AS code, 'Erprobungsstufe · a: Bewegungsstruktur und Bewegungslernen · Methodenkompetenz' AS name, 3 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_IFA' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_IFA_UK' AS code, 'Erprobungsstufe · a: Bewegungsstruktur und Bewegungslernen · Urteilskompetenz' AS name, 4 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_IFA' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_IFB_SK' AS code, 'Erprobungsstufe · b: Bewegungsgestaltung · Sachkompetenz' AS name, 6 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_IFB' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_IFB_MK' AS code, 'Erprobungsstufe · b: Bewegungsgestaltung · Methodenkompetenz' AS name, 7 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_IFB' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_IFB_UK' AS code, 'Erprobungsstufe · b: Bewegungsgestaltung · Urteilskompetenz' AS name, 8 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_IFB' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_IFC_SK' AS code, 'Erprobungsstufe · c: Wagnis und Verantwortung · Sachkompetenz' AS name, 10 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_IFC' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_IFC_MK' AS code, 'Erprobungsstufe · c: Wagnis und Verantwortung · Methodenkompetenz' AS name, 11 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_IFC' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_IFC_UK' AS code, 'Erprobungsstufe · c: Wagnis und Verantwortung · Urteilskompetenz' AS name, 12 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_IFC' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_IFD_SK' AS code, 'Erprobungsstufe · d: Leistung · Sachkompetenz' AS name, 14 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_IFD' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_IFD_MK' AS code, 'Erprobungsstufe · d: Leistung · Methodenkompetenz' AS name, 15 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_IFD' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_IFD_UK' AS code, 'Erprobungsstufe · d: Leistung · Urteilskompetenz' AS name, 16 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_IFD' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_IFE_SK' AS code, 'Erprobungsstufe · e: Kooperation und Konkurrenz · Sachkompetenz' AS name, 18 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_IFE' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_IFE_MK' AS code, 'Erprobungsstufe · e: Kooperation und Konkurrenz · Methodenkompetenz' AS name, 19 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_IFE' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_IFE_UK' AS code, 'Erprobungsstufe · e: Kooperation und Konkurrenz · Urteilskompetenz' AS name, 20 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_IFE' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_IFF_SK' AS code, 'Erprobungsstufe · f: Gesundheit · Sachkompetenz' AS name, 22 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_IFF' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_IFF_MK' AS code, 'Erprobungsstufe · f: Gesundheit · Methodenkompetenz' AS name, 23 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_IFF' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_IFF_UK' AS code, 'Erprobungsstufe · f: Gesundheit · Urteilskompetenz' AS name, 24 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_IFF' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_BF1_BWK' AS code, 'Erprobungsstufe · BF/SB 1: Den Körper wahrnehmen und Bewegungsfähigkeiten ausprägen · Bewegungs- und Wahrnehmungskompetenz' AS name, 26 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_BF1' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_BF2_BWK' AS code, 'Erprobungsstufe · BF/SB 2: Das Spielen entdecken und Spielräume nutzen · Bewegungs- und Wahrnehmungskompetenz' AS name, 28 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_BF2' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_BF3_BWK' AS code, 'Erprobungsstufe · BF/SB 3: Laufen, Springen, Werfen – Leichtathletik · Bewegungs- und Wahrnehmungskompetenz' AS name, 30 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_BF3' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_BF4_BWK' AS code, 'Erprobungsstufe · BF/SB 4: Bewegen im Wasser – Schwimmen · Bewegungs- und Wahrnehmungskompetenz' AS name, 32 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_BF4' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_BF5_BWK' AS code, 'Erprobungsstufe · BF/SB 5: Bewegen an Geräten – Turnen · Bewegungs- und Wahrnehmungskompetenz' AS name, 34 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_BF5' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_BF6_BWK' AS code, 'Erprobungsstufe · BF/SB 6: Gestalten, Tanzen, Darstellen – Gymnastik/Tanz, Bewegungskünste · Bewegungs- und Wahrnehmungskompetenz' AS name, 36 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_BF6' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_BF7_BWK' AS code, 'Erprobungsstufe · BF/SB 7: Spielen in und mit Regelstrukturen – Sportspiele · Bewegungs- und Wahrnehmungskompetenz' AS name, 38 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_BF7' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_BF8_BWK' AS code, 'Erprobungsstufe · BF/SB 8: Gleiten, Fahren, Rollen – Rollsport, Bootssport, Wintersport · Bewegungs- und Wahrnehmungskompetenz' AS name, 40 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_BF8' AS pcode
+  UNION ALL
+  SELECT 'SPO_EP_BF9_BWK' AS code, 'Erprobungsstufe · BF/SB 9: Ringen und Kämpfen – Zweikampfsport · Bewegungs- und Wahrnehmungskompetenz' AS name, 42 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'SPO_EP_BF9' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_IFA_SK' AS code, 'Sekundarstufe I · a: Bewegungsstruktur und Bewegungslernen · Sachkompetenz' AS name, 44 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_IFA' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_IFA_MK' AS code, 'Sekundarstufe I · a: Bewegungsstruktur und Bewegungslernen · Methodenkompetenz' AS name, 45 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_IFA' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_IFA_UK' AS code, 'Sekundarstufe I · a: Bewegungsstruktur und Bewegungslernen · Urteilskompetenz' AS name, 46 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_IFA' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_IFB_SK' AS code, 'Sekundarstufe I · b: Bewegungsgestaltung · Sachkompetenz' AS name, 48 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_IFB' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_IFB_MK' AS code, 'Sekundarstufe I · b: Bewegungsgestaltung · Methodenkompetenz' AS name, 49 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_IFB' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_IFB_UK' AS code, 'Sekundarstufe I · b: Bewegungsgestaltung · Urteilskompetenz' AS name, 50 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_IFB' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_IFC_SK' AS code, 'Sekundarstufe I · c: Wagnis und Verantwortung · Sachkompetenz' AS name, 52 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_IFC' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_IFC_MK' AS code, 'Sekundarstufe I · c: Wagnis und Verantwortung · Methodenkompetenz' AS name, 53 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_IFC' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_IFC_UK' AS code, 'Sekundarstufe I · c: Wagnis und Verantwortung · Urteilskompetenz' AS name, 54 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_IFC' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_IFD_SK' AS code, 'Sekundarstufe I · d: Leistung · Sachkompetenz' AS name, 56 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_IFD' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_IFD_MK' AS code, 'Sekundarstufe I · d: Leistung · Methodenkompetenz' AS name, 57 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_IFD' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_IFD_UK' AS code, 'Sekundarstufe I · d: Leistung · Urteilskompetenz' AS name, 58 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_IFD' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_IFE_SK' AS code, 'Sekundarstufe I · e: Kooperation und Konkurrenz · Sachkompetenz' AS name, 60 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_IFE' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_IFE_MK' AS code, 'Sekundarstufe I · e: Kooperation und Konkurrenz · Methodenkompetenz' AS name, 61 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_IFE' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_IFE_UK' AS code, 'Sekundarstufe I · e: Kooperation und Konkurrenz · Urteilskompetenz' AS name, 62 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_IFE' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_IFF_SK' AS code, 'Sekundarstufe I · f: Gesundheit · Sachkompetenz' AS name, 64 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_IFF' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_IFF_MK' AS code, 'Sekundarstufe I · f: Gesundheit · Methodenkompetenz' AS name, 65 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_IFF' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_IFF_UK' AS code, 'Sekundarstufe I · f: Gesundheit · Urteilskompetenz' AS name, 66 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_IFF' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_BF1_BWK' AS code, 'Sekundarstufe I · BF/SB 1: Den Körper wahrnehmen und Bewegungsfähigkeiten ausprägen · Bewegungs- und Wahrnehmungskompetenz' AS name, 68 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_BF1' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_BF2_BWK' AS code, 'Sekundarstufe I · BF/SB 2: Das Spielen entdecken und Spielräume nutzen · Bewegungs- und Wahrnehmungskompetenz' AS name, 70 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_BF2' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_BF3_BWK' AS code, 'Sekundarstufe I · BF/SB 3: Laufen, Springen, Werfen – Leichtathletik · Bewegungs- und Wahrnehmungskompetenz' AS name, 72 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_BF3' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_BF4_BWK' AS code, 'Sekundarstufe I · BF/SB 4: Bewegen im Wasser – Schwimmen · Bewegungs- und Wahrnehmungskompetenz' AS name, 74 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_BF4' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_BF5_BWK' AS code, 'Sekundarstufe I · BF/SB 5: Bewegen an Geräten – Turnen · Bewegungs- und Wahrnehmungskompetenz' AS name, 76 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_BF5' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_BF6_BWK' AS code, 'Sekundarstufe I · BF/SB 6: Gestalten, Tanzen, Darstellen – Gymnastik/Tanz, Bewegungskünste · Bewegungs- und Wahrnehmungskompetenz' AS name, 78 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_BF6' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_BF7_BWK' AS code, 'Sekundarstufe I · BF/SB 7: Spielen in und mit Regelstrukturen – Sportspiele · Bewegungs- und Wahrnehmungskompetenz' AS name, 80 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_BF7' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_BF8_BWK' AS code, 'Sekundarstufe I · BF/SB 8: Gleiten, Fahren, Rollen – Rollsport, Bootssport, Wintersport · Bewegungs- und Wahrnehmungskompetenz' AS name, 82 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_BF8' AS pcode
+  UNION ALL
+  SELECT 'SPO_SI_BF9_BWK' AS code, 'Sekundarstufe I · BF/SB 9: Ringen und Kämpfen – Zweikampfsport · Bewegungs- und Wahrnehmungskompetenz' AS name, 84 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'SPO_SI_BF9' AS pcode
+) t JOIN kompetenzbereiche p ON p.rahmen_id = @rahmen AND p.code = t.pcode;
 
 -- --------------------------------------------------------------------------
 -- Kompetenzerwartungen (flach)
@@ -551,5 +645,6 @@ FROM kompetenzbereiche kb JOIN (
 
 COMMIT;
 
--- Kontrolle: erwartet Bereiche=54, Kompetenzen=120
--- Erwartet ausserdem: art='inhaltsfeld' 36, art='bewegungsfeld' 18.
+-- Kontrolle: erwartet Knoten=84 (30 Wurzeln + 54 Blaetter), Kompetenzen=120
+-- Erwartet an den Wurzeln: art='inhaltsfeld' 12, art='bewegungsfeld' 18;
+-- an den Blaettern durchweg art='kompetenzbereich'.

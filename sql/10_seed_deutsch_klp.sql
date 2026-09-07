@@ -25,43 +25,94 @@ VALUES (@schule, 'Deutsch KLP NRW G9 Sek I (FRG)', 'DEU_KLP', 'Kernlehrplan Deut
 SET @rahmen := LAST_INSERT_ID();
 
 -- --------------------------------------------------------------------------
--- Kompetenzbereiche
+-- Kompetenzbereiche als Baum (E29b, E31)
 --
--- Die uebergeordneten Erwartungen aus Kapitel 2.3 tragen die Phase
--- `sek1_uebergreifend` (E12) und die Codes DE_S1U_… (E14). Sie stehen vor
--- der Ersten Stufe, weil sie im Lehrplan dort stehen und fuer beide Stufen
--- gelten. `art` und `teilbereich` bleiben leer -- Deutsch fuehrt nur eine
--- Inhaltsachse und keine dritte Ebene.
+-- Zwei Ebenen: je Phase und Inhaltsfeld ein Wurzelknoten (art =
+-- 'inhaltsfeld'), darunter Rezeption und Produktion als Blaetter
+-- (art = 'kompetenzbereich'). Die Kompetenzen haengen nur an den
+-- Blaettern -- ein Knoten mit Kindern traegt keine (E31).
+--
+-- Die Phase bleibt eine Spalte und steht an JEDEM Knoten, auch am Blatt:
+-- sie liegt quer zur Schachtelung, und das Frontend filtert ueber sie
+-- (E31). Die uebergeordneten Erwartungen aus Kapitel 2.3 tragen
+-- `sek1_uebergreifend` (E12) und die Codes DE_S1U_… (E14).
 -- --------------------------------------------------------------------------
-INSERT INTO kompetenzbereiche (rahmen_id, code, name, reihenfolge, phase, inhaltsfeld, kompetenzbereich) VALUES
-(@rahmen, 'DE_EP_UEB_REZ', 'Erprobungsstufe · Übergeordnet · Rezeption', 1, 'erprobungsstufe', 'Übergeordnet', 'Rezeption'),
-(@rahmen, 'DE_EP_UEB_PRO', 'Erprobungsstufe · Übergeordnet · Produktion', 2, 'erprobungsstufe', 'Übergeordnet', 'Produktion'),
-(@rahmen, 'DE_EP_SPR_REZ', 'Erprobungsstufe · Sprache · Rezeption', 3, 'erprobungsstufe', 'Sprache', 'Rezeption'),
-(@rahmen, 'DE_EP_SPR_PRO', 'Erprobungsstufe · Sprache · Produktion', 4, 'erprobungsstufe', 'Sprache', 'Produktion'),
-(@rahmen, 'DE_EP_TXT_REZ', 'Erprobungsstufe · Texte · Rezeption', 5, 'erprobungsstufe', 'Texte', 'Rezeption'),
-(@rahmen, 'DE_EP_TXT_PRO', 'Erprobungsstufe · Texte · Produktion', 6, 'erprobungsstufe', 'Texte', 'Produktion'),
-(@rahmen, 'DE_EP_KOM_REZ', 'Erprobungsstufe · Kommunikation · Rezeption', 7, 'erprobungsstufe', 'Kommunikation', 'Rezeption'),
-(@rahmen, 'DE_EP_KOM_PRO', 'Erprobungsstufe · Kommunikation · Produktion', 8, 'erprobungsstufe', 'Kommunikation', 'Produktion'),
-(@rahmen, 'DE_EP_MED_REZ', 'Erprobungsstufe · Medien · Rezeption', 9, 'erprobungsstufe', 'Medien', 'Rezeption'),
-(@rahmen, 'DE_EP_MED_PRO', 'Erprobungsstufe · Medien · Produktion', 10, 'erprobungsstufe', 'Medien', 'Produktion'),
-(@rahmen, 'DE_S1U_UEB_REZ', 'Sekundarstufe I übergreifend · Übergeordnet · Rezeption', 11, 'sek1_uebergreifend', 'Übergeordnet', 'Rezeption'),
-(@rahmen, 'DE_S1U_UEB_PRO', 'Sekundarstufe I übergreifend · Übergeordnet · Produktion', 12, 'sek1_uebergreifend', 'Übergeordnet', 'Produktion'),
-(@rahmen, 'DE_S1_SPR_REZ', 'Erste Stufe · Sprache · Rezeption', 13, 'erste_stufe', 'Sprache', 'Rezeption'),
-(@rahmen, 'DE_S1_SPR_PRO', 'Erste Stufe · Sprache · Produktion', 14, 'erste_stufe', 'Sprache', 'Produktion'),
-(@rahmen, 'DE_S1_TXT_REZ', 'Erste Stufe · Texte · Rezeption', 15, 'erste_stufe', 'Texte', 'Rezeption'),
-(@rahmen, 'DE_S1_TXT_PRO', 'Erste Stufe · Texte · Produktion', 16, 'erste_stufe', 'Texte', 'Produktion'),
-(@rahmen, 'DE_S1_KOM_REZ', 'Erste Stufe · Kommunikation · Rezeption', 17, 'erste_stufe', 'Kommunikation', 'Rezeption'),
-(@rahmen, 'DE_S1_KOM_PRO', 'Erste Stufe · Kommunikation · Produktion', 18, 'erste_stufe', 'Kommunikation', 'Produktion'),
-(@rahmen, 'DE_S1_MED_REZ', 'Erste Stufe · Medien · Rezeption', 19, 'erste_stufe', 'Medien', 'Rezeption'),
-(@rahmen, 'DE_S1_MED_PRO', 'Erste Stufe · Medien · Produktion', 20, 'erste_stufe', 'Medien', 'Produktion'),
-(@rahmen, 'DE_S2_SPR_REZ', 'Zweite Stufe · Sprache · Rezeption', 21, 'zweite_stufe', 'Sprache', 'Rezeption'),
-(@rahmen, 'DE_S2_SPR_PRO', 'Zweite Stufe · Sprache · Produktion', 22, 'zweite_stufe', 'Sprache', 'Produktion'),
-(@rahmen, 'DE_S2_TXT_REZ', 'Zweite Stufe · Texte · Rezeption', 23, 'zweite_stufe', 'Texte', 'Rezeption'),
-(@rahmen, 'DE_S2_TXT_PRO', 'Zweite Stufe · Texte · Produktion', 24, 'zweite_stufe', 'Texte', 'Produktion'),
-(@rahmen, 'DE_S2_KOM_REZ', 'Zweite Stufe · Kommunikation · Rezeption', 25, 'zweite_stufe', 'Kommunikation', 'Rezeption'),
-(@rahmen, 'DE_S2_KOM_PRO', 'Zweite Stufe · Kommunikation · Produktion', 26, 'zweite_stufe', 'Kommunikation', 'Produktion'),
-(@rahmen, 'DE_S2_MED_REZ', 'Zweite Stufe · Medien · Rezeption', 27, 'zweite_stufe', 'Medien', 'Rezeption'),
-(@rahmen, 'DE_S2_MED_PRO', 'Zweite Stufe · Medien · Produktion', 28, 'zweite_stufe', 'Medien', 'Produktion');
+INSERT INTO kompetenzbereiche (rahmen_id, parent_id, code, name, reihenfolge, phase, art) VALUES
+(@rahmen, NULL, 'DE_EP_UEB', 'Erprobungsstufe · Übergeordnet', 1, 'erprobungsstufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_EP_SPR', 'Erprobungsstufe · Sprache', 4, 'erprobungsstufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_EP_TXT', 'Erprobungsstufe · Texte', 7, 'erprobungsstufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_EP_KOM', 'Erprobungsstufe · Kommunikation', 10, 'erprobungsstufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_EP_MED', 'Erprobungsstufe · Medien', 13, 'erprobungsstufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_S1U_UEB', 'Sekundarstufe I übergreifend · Übergeordnet', 16, 'sek1_uebergreifend', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_S1_SPR', 'Erste Stufe · Sprache', 19, 'erste_stufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_S1_TXT', 'Erste Stufe · Texte', 22, 'erste_stufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_S1_KOM', 'Erste Stufe · Kommunikation', 25, 'erste_stufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_S1_MED', 'Erste Stufe · Medien', 28, 'erste_stufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_S2_SPR', 'Zweite Stufe · Sprache', 31, 'zweite_stufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_S2_TXT', 'Zweite Stufe · Texte', 34, 'zweite_stufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_S2_KOM', 'Zweite Stufe · Kommunikation', 37, 'zweite_stufe', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_S2_MED', 'Zweite Stufe · Medien', 40, 'zweite_stufe', 'inhaltsfeld');
+
+-- Blaetter: parent_id wird ueber den Code des Wurzelknotens aufgeloest.
+INSERT INTO kompetenzbereiche (rahmen_id, parent_id, code, name, reihenfolge, phase, art)
+SELECT @rahmen, p.id, t.code, t.name, t.reihenfolge, t.phase, t.art
+FROM (
+  SELECT 'DE_EP_UEB_REZ' AS code, 'Erprobungsstufe · Übergeordnet · Rezeption' AS name, 2 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'DE_EP_UEB' AS pcode
+  UNION ALL
+  SELECT 'DE_EP_UEB_PRO' AS code, 'Erprobungsstufe · Übergeordnet · Produktion' AS name, 3 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'DE_EP_UEB' AS pcode
+  UNION ALL
+  SELECT 'DE_EP_SPR_REZ' AS code, 'Erprobungsstufe · Sprache · Rezeption' AS name, 5 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'DE_EP_SPR' AS pcode
+  UNION ALL
+  SELECT 'DE_EP_SPR_PRO' AS code, 'Erprobungsstufe · Sprache · Produktion' AS name, 6 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'DE_EP_SPR' AS pcode
+  UNION ALL
+  SELECT 'DE_EP_TXT_REZ' AS code, 'Erprobungsstufe · Texte · Rezeption' AS name, 8 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'DE_EP_TXT' AS pcode
+  UNION ALL
+  SELECT 'DE_EP_TXT_PRO' AS code, 'Erprobungsstufe · Texte · Produktion' AS name, 9 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'DE_EP_TXT' AS pcode
+  UNION ALL
+  SELECT 'DE_EP_KOM_REZ' AS code, 'Erprobungsstufe · Kommunikation · Rezeption' AS name, 11 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'DE_EP_KOM' AS pcode
+  UNION ALL
+  SELECT 'DE_EP_KOM_PRO' AS code, 'Erprobungsstufe · Kommunikation · Produktion' AS name, 12 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'DE_EP_KOM' AS pcode
+  UNION ALL
+  SELECT 'DE_EP_MED_REZ' AS code, 'Erprobungsstufe · Medien · Rezeption' AS name, 14 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'DE_EP_MED' AS pcode
+  UNION ALL
+  SELECT 'DE_EP_MED_PRO' AS code, 'Erprobungsstufe · Medien · Produktion' AS name, 15 AS reihenfolge, 'erprobungsstufe' AS phase, 'kompetenzbereich' AS art, 'DE_EP_MED' AS pcode
+  UNION ALL
+  SELECT 'DE_S1U_UEB_REZ' AS code, 'Sekundarstufe I übergreifend · Übergeordnet · Rezeption' AS name, 17 AS reihenfolge, 'sek1_uebergreifend' AS phase, 'kompetenzbereich' AS art, 'DE_S1U_UEB' AS pcode
+  UNION ALL
+  SELECT 'DE_S1U_UEB_PRO' AS code, 'Sekundarstufe I übergreifend · Übergeordnet · Produktion' AS name, 18 AS reihenfolge, 'sek1_uebergreifend' AS phase, 'kompetenzbereich' AS art, 'DE_S1U_UEB' AS pcode
+  UNION ALL
+  SELECT 'DE_S1_SPR_REZ' AS code, 'Erste Stufe · Sprache · Rezeption' AS name, 20 AS reihenfolge, 'erste_stufe' AS phase, 'kompetenzbereich' AS art, 'DE_S1_SPR' AS pcode
+  UNION ALL
+  SELECT 'DE_S1_SPR_PRO' AS code, 'Erste Stufe · Sprache · Produktion' AS name, 21 AS reihenfolge, 'erste_stufe' AS phase, 'kompetenzbereich' AS art, 'DE_S1_SPR' AS pcode
+  UNION ALL
+  SELECT 'DE_S1_TXT_REZ' AS code, 'Erste Stufe · Texte · Rezeption' AS name, 23 AS reihenfolge, 'erste_stufe' AS phase, 'kompetenzbereich' AS art, 'DE_S1_TXT' AS pcode
+  UNION ALL
+  SELECT 'DE_S1_TXT_PRO' AS code, 'Erste Stufe · Texte · Produktion' AS name, 24 AS reihenfolge, 'erste_stufe' AS phase, 'kompetenzbereich' AS art, 'DE_S1_TXT' AS pcode
+  UNION ALL
+  SELECT 'DE_S1_KOM_REZ' AS code, 'Erste Stufe · Kommunikation · Rezeption' AS name, 26 AS reihenfolge, 'erste_stufe' AS phase, 'kompetenzbereich' AS art, 'DE_S1_KOM' AS pcode
+  UNION ALL
+  SELECT 'DE_S1_KOM_PRO' AS code, 'Erste Stufe · Kommunikation · Produktion' AS name, 27 AS reihenfolge, 'erste_stufe' AS phase, 'kompetenzbereich' AS art, 'DE_S1_KOM' AS pcode
+  UNION ALL
+  SELECT 'DE_S1_MED_REZ' AS code, 'Erste Stufe · Medien · Rezeption' AS name, 29 AS reihenfolge, 'erste_stufe' AS phase, 'kompetenzbereich' AS art, 'DE_S1_MED' AS pcode
+  UNION ALL
+  SELECT 'DE_S1_MED_PRO' AS code, 'Erste Stufe · Medien · Produktion' AS name, 30 AS reihenfolge, 'erste_stufe' AS phase, 'kompetenzbereich' AS art, 'DE_S1_MED' AS pcode
+  UNION ALL
+  SELECT 'DE_S2_SPR_REZ' AS code, 'Zweite Stufe · Sprache · Rezeption' AS name, 32 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'DE_S2_SPR' AS pcode
+  UNION ALL
+  SELECT 'DE_S2_SPR_PRO' AS code, 'Zweite Stufe · Sprache · Produktion' AS name, 33 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'DE_S2_SPR' AS pcode
+  UNION ALL
+  SELECT 'DE_S2_TXT_REZ' AS code, 'Zweite Stufe · Texte · Rezeption' AS name, 35 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'DE_S2_TXT' AS pcode
+  UNION ALL
+  SELECT 'DE_S2_TXT_PRO' AS code, 'Zweite Stufe · Texte · Produktion' AS name, 36 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'DE_S2_TXT' AS pcode
+  UNION ALL
+  SELECT 'DE_S2_KOM_REZ' AS code, 'Zweite Stufe · Kommunikation · Rezeption' AS name, 38 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'DE_S2_KOM' AS pcode
+  UNION ALL
+  SELECT 'DE_S2_KOM_PRO' AS code, 'Zweite Stufe · Kommunikation · Produktion' AS name, 39 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'DE_S2_KOM' AS pcode
+  UNION ALL
+  SELECT 'DE_S2_MED_REZ' AS code, 'Zweite Stufe · Medien · Rezeption' AS name, 41 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'DE_S2_MED' AS pcode
+  UNION ALL
+  SELECT 'DE_S2_MED_PRO' AS code, 'Zweite Stufe · Medien · Produktion' AS name, 42 AS reihenfolge, 'zweite_stufe' AS phase, 'kompetenzbereich' AS art, 'DE_S2_MED' AS pcode
+) t JOIN kompetenzbereiche p ON p.rahmen_id = @rahmen AND p.code = t.pcode;
 
 -- --------------------------------------------------------------------------
 -- Kompetenzerwartungen (flach)
@@ -633,6 +684,6 @@ FROM kompetenzbereiche kb JOIN (
 
 COMMIT;
 
--- Kontrolle: erwartet Bereiche=28, Kompetenzen=226
+-- Kontrolle: erwartet Knoten=42 (14 Wurzeln + 28 Blaetter), Kompetenzen=226
 -- Erwartet je Phase: erprobungsstufe 10/82, sek1_uebergreifend 2/21,
 --                   erste_stufe 8/63, zweite_stufe 8/60.

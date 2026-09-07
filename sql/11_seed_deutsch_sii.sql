@@ -27,39 +27,94 @@ VALUES (@schule, 'Deutsch KLP NRW SII/GOSt (2026)', 'DEU_KLP_SII', 'Kernlehrplan
 SET @rahmen := LAST_INSERT_ID();
 
 -- --------------------------------------------------------------------------
--- Kompetenzbereiche
+-- Kompetenzbereiche als Baum (E29b, E31)
+--
+-- Zwei Ebenen: je Phase und Inhaltsfeld ein Wurzelknoten (art =
+-- 'inhaltsfeld'), darunter Rezeption und Produktion als Blaetter
+-- (art = 'kompetenzbereich'). Kompetenzen haengen nur an den Blaettern.
+-- Die Phase steht als Spalte an jedem Knoten (E31).
 -- --------------------------------------------------------------------------
-INSERT INTO kompetenzbereiche (rahmen_id, code, name, reihenfolge, phase, inhaltsfeld, kompetenzbereich) VALUES
-(@rahmen, 'DE_EF_UEB_REZ', 'Einführungsphase · Übergeordnet · Rezeption', 1, 'einfuehrungsphase', 'Übergeordnet', 'Rezeption'),
-(@rahmen, 'DE_EF_UEB_PRO', 'Einführungsphase · Übergeordnet · Produktion', 2, 'einfuehrungsphase', 'Übergeordnet', 'Produktion'),
-(@rahmen, 'DE_EF_SPR_REZ', 'Einführungsphase · Sprache · Rezeption', 3, 'einfuehrungsphase', 'Sprache', 'Rezeption'),
-(@rahmen, 'DE_EF_SPR_PRO', 'Einführungsphase · Sprache · Produktion', 4, 'einfuehrungsphase', 'Sprache', 'Produktion'),
-(@rahmen, 'DE_EF_TXT_REZ', 'Einführungsphase · Texte · Rezeption', 5, 'einfuehrungsphase', 'Texte', 'Rezeption'),
-(@rahmen, 'DE_EF_TXT_PRO', 'Einführungsphase · Texte · Produktion', 6, 'einfuehrungsphase', 'Texte', 'Produktion'),
-(@rahmen, 'DE_EF_KOM_REZ', 'Einführungsphase · Kommunikation · Rezeption', 7, 'einfuehrungsphase', 'Kommunikation', 'Rezeption'),
-(@rahmen, 'DE_EF_KOM_PRO', 'Einführungsphase · Kommunikation · Produktion', 8, 'einfuehrungsphase', 'Kommunikation', 'Produktion'),
-(@rahmen, 'DE_EF_MED_REZ', 'Einführungsphase · Medien · Rezeption', 9, 'einfuehrungsphase', 'Medien', 'Rezeption'),
-(@rahmen, 'DE_EF_MED_PRO', 'Einführungsphase · Medien · Produktion', 10, 'einfuehrungsphase', 'Medien', 'Produktion'),
-(@rahmen, 'DE_QGK_UEB_REZ', 'Qualifikationsphase (Grundkurs) · Übergeordnet · Rezeption', 11, 'qualifikationsphase_gk', 'Übergeordnet', 'Rezeption'),
-(@rahmen, 'DE_QGK_UEB_PRO', 'Qualifikationsphase (Grundkurs) · Übergeordnet · Produktion', 12, 'qualifikationsphase_gk', 'Übergeordnet', 'Produktion'),
-(@rahmen, 'DE_QGK_SPR_REZ', 'Qualifikationsphase (Grundkurs) · Sprache · Rezeption', 13, 'qualifikationsphase_gk', 'Sprache', 'Rezeption'),
-(@rahmen, 'DE_QGK_SPR_PRO', 'Qualifikationsphase (Grundkurs) · Sprache · Produktion', 14, 'qualifikationsphase_gk', 'Sprache', 'Produktion'),
-(@rahmen, 'DE_QGK_TXT_REZ', 'Qualifikationsphase (Grundkurs) · Texte · Rezeption', 15, 'qualifikationsphase_gk', 'Texte', 'Rezeption'),
-(@rahmen, 'DE_QGK_TXT_PRO', 'Qualifikationsphase (Grundkurs) · Texte · Produktion', 16, 'qualifikationsphase_gk', 'Texte', 'Produktion'),
-(@rahmen, 'DE_QGK_KOM_REZ', 'Qualifikationsphase (Grundkurs) · Kommunikation · Rezeption', 17, 'qualifikationsphase_gk', 'Kommunikation', 'Rezeption'),
-(@rahmen, 'DE_QGK_KOM_PRO', 'Qualifikationsphase (Grundkurs) · Kommunikation · Produktion', 18, 'qualifikationsphase_gk', 'Kommunikation', 'Produktion'),
-(@rahmen, 'DE_QGK_MED_REZ', 'Qualifikationsphase (Grundkurs) · Medien · Rezeption', 19, 'qualifikationsphase_gk', 'Medien', 'Rezeption'),
-(@rahmen, 'DE_QGK_MED_PRO', 'Qualifikationsphase (Grundkurs) · Medien · Produktion', 20, 'qualifikationsphase_gk', 'Medien', 'Produktion'),
-(@rahmen, 'DE_QLK_UEB_REZ', 'Qualifikationsphase (Leistungskurs) · Übergeordnet · Rezeption', 21, 'qualifikationsphase_lk', 'Übergeordnet', 'Rezeption'),
-(@rahmen, 'DE_QLK_UEB_PRO', 'Qualifikationsphase (Leistungskurs) · Übergeordnet · Produktion', 22, 'qualifikationsphase_lk', 'Übergeordnet', 'Produktion'),
-(@rahmen, 'DE_QLK_SPR_REZ', 'Qualifikationsphase (Leistungskurs) · Sprache · Rezeption', 23, 'qualifikationsphase_lk', 'Sprache', 'Rezeption'),
-(@rahmen, 'DE_QLK_SPR_PRO', 'Qualifikationsphase (Leistungskurs) · Sprache · Produktion', 24, 'qualifikationsphase_lk', 'Sprache', 'Produktion'),
-(@rahmen, 'DE_QLK_TXT_REZ', 'Qualifikationsphase (Leistungskurs) · Texte · Rezeption', 25, 'qualifikationsphase_lk', 'Texte', 'Rezeption'),
-(@rahmen, 'DE_QLK_TXT_PRO', 'Qualifikationsphase (Leistungskurs) · Texte · Produktion', 26, 'qualifikationsphase_lk', 'Texte', 'Produktion'),
-(@rahmen, 'DE_QLK_KOM_REZ', 'Qualifikationsphase (Leistungskurs) · Kommunikation · Rezeption', 27, 'qualifikationsphase_lk', 'Kommunikation', 'Rezeption'),
-(@rahmen, 'DE_QLK_KOM_PRO', 'Qualifikationsphase (Leistungskurs) · Kommunikation · Produktion', 28, 'qualifikationsphase_lk', 'Kommunikation', 'Produktion'),
-(@rahmen, 'DE_QLK_MED_REZ', 'Qualifikationsphase (Leistungskurs) · Medien · Rezeption', 29, 'qualifikationsphase_lk', 'Medien', 'Rezeption'),
-(@rahmen, 'DE_QLK_MED_PRO', 'Qualifikationsphase (Leistungskurs) · Medien · Produktion', 30, 'qualifikationsphase_lk', 'Medien', 'Produktion');
+INSERT INTO kompetenzbereiche (rahmen_id, parent_id, code, name, reihenfolge, phase, art) VALUES
+(@rahmen, NULL, 'DE_EF_UEB', 'Einführungsphase · Übergeordnet', 1, 'einfuehrungsphase', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_EF_SPR', 'Einführungsphase · Sprache', 4, 'einfuehrungsphase', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_EF_TXT', 'Einführungsphase · Texte', 7, 'einfuehrungsphase', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_EF_KOM', 'Einführungsphase · Kommunikation', 10, 'einfuehrungsphase', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_EF_MED', 'Einführungsphase · Medien', 13, 'einfuehrungsphase', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_QGK_UEB', 'Qualifikationsphase (Grundkurs) · Übergeordnet', 16, 'qualifikationsphase_gk', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_QGK_SPR', 'Qualifikationsphase (Grundkurs) · Sprache', 19, 'qualifikationsphase_gk', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_QGK_TXT', 'Qualifikationsphase (Grundkurs) · Texte', 22, 'qualifikationsphase_gk', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_QGK_KOM', 'Qualifikationsphase (Grundkurs) · Kommunikation', 25, 'qualifikationsphase_gk', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_QGK_MED', 'Qualifikationsphase (Grundkurs) · Medien', 28, 'qualifikationsphase_gk', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_QLK_UEB', 'Qualifikationsphase (Leistungskurs) · Übergeordnet', 31, 'qualifikationsphase_lk', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_QLK_SPR', 'Qualifikationsphase (Leistungskurs) · Sprache', 34, 'qualifikationsphase_lk', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_QLK_TXT', 'Qualifikationsphase (Leistungskurs) · Texte', 37, 'qualifikationsphase_lk', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_QLK_KOM', 'Qualifikationsphase (Leistungskurs) · Kommunikation', 40, 'qualifikationsphase_lk', 'inhaltsfeld'),
+(@rahmen, NULL, 'DE_QLK_MED', 'Qualifikationsphase (Leistungskurs) · Medien', 43, 'qualifikationsphase_lk', 'inhaltsfeld');
+
+-- Blaetter: parent_id wird ueber den Code des Wurzelknotens aufgeloest.
+INSERT INTO kompetenzbereiche (rahmen_id, parent_id, code, name, reihenfolge, phase, art)
+SELECT @rahmen, p.id, t.code, t.name, t.reihenfolge, t.phase, t.art
+FROM (
+  SELECT 'DE_EF_UEB_REZ' AS code, 'Einführungsphase · Übergeordnet · Rezeption' AS name, 2 AS reihenfolge, 'einfuehrungsphase' AS phase, 'kompetenzbereich' AS art, 'DE_EF_UEB' AS pcode
+  UNION ALL
+  SELECT 'DE_EF_UEB_PRO' AS code, 'Einführungsphase · Übergeordnet · Produktion' AS name, 3 AS reihenfolge, 'einfuehrungsphase' AS phase, 'kompetenzbereich' AS art, 'DE_EF_UEB' AS pcode
+  UNION ALL
+  SELECT 'DE_EF_SPR_REZ' AS code, 'Einführungsphase · Sprache · Rezeption' AS name, 5 AS reihenfolge, 'einfuehrungsphase' AS phase, 'kompetenzbereich' AS art, 'DE_EF_SPR' AS pcode
+  UNION ALL
+  SELECT 'DE_EF_SPR_PRO' AS code, 'Einführungsphase · Sprache · Produktion' AS name, 6 AS reihenfolge, 'einfuehrungsphase' AS phase, 'kompetenzbereich' AS art, 'DE_EF_SPR' AS pcode
+  UNION ALL
+  SELECT 'DE_EF_TXT_REZ' AS code, 'Einführungsphase · Texte · Rezeption' AS name, 8 AS reihenfolge, 'einfuehrungsphase' AS phase, 'kompetenzbereich' AS art, 'DE_EF_TXT' AS pcode
+  UNION ALL
+  SELECT 'DE_EF_TXT_PRO' AS code, 'Einführungsphase · Texte · Produktion' AS name, 9 AS reihenfolge, 'einfuehrungsphase' AS phase, 'kompetenzbereich' AS art, 'DE_EF_TXT' AS pcode
+  UNION ALL
+  SELECT 'DE_EF_KOM_REZ' AS code, 'Einführungsphase · Kommunikation · Rezeption' AS name, 11 AS reihenfolge, 'einfuehrungsphase' AS phase, 'kompetenzbereich' AS art, 'DE_EF_KOM' AS pcode
+  UNION ALL
+  SELECT 'DE_EF_KOM_PRO' AS code, 'Einführungsphase · Kommunikation · Produktion' AS name, 12 AS reihenfolge, 'einfuehrungsphase' AS phase, 'kompetenzbereich' AS art, 'DE_EF_KOM' AS pcode
+  UNION ALL
+  SELECT 'DE_EF_MED_REZ' AS code, 'Einführungsphase · Medien · Rezeption' AS name, 14 AS reihenfolge, 'einfuehrungsphase' AS phase, 'kompetenzbereich' AS art, 'DE_EF_MED' AS pcode
+  UNION ALL
+  SELECT 'DE_EF_MED_PRO' AS code, 'Einführungsphase · Medien · Produktion' AS name, 15 AS reihenfolge, 'einfuehrungsphase' AS phase, 'kompetenzbereich' AS art, 'DE_EF_MED' AS pcode
+  UNION ALL
+  SELECT 'DE_QGK_UEB_REZ' AS code, 'Qualifikationsphase (Grundkurs) · Übergeordnet · Rezeption' AS name, 17 AS reihenfolge, 'qualifikationsphase_gk' AS phase, 'kompetenzbereich' AS art, 'DE_QGK_UEB' AS pcode
+  UNION ALL
+  SELECT 'DE_QGK_UEB_PRO' AS code, 'Qualifikationsphase (Grundkurs) · Übergeordnet · Produktion' AS name, 18 AS reihenfolge, 'qualifikationsphase_gk' AS phase, 'kompetenzbereich' AS art, 'DE_QGK_UEB' AS pcode
+  UNION ALL
+  SELECT 'DE_QGK_SPR_REZ' AS code, 'Qualifikationsphase (Grundkurs) · Sprache · Rezeption' AS name, 20 AS reihenfolge, 'qualifikationsphase_gk' AS phase, 'kompetenzbereich' AS art, 'DE_QGK_SPR' AS pcode
+  UNION ALL
+  SELECT 'DE_QGK_SPR_PRO' AS code, 'Qualifikationsphase (Grundkurs) · Sprache · Produktion' AS name, 21 AS reihenfolge, 'qualifikationsphase_gk' AS phase, 'kompetenzbereich' AS art, 'DE_QGK_SPR' AS pcode
+  UNION ALL
+  SELECT 'DE_QGK_TXT_REZ' AS code, 'Qualifikationsphase (Grundkurs) · Texte · Rezeption' AS name, 23 AS reihenfolge, 'qualifikationsphase_gk' AS phase, 'kompetenzbereich' AS art, 'DE_QGK_TXT' AS pcode
+  UNION ALL
+  SELECT 'DE_QGK_TXT_PRO' AS code, 'Qualifikationsphase (Grundkurs) · Texte · Produktion' AS name, 24 AS reihenfolge, 'qualifikationsphase_gk' AS phase, 'kompetenzbereich' AS art, 'DE_QGK_TXT' AS pcode
+  UNION ALL
+  SELECT 'DE_QGK_KOM_REZ' AS code, 'Qualifikationsphase (Grundkurs) · Kommunikation · Rezeption' AS name, 26 AS reihenfolge, 'qualifikationsphase_gk' AS phase, 'kompetenzbereich' AS art, 'DE_QGK_KOM' AS pcode
+  UNION ALL
+  SELECT 'DE_QGK_KOM_PRO' AS code, 'Qualifikationsphase (Grundkurs) · Kommunikation · Produktion' AS name, 27 AS reihenfolge, 'qualifikationsphase_gk' AS phase, 'kompetenzbereich' AS art, 'DE_QGK_KOM' AS pcode
+  UNION ALL
+  SELECT 'DE_QGK_MED_REZ' AS code, 'Qualifikationsphase (Grundkurs) · Medien · Rezeption' AS name, 29 AS reihenfolge, 'qualifikationsphase_gk' AS phase, 'kompetenzbereich' AS art, 'DE_QGK_MED' AS pcode
+  UNION ALL
+  SELECT 'DE_QGK_MED_PRO' AS code, 'Qualifikationsphase (Grundkurs) · Medien · Produktion' AS name, 30 AS reihenfolge, 'qualifikationsphase_gk' AS phase, 'kompetenzbereich' AS art, 'DE_QGK_MED' AS pcode
+  UNION ALL
+  SELECT 'DE_QLK_UEB_REZ' AS code, 'Qualifikationsphase (Leistungskurs) · Übergeordnet · Rezeption' AS name, 32 AS reihenfolge, 'qualifikationsphase_lk' AS phase, 'kompetenzbereich' AS art, 'DE_QLK_UEB' AS pcode
+  UNION ALL
+  SELECT 'DE_QLK_UEB_PRO' AS code, 'Qualifikationsphase (Leistungskurs) · Übergeordnet · Produktion' AS name, 33 AS reihenfolge, 'qualifikationsphase_lk' AS phase, 'kompetenzbereich' AS art, 'DE_QLK_UEB' AS pcode
+  UNION ALL
+  SELECT 'DE_QLK_SPR_REZ' AS code, 'Qualifikationsphase (Leistungskurs) · Sprache · Rezeption' AS name, 35 AS reihenfolge, 'qualifikationsphase_lk' AS phase, 'kompetenzbereich' AS art, 'DE_QLK_SPR' AS pcode
+  UNION ALL
+  SELECT 'DE_QLK_SPR_PRO' AS code, 'Qualifikationsphase (Leistungskurs) · Sprache · Produktion' AS name, 36 AS reihenfolge, 'qualifikationsphase_lk' AS phase, 'kompetenzbereich' AS art, 'DE_QLK_SPR' AS pcode
+  UNION ALL
+  SELECT 'DE_QLK_TXT_REZ' AS code, 'Qualifikationsphase (Leistungskurs) · Texte · Rezeption' AS name, 38 AS reihenfolge, 'qualifikationsphase_lk' AS phase, 'kompetenzbereich' AS art, 'DE_QLK_TXT' AS pcode
+  UNION ALL
+  SELECT 'DE_QLK_TXT_PRO' AS code, 'Qualifikationsphase (Leistungskurs) · Texte · Produktion' AS name, 39 AS reihenfolge, 'qualifikationsphase_lk' AS phase, 'kompetenzbereich' AS art, 'DE_QLK_TXT' AS pcode
+  UNION ALL
+  SELECT 'DE_QLK_KOM_REZ' AS code, 'Qualifikationsphase (Leistungskurs) · Kommunikation · Rezeption' AS name, 41 AS reihenfolge, 'qualifikationsphase_lk' AS phase, 'kompetenzbereich' AS art, 'DE_QLK_KOM' AS pcode
+  UNION ALL
+  SELECT 'DE_QLK_KOM_PRO' AS code, 'Qualifikationsphase (Leistungskurs) · Kommunikation · Produktion' AS name, 42 AS reihenfolge, 'qualifikationsphase_lk' AS phase, 'kompetenzbereich' AS art, 'DE_QLK_KOM' AS pcode
+  UNION ALL
+  SELECT 'DE_QLK_MED_REZ' AS code, 'Qualifikationsphase (Leistungskurs) · Medien · Rezeption' AS name, 44 AS reihenfolge, 'qualifikationsphase_lk' AS phase, 'kompetenzbereich' AS art, 'DE_QLK_MED' AS pcode
+  UNION ALL
+  SELECT 'DE_QLK_MED_PRO' AS code, 'Qualifikationsphase (Leistungskurs) · Medien · Produktion' AS name, 45 AS reihenfolge, 'qualifikationsphase_lk' AS phase, 'kompetenzbereich' AS art, 'DE_QLK_MED' AS pcode
+) t JOIN kompetenzbereiche p ON p.rahmen_id = @rahmen AND p.code = t.pcode;
 
 -- --------------------------------------------------------------------------
 -- Kompetenzerwartungen (flach)
@@ -610,4 +665,4 @@ FROM kompetenzbereiche kb JOIN (
 
 COMMIT;
 
--- Kontrolle: erwartet Bereiche=30, Kompetenzen=197
+-- Kontrolle: erwartet Knoten=45 (15 Wurzeln + 30 Blaetter), Kompetenzen=197

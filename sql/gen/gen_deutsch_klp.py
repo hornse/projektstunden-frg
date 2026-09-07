@@ -357,31 +357,53 @@ def schreibe_seed(eintraege, ziel: Path):
     a("SET @rahmen := LAST_INSERT_ID();")
     a("")
     a("-- --------------------------------------------------------------------------")
-    a("-- Kompetenzbereiche")
+    a("-- Kompetenzbereiche als Baum (E29b, E31)")
     a("--")
-    a("-- Die uebergeordneten Erwartungen aus Kapitel 2.3 tragen die Phase")
-    a("-- `sek1_uebergreifend` (E12) und die Codes DE_S1U_… (E14). Sie stehen vor")
-    a("-- der Ersten Stufe, weil sie im Lehrplan dort stehen und fuer beide Stufen")
-    a("-- gelten. `art` und `teilbereich` bleiben leer -- Deutsch fuehrt nur eine")
-    a("-- Inhaltsachse und keine dritte Ebene.")
+    a("-- Zwei Ebenen: je Phase und Inhaltsfeld ein Wurzelknoten (art =")
+    a("-- 'inhaltsfeld'), darunter Rezeption und Produktion als Blaetter")
+    a("-- (art = 'kompetenzbereich'). Die Kompetenzen haengen nur an den")
+    a("-- Blaettern -- ein Knoten mit Kindern traegt keine (E31).")
+    a("--")
+    a("-- Die Phase bleibt eine Spalte und steht an JEDEM Knoten, auch am Blatt:")
+    a("-- sie liegt quer zur Schachtelung, und das Frontend filtert ueber sie")
+    a("-- (E31). Die uebergeordneten Erwartungen aus Kapitel 2.3 tragen")
+    a("-- `sek1_uebergreifend` (E12) und die Codes DE_S1U_… (E14).")
     a("-- --------------------------------------------------------------------------")
-    a("INSERT INTO kompetenzbereiche (rahmen_id, code, name, reihenfolge, phase, inhaltsfeld, kompetenzbereich) VALUES")
 
-    bereichszeilen = []
+    # Wurzelknoten: je (Phase, Inhaltsfeld) einer. Der Code ist der gemeinsame
+    # Praefix der Blaetter darunter; die Blattcodes bleiben unveraendert, weil
+    # die Kompetenzcodes darauf aufbauen (DE_EP_SPR_REZ_01).
+    wurzeln = []
+    blaetter = []
     bereichsplan = []
     lauf = 0
     for phase, feld in ORDNUNG:
+        lauf += 1
+        wcode = f"DE_{PHASEN_KUERZEL[phase]}_{FELD_KUERZEL[feld]}"
+        wname = f"{PHASEN_NAME[phase]} · {feld}"
+        wurzeln.append(
+            f"(@rahmen, NULL, '{wcode}', '{sql_text(wname)}', {lauf}, "
+            f"'{phase}', 'inhaltsfeld')"
+        )
         for bereich in ("Rezeption", "Produktion"):
             lauf += 1
-            code = (f"DE_{PHASEN_KUERZEL[phase]}_{FELD_KUERZEL[feld]}_"
-                    f"{BEREICH_KUERZEL[bereich]}")
+            code = f"{wcode}_{BEREICH_KUERZEL[bereich]}"
             name = f"{PHASEN_NAME[phase]} · {feld} · {bereich}"
             bereichsplan.append((code, name, phase, feld, bereich))
-            bereichszeilen.append(
-                f"(@rahmen, '{code}', '{sql_text(name)}', {lauf}, '{phase}', "
-                f"'{sql_text(feld)}', '{bereich}')"
+            blaetter.append(
+                f"  SELECT '{code}' AS code, '{sql_text(name)}' AS name, {lauf} AS reihenfolge, "
+                f"'{phase}' AS phase, 'kompetenzbereich' AS art, '{wcode}' AS pcode"
             )
-    a(",\n".join(bereichszeilen) + ";")
+
+    a("INSERT INTO kompetenzbereiche (rahmen_id, parent_id, code, name, reihenfolge, phase, art) VALUES")
+    a(",\n".join(wurzeln) + ";")
+    a("")
+    a("-- Blaetter: parent_id wird ueber den Code des Wurzelknotens aufgeloest.")
+    a("INSERT INTO kompetenzbereiche (rahmen_id, parent_id, code, name, reihenfolge, phase, art)")
+    a("SELECT @rahmen, p.id, t.code, t.name, t.reihenfolge, t.phase, t.art")
+    a("FROM (")
+    a("\n  UNION ALL\n".join(blaetter))
+    a(") t JOIN kompetenzbereiche p ON p.rahmen_id = @rahmen AND p.code = t.pcode;")
     a("")
 
     a("-- --------------------------------------------------------------------------")
@@ -406,7 +428,9 @@ def schreibe_seed(eintraege, ziel: Path):
     a("")
     a("COMMIT;")
     a("")
-    a(f"-- Kontrolle: erwartet Bereiche={len(bereichsplan)}, Kompetenzen={len(eintraege)}")
+    a(f"-- Kontrolle: erwartet Knoten={len(bereichsplan) + len(ORDNUNG)} "
+      f"({len(ORDNUNG)} Wurzeln + {len(bereichsplan)} Blaetter), "
+      f"Kompetenzen={len(eintraege)}")
     a("-- Erwartet je Phase: erprobungsstufe 10/82, sek1_uebergreifend 2/21,")
     a("--                   erste_stufe 8/63, zweite_stufe 8/60.")
     ziel.write_text("\n".join(zeilen) + "\n", encoding="utf-8")

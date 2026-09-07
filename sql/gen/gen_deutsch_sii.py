@@ -337,24 +337,45 @@ def schreibe_seed(eintraege, ziel: Path):
 
     # -- Bereiche --------------------------------------------------------
     a("-- --------------------------------------------------------------------------")
-    a("-- Kompetenzbereiche")
+    a("-- Kompetenzbereiche als Baum (E29b, E31)")
+    a("--")
+    a("-- Zwei Ebenen: je Phase und Inhaltsfeld ein Wurzelknoten (art =")
+    a("-- 'inhaltsfeld'), darunter Rezeption und Produktion als Blaetter")
+    a("-- (art = 'kompetenzbereich'). Kompetenzen haengen nur an den Blaettern.")
+    a("-- Die Phase steht als Spalte an jedem Knoten (E31).")
     a("-- --------------------------------------------------------------------------")
-    a("INSERT INTO kompetenzbereiche (rahmen_id, code, name, reihenfolge, phase, inhaltsfeld, kompetenzbereich) VALUES")
-    bereichszeilen = []
+    wurzeln = []
+    blaetter = []
     reihenfolge = 0
     bereichscodes = []
     for phase in PHASEN_KUERZEL:
         for feld in FELD_REIHENFOLGE:
+            reihenfolge += 1
+            wcode = f"DE_{PHASEN_KUERZEL[phase]}_{FELD_KUERZEL[feld]}"
+            wname = f"{PHASEN_NAME[phase]} · {feld}"
+            wurzeln.append(
+                f"(@rahmen, NULL, '{wcode}', '{sql_text(wname)}', {reihenfolge}, "
+                f"'{phase}', 'inhaltsfeld')"
+            )
             for bereich in ("Rezeption", "Produktion"):
                 reihenfolge += 1
-                code = f"DE_{PHASEN_KUERZEL[phase]}_{FELD_KUERZEL[feld]}_{BEREICH_KUERZEL[bereich]}"
+                code = f"{wcode}_{BEREICH_KUERZEL[bereich]}"
                 name = f"{PHASEN_NAME[phase]} · {feld} · {bereich}"
                 bereichscodes.append((code, phase, feld, bereich, name))
-                bereichszeilen.append(
-                    f"(@rahmen, '{code}', '{sql_text(name)}', {reihenfolge}, "
-                    f"'{phase}', '{sql_text(feld)}', '{bereich}')"
+                blaetter.append(
+                    f"  SELECT '{code}' AS code, '{sql_text(name)}' AS name, "
+                    f"{reihenfolge} AS reihenfolge, '{phase}' AS phase, "
+                    f"'kompetenzbereich' AS art, '{wcode}' AS pcode"
                 )
-    a(",\n".join(bereichszeilen) + ";")
+    a("INSERT INTO kompetenzbereiche (rahmen_id, parent_id, code, name, reihenfolge, phase, art) VALUES")
+    a(",\n".join(wurzeln) + ";")
+    a("")
+    a("-- Blaetter: parent_id wird ueber den Code des Wurzelknotens aufgeloest.")
+    a("INSERT INTO kompetenzbereiche (rahmen_id, parent_id, code, name, reihenfolge, phase, art)")
+    a("SELECT @rahmen, p.id, t.code, t.name, t.reihenfolge, t.phase, t.art")
+    a("FROM (")
+    a("\n  UNION ALL\n".join(blaetter))
+    a(") t JOIN kompetenzbereiche p ON p.rahmen_id = @rahmen AND p.code = t.pcode;")
     a("")
 
     # -- Kompetenzen -----------------------------------------------------
@@ -386,7 +407,9 @@ def schreibe_seed(eintraege, ziel: Path):
 
     a("COMMIT;")
     a("")
-    a(f"-- Kontrolle: erwartet Bereiche={len(bereichscodes)}, Kompetenzen={len(eintraege)}")
+    a(f"-- Kontrolle: erwartet Knoten={len(bereichscodes) + len(wurzeln)} "
+      f"({len(wurzeln)} Wurzeln + {len(bereichscodes)} Blaetter), "
+      f"Kompetenzen={len(eintraege)}")
     ziel.write_text("\n".join(zeilen) + "\n", encoding="utf-8")
 
 

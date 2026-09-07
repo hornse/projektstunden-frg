@@ -48,6 +48,20 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
   `kompetenzen` oder `kompetenzbereiche` schreibt, deklariert eine Quelle
   (E27). Erkannt wird sie am Inhalt, nicht am Dateinamen. Zusammen mit der
   ersten Prüfung schließt sie das Schlupfloch aus E21/E23.
+- **Kompetenzbereiche als Baum** (E29b, E31) – `kompetenzbereiche` bekommt
+  `parent_id` als Selbstreferenz (Migration 15). Die drei Erzeuger bauen
+  zweistufige Bäume: je Phase und Gegenstand ein Wurzelknoten, darunter die
+  Kompetenzbereiche als Blätter. Der MKR bleibt flach — sechs Wurzelknoten,
+  die zugleich Blätter sind (Migration 16, per `UPDATE`, weil an seinen
+  Kompetenzen alle 228 Zuweisungen hängen).
+  **Bereiche 118 → 177** (59 neue Zwischenknoten); Kompetenzen unverändert 649,
+  Zuweisungen unverändert 228, alle Wortlaute unverändert.
+- **`inhaltsfeld`, `kompetenzbereich`, `teilbereich` entfallen**
+  (Migration 17) – ihre Information steht im Baum. `phase` bleibt Spalte und
+  steht an jedem Knoten; `art` sagt jetzt, was ein Knoten **ist**.
+- **Drei Baumprüfungen in `tests-projektstunden.sh`** – Elternknoten im selben
+  Rahmen, kein Zyklus, `art` an jedem Knoten. Statisch am Seed, damit
+  `deploy.sh` sie ausführt.
 - **`docs/curricula/STRUKTUR.md`** – Strukturerhebung über alle 37
   Kernlehrpläne: Aufzählungsmarker mit Codepoint, Spaltigkeit des
   Kompetenzteils, Gliederungstiefe, Steuerzeichen und Zählwerte je Plan.
@@ -80,8 +94,9 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 - **Ellipsenregel auch innerhalb der Zeile** (E28) – `Satz-und Textebene` statt
   `Satz- und Textebene`; `pdftotext` verschluckt dort den Wortabstand.
 
-**Prüfungen: 48 → 50 → 51 → 52.** Die Strukturerhebung bringt keine neue
-Prüfung mit — sie ist ein Dokument, kein Code.
+**Prüfungen: 48 → 50 → 51 → 52 → 55.** Die Strukturerhebung brachte keine
+neue Prüfung mit — sie ist ein Dokument, kein Code; die Baumumformung bringt
+drei.
 
 Geplant:
 - `teilbereich` befüllen (Englisch, E18)

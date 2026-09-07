@@ -41,6 +41,68 @@ Bei Erfolg gibt das Skript aus, welche Silbentrennungen es nach Regel 4
 entschieden hat (E22) — also ohne Beleg im Dokument. Diese Liste gehört in
 den Bericht des jeweiligen Auftrags und wird durchgesehen.
 
+## Wie ein Erzeuger den Baum aufbaut
+
+Seit E29b bilden `kompetenzbereiche` einen Baum über `parent_id`. Das Muster
+ist bei allen drei Erzeugern dasselbe und die Vorlage für die sechzehn
+ausstehenden Fächer:
+
+**Zwei INSERT-Anweisungen, nicht eine.** Die Wurzelknoten werden mit
+`parent_id = NULL` als `VALUES`-Liste eingefügt; die Blätter folgen mit einem
+`INSERT … SELECT`, das `parent_id` über den **Code** des Elternknotens
+auflöst:
+
+```sql
+INSERT INTO kompetenzbereiche (rahmen_id, parent_id, code, name, reihenfolge, phase, art) VALUES
+(@rahmen, NULL, 'DE_EP_SPR', 'Erprobungsstufe · Sprache', 4, 'erprobungsstufe', 'inhaltsfeld'), …;
+
+INSERT INTO kompetenzbereiche (rahmen_id, parent_id, code, name, reihenfolge, phase, art)
+SELECT @rahmen, p.id, t.code, t.name, t.reihenfolge, t.phase, t.art
+FROM (
+  SELECT 'DE_EP_SPR_REZ' AS code, … , 'DE_EP_SPR' AS pcode
+  UNION ALL …
+) t JOIN kompetenzbereiche p ON p.rahmen_id = @rahmen AND p.code = t.pcode;
+```
+
+`INSERT … SELECT` aus derselben Tabelle ist in MariaDB erlaubt (geprüft, nicht
+angenommen) — anders als `UPDATE` oder `DELETE` mit Selbstbezug.
+
+**Der Blattcode bleibt der alte.** An ihm hängen die Kompetenzcodes
+(`DE_EP_SPR_REZ_01`). Der Wurzelcode ist der gemeinsame Präfix.
+
+**`art` steht an jedem Knoten** und sagt, was der Knoten ist — nicht mehr, was
+in einer Spalte steht: `inhaltsfeld`, `bewegungsfeld`, `kompetenzbereich`,
+`medienkompetenzbereich` (E31).
+
+**`phase` bleibt eine Spalte** und steht an jedem Knoten, auch am Blatt. Sie
+liegt quer zur Schachtelung, und das Frontend filtert über sie.
+
+**Kompetenzen hängen nur an Blättern.** Ein Knoten mit Kindern trägt keine.
+Das ist eine Festlegung für den Aufbau, keine Beobachtung über alle 37 Pläne —
+verletzt ein Fach sie, schlägt die Prüfung an, und dann wird entschieden.
+
+### Die Prüflücke beim MKR
+
+Die drei Baumprüfungen in `tests-projektstunden.sh` laufen **statisch am
+Seed**, damit `deploy.sh` sie ausführen kann. Der Medienkompetenzrahmen hat
+keinen Seed: Er stammt aus einer eigenen Vorlage, ist flach und wird per
+`UPDATE` behandelt (`sql/16_migration_mkr_baum.sql`).
+
+**Er liegt damit außerhalb dieser drei Prüfungen.** Für ihn gilt die
+Baumintegrität nur gegen die Datenbank, nicht beim Deploy. Wer den MKR
+anfasst, prüft von Hand:
+
+```sql
+SELECT COUNT(*) AS knoten, SUM(parent_id IS NULL) AS wurzeln,
+       SUM(art IS NULL) AS ohne_art
+FROM kompetenzbereiche kb JOIN kompetenzrahmen kr ON kr.id = kb.rahmen_id
+WHERE kr.kuerzel = 'MKR';
+-- Erwartet: 6 / 6 / 0
+```
+
+Die Lücke schließt sich, sobald der MKR einen Seed bekommt — dafür fehlt eine
+Quelldatei (E19/E20).
+
 ## Was ein Erzeuger einhält
 
 - **Kopf der erzeugten Datei** nennt Quelle, SHA256 und Erzeuger (E19).

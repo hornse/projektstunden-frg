@@ -411,6 +411,78 @@ else
         || rot "ohne Quellenangabe:$OHNE_QUELLE"
 fi
 
+# --- Prüfungen 5 bis 7: Baumintegrität (E29b, E31)
+# Geprüft wird statisch am Seed, nicht gegen die Datenbank: `deploy.sh` führt
+# dieses Skript aus, und dort steht keine Datenbank zur Verfügung. Ein Seed
+# baut genau einen Rahmen auf, alle parent_id-Verweise liegen also in der
+# Datei und lassen sich verfolgen.
+#
+# LÜCKE, die dazugesagt gehört: Der MKR hat keinen Seed — er wird per UPDATE
+# behandelt (Migration 16) und liegt damit außerhalb dieser drei Prüfungen.
+# Für ihn gilt die Integrität nur gegen die Datenbank.
+BAUM_SEEDS=$(grep -l 'INSERT INTO kompetenzbereiche (rahmen_id, parent_id' sql/*.sql 2>/dev/null || true)
+if [ -z "$BAUM_SEEDS" ]; then
+    rot "Baum: kein Seed baut einen Baum – die Prüfung fand ihre Voraussetzung nicht"
+    rot "Baum: keine Zyklusprüfung möglich – die Prüfung fand ihre Voraussetzung nicht"
+    rot "Baum: keine art-Prüfung möglich – die Prüfung fand ihre Voraussetzung nicht"
+else
+    FREMD=""; ZYKLUS=""; OHNE_ART=""; ANZ_B=0
+    for SEED in $BAUM_SEEDS; do
+        ANZ_B=$((ANZ_B + 1))
+        BEFUND=$(awk '
+            # Wurzelzeile:  (@rahmen, NULL, CODE, NAME, N, PHASE, ART)
+            /^\(@rahmen, NULL, / {
+                if (match($0, /'"'"'[A-Z][A-Z0-9_]*'"'"'/)) {
+                    c = substr($0, RSTART+1, RLENGTH-2); ist_knoten[c] = 1
+                    n = split($0, f, /'"'"', '"'"'/)
+                    art = f[n]; sub(/'"'"'\).*/, "", art)
+                    if (art == "" || art == "NULL") print "art fehlt an Wurzel " c
+                }
+                next
+            }
+            # Blattzeile:  SELECT CODE AS code, ... ART AS art, PCODE AS pcode
+            /AS code,/ && /AS pcode/ {
+                if (match($0, /SELECT '"'"'[A-Z][A-Z0-9_]*'"'"'/)) {
+                    c = substr($0, RSTART+8, RLENGTH-9); ist_knoten[c] = 1
+                }
+                if (match($0, /'"'"'[a-z_]+'"'"' AS art/)) {
+                    a = substr($0, RSTART+1, RLENGTH-9); gsub(/'"'"' *$/, "", a)
+                    if (a == "") print "art fehlt an Blatt " c
+                } else print "art fehlt an Blatt " c
+                if (match($0, /'"'"'[A-Z][A-Z0-9_]*'"'"' AS pcode/)) {
+                    p = substr($0, RSTART+1, RLENGTH-11); gsub(/'"'"' *$/, "", p)
+                    eltern[c] = p
+                }
+                next
+            }
+            END {
+                for (c in eltern) {
+                    if (!(eltern[c] in ist_knoten))
+                        print "Elternknoten fremd oder unbekannt: " c " -> " eltern[c]
+                    # Zyklus: vom Knoten aus die Elternkette verfolgen
+                    k = c; tiefe = 0
+                    while (k in eltern && tiefe < 50) {
+                        k = eltern[k]; tiefe++
+                        if (k == c) { print "Zyklus ueber " c; break }
+                    }
+                    if (tiefe >= 50) print "Elternkette zu tief ab " c
+                }
+            }' "$SEED")
+        printf '%s' "$BEFUND" | grep -q 'fremd oder unbekannt' && FREMD="$FREMD $(basename "$SEED")"
+        printf '%s' "$BEFUND" | grep -qE 'Zyklus|zu tief'       && ZYKLUS="$ZYKLUS $(basename "$SEED")"
+        printf '%s' "$BEFUND" | grep -q 'art fehlt'             && OHNE_ART="$OHNE_ART $(basename "$SEED")"
+    done
+    [ -z "$FREMD" ] \
+        && gruen "jeder Elternknoten liegt im selben Rahmen ($ANZ_B Seed(s) mit Baum)" \
+        || rot "Elternknoten fremd:$FREMD"
+    [ -z "$ZYKLUS" ] \
+        && gruen "kein Knoten ist sein eigener Vorfahre ($ANZ_B geprüft)" \
+        || rot "Zyklus im Baum:$ZYKLUS"
+    [ -z "$OHNE_ART" ] \
+        && gruen "art ist an jedem Knoten gesetzt ($ANZ_B geprüft)" \
+        || rot "art fehlt an einem Knoten:$OHNE_ART"
+fi
+
 echo ""
 GESAMT=$((GRUEN + FEHLER))
 echo "$GRUEN/$GESAMT bestanden, $FEHLER rot"
