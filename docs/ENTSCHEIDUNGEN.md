@@ -824,3 +824,70 @@ Knotennamen zu mildern, nicht aufzuheben.
 stellt ihn wieder her. Der Fehler lag beide Male in derselben Stelle — E18
 stützte sich auf eine Auswertung der Gliederungsüberschriften und hielt im
 selben Eintrag fest, dass diese keine vollständige Lektüre ersetzt.
+
+---
+
+## E30 — Zwei Einträge tragen die Nummer E29 (07.09.2026)
+
+**Anlass:** Beim Bau des Baum-Auftrags fiel auf, dass `docs/ENTSCHEIDUNGEN.md`
+zwei Einträge mit der Nummer E29 führt, beide vom 06.09.2026: den Abschluss von
+E12, E14 und dem Rückstand aus E21, und die Aufhebung von E18 zugunsten des
+Baums. Sie entstanden in zwei Vorgängen, die dieselbe höchste Nummer vorfanden.
+
+**Entscheidung:** Beide Einträge bleiben, wie sie sind. Umnummerieren wäre eine
+Änderung an einem alten Eintrag (REIHENREGELN 10). Zur Unterscheidung gilt:
+**E29a** ist der Abschlusseintrag zu E12/E14/E21, **E29b** die Aufhebung von
+E18. Verweise auf den Baum-Beschluss nennen E29b.
+
+**Warum:** Ein Verweis auf „E29" ist nicht mehr eindeutig, und der Baum-Beschluss
+wird künftig oft zitiert — in `sql/gen/README.md`, in jedem Fachimport.
+
+**Vorbeugend:** Wer einen Eintrag anfügt, sieht vorher die höchste vergebene
+Nummer nach. Dass zwei Vorgänge am selben Tag dieselbe vorfanden, lag daran,
+dass der eine seinen Eintrag schrieb, während der andere lief.
+
+---
+
+## E31 — Knotenmodell des Kompetenzbaums (07.09.2026)
+
+**Anlass:** Umsetzung von E29b. Vier Fragen waren offen, die jede spätere
+Abfrage betreffen.
+
+**Phase bleibt Spalte, wird kein Knoten.** Belegt am Code: `app.js:1209` filtert
+die Katalogansicht über `k.phase`, `index.php:541` liefert `kb.phase` mit jeder
+Kompetenz aus. Ein Phasenknoten zwänge diese Abfragen, den Baum hinaufzusteigen.
+Dazu liegt die Phase quer zur Schachtelung — bei Deutsch Sek I tragen vier
+Phasen dieselben Inhaltsfelder; Phasenknoten würden die Inhaltsfeldnamen
+vervierfachen, ohne eine Beziehung auszudrücken, die es gibt.
+
+**Kompetenzen hängen nur an Blättern.** Ein Knoten mit Kindern trägt keine
+Kompetenzen. Das ist statisch am Seed prüfbar und fängt den Fehler, bei dem ein
+Erzeuger eine Ebene vergisst und die Kompetenzen zu hoch anhängt.
+
+Ausdrücklich: Das ist eine **Festlegung für den Aufbau, keine Beobachtung über
+alle 37 Lehrpläne** — bei 16 ist die Gliederung nicht gelesen (E29b). Verletzt
+ein künftiges Fach sie, schlägt die Prüfung an, und dann wird entschieden, nicht
+stillschweigend angepasst.
+
+**`art` steht an jedem Knoten** und sagt, was der Knoten ist. Werte:
+`inhaltsfeld`, `bewegungsfeld`, `kompetenzbereich`, `medienkompetenzbereich`.
+Die Liste steht im Spaltenkommentar, nicht in einem ENUM.
+
+`medienkompetenzbereich` ist eine eigene Sorte, weil ein MKR-Bereich („Bedienen
+und Anwenden") inhaltlich gliedert, ein Kompetenzbereich bei Deutsch
+(„Rezeption") dagegen Rezeption von Produktion unterscheidet. Dasselbe Wort für
+beides wäre die Zweideutigkeit, die `art` beenden soll.
+
+Der MKR ist zudem der einzige Rahmen, dessen Knoten **Wurzel und Blatt zugleich**
+sind — ein flacher Rahmen im Baummodell. Das gehört in den Spaltenkommentar,
+sonst hält es jemand für einen Fehler.
+
+**Knotennamen behalten den vollen Pfad**, also `Erprobungsstufe · Sprache ·
+Rezeption`. Im Baum ist das redundant, aber `bereich_name` geht heute so an das
+Frontend. Der Wechsel auf Kurznamen wäre eine Änderung an der Oberfläche und
+gehört in einen eigenen Vorgang.
+
+**Was das nicht heißt:** Die drei Baumprüfungen laufen statisch am Seed. Der MKR
+wird per `UPDATE` behandelt und liegt damit außerhalb — für ihn gilt die
+Integrität nur gegen die Datenbank, nicht beim Deploy. Diese Lücke ist bekannt
+und in `sql/gen/README.md` festzuhalten.
