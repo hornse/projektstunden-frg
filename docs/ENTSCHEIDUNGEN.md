@@ -1048,3 +1048,129 @@ jemand etwas an ihr geändert hätte. Deshalb: Ein Speichern, das die
 Teilnehmerzahl gleich lässt oder senkt, geht immer durch. Die Oberfläche zeigt
 den Verstoß an, ohne zu blockieren. „Alle hinzufügen" fügt höchstens bis zum
 Maximum hinzu und nennt, wie viele es ausgelassen hat.
+
+---
+
+## E36 — Rückmeldungen nur an Teilnehmer, Prüfung vor dem Schreiben (08.09.2026)
+
+**Anlass:** `POST /api/rueckmeldung/{id}` schrieb für jede übergebene
+`schueler_id`, ohne die Teilnahme zu prüfen.
+
+**Befund:** Über die Oberfläche ist der Fall heute nicht mehr herstellbar. Die
+Empfängerliste stammt aus `GET /bewertung`, das
+`projekt_schueler_kompetenzen` liest — und seit E35 löscht das Entfernen eines
+Teilnehmers dessen Kompetenzzeilen mit. Die Lücke bleibt für Direktaufrufe,
+ältere Clients und künftige Oberflächen.
+
+**Entscheidung:** Alle IDs werden zuerst gegen `projekt_schueler` geprüft. Ist
+eine ungültig, wird nichts geschrieben; die Antwort nennt alle ungültigen IDs.
+
+**Warum nicht überspringen:** Wer fünf Namen anhakt und „5 Rückmeldung(en)
+gespeichert ✓" liest, verlässt sich darauf. Eine Meldung „3 von 5, 2
+übersprungen" liest sich schnell weg. Wenn schon ein Sonderfall, dann einer,
+der stehenbleibt.
+
+Dass ein Aufruf mit gemischter Liste dann vollständig scheitert, kostet nichts:
+Über die Oberfläche tritt er nicht auf, und wo er auftritt, ist der Aufruf
+falsch zusammengesetzt.
+
+**Nebenbei festgehalten:** Die Schreibschleife läuft ohne Transaktion. Mit der
+Vorprüfung ist das unerheblich, weil vorher nichts geschrieben wird.
+
+---
+
+## E37 — Die zwei verwaisten Rückmeldungen werden gelöscht (08.09.2026)
+
+**Anlass:** Zwei Zeilen in `werkstatt_rueckmeldungen` zu Werkstatt 2, deren
+Personen keine Teilnehmer sind.
+
+**Entscheidung:** Löschen, in einer eigenen Migration, mit `mysqldump` davor,
+über die Bedingung „nicht Teilnehmer" statt über feste IDs — nach der Behebung
+aus E36, sonst kann dieselbe Lücke sie sofort wieder erzeugen.
+
+**Warum:** Beide tragen `bewertung_stufe = 3` ohne Freitext, in einer Werkstatt
+namens „asdases". Sie sind ohne Bezug und ohne Inhalt.
+
+**Was das nicht heißt — und was der Auftrag falsch behauptet hat:** Die
+Auftragsdatei nannte E36 „die Ursache von Befund 2". Das ist unbelegt. Der
+Endpunkt *erlaubt* es; dass es so geschah, weiß niemand. Die Oberfläche spricht
+sogar dagegen: Bei Werkstatt 2 gibt es keine Kompetenzzeilen, also käme dort
+keine Empfängerliste zustande. Es müsste ein früherer Stand, ein Direktaufruf
+oder ein inzwischen gelöschter Kompetenzbestand gewesen sein. Der Versuch, der
+es entscheiden würde, existiert nicht mehr.
+
+Was belegt ist: Beide Betroffenen sind in Klasse 5, der Werkstatt 2
+zugeordneten Klasse; die beiden echten Teilnehmer sind andere; beide Zeilen
+entstanden in derselben Sekunde von Benutzer 1. Das Muster passt zu „vier Namen
+angehakt, zwei davon keine Teilnehmer" — als Vermutung.
+
+---
+
+## E38 — Klassen entfernen ist zugelassen, Teilnehmer bleiben (08.09.2026)
+
+**Anlass:** `projekt_klassen` wurde im PUT nie geschrieben; die
+Klassenzuordnung war unveränderlich.
+
+**Entscheidung, drei Teile:**
+
+Das Entfernen einer Klasse wird nicht verweigert und löst keine Löschung von
+Teilnehmern aus. Eine Klassenzuordnung ist eine organisatorische Angabe, keine
+Aussage über Personen — wer sie ändert, sagt nicht „diese Schüler sollen weg".
+
+`GET /api/werkstatt/{id}/schueler` liefert zusätzlich die tatsächlichen
+Teilnehmer, auch wenn deren Klasse nicht mehr zugeordnet ist. Ohne das kostete
+„zulassen und behalten" stillschweigend Bedienbarkeit: Der Endpunkt speist das
+Details-Modal, in dem Teilnehmer als absolviert markiert werden. Ein Teilnehmer
+aus einer entfernten Klasse verschwände dort — seine Zeile bliebe, die
+Stundenanrechnung liefe weiter, nur bedienen könnte ihn niemand mehr.
+
+Eine Rückfrage zählt, wie viele Teilnehmer zu den entfernten Klassen gehören,
+ohne zu blockieren.
+
+**Warum nicht verweigern:** Dieselbe Sackgasse wie bei E34. Werkstatt 4 hat alle
+zwölf Teilnehmer aus einer Klasse; Verweigern hieße, diese Klasse wäre dort auf
+Dauer nicht mehr entfernbar.
+
+**Warum nicht mitlöschen:** E34 löscht mit, weil dort ein Mensch eine Person
+abwählt und dazu gefragt wird. Hier wählt er eine Klasse ab; dass daran zwölf
+Bewertungen hängen, ist eine Nebenfolge. Ein Klick auf „Klasse entfernen" darf
+nicht 228 Kompetenzzeilen und 12 Rückmeldungen kosten.
+
+**Form:** `isset($body['klasse_ids'])` wie bei `schueler_ids` (E35), nicht
+`?? []`.
+
+**`projekte.klasse_id`** wird nur nachgezogen, wenn der bisherige Wert nicht
+mehr unter den zugeordneten Klassen ist. Sonst wechselte die „Hauptklasse" bei
+jedem Umsortieren. Die Spalte wird an einer Stelle gelesen
+(`index.php:592`), das Ergebnis verwendet das Frontend nirgends — der `INNER
+JOIN` auf sie ist aber scharf: Zeigte sie ins Leere, lieferte
+`GET /projekte/{id}` ein 404 „Werkstatt nicht gefunden", ohne dass etwas von
+einer Klasse spräche. Die Absicherung `if ($klasse_id)` bleibt (FALLSTRICKE 4).
+
+---
+
+## E39 — Drei Antworten auf „wer gehört zu dieser Werkstatt" (08.09.2026)
+
+**Anlass:** Beim Bau von E38 fielen drei Ansichten auf, die dieselbe Frage
+verschieden beantworten.
+
+**Befund:** `projekt_schueler` sagt, wer Teilnehmer ist. `projekt_klassen` sagt,
+welche Klassen zugeordnet sind — und das Details-Modal listet daraus **alle**
+Schüler dieser Klassen, bei Werkstatt 4 also 189 Namen für 12 Teilnehmer. Ein
+Haken bei einem Nicht-Teilnehmer ruft `PUT /werkstatt/{id}/abschluss`, ein
+reines `UPDATE` ohne `INSERT`: Es trifft null Zeilen, meldet `{"ok":true}`, und
+der Haken verschwindet erst beim Neuladen.
+`projekt_schueler_kompetenzen` speist die Bewertungstabelle — ein Teilnehmer
+ohne zugewiesene Kompetenzen erscheint dort nicht und kann keine Rückmeldung
+bekommen. Deshalb ist die Rückmeldungsansicht von Werkstatt 2 leer, obwohl vier
+Rückmeldungen existieren.
+
+**Entscheidung:** Festgehalten, nicht in diesem Auftrag behoben. Es sind drei
+verschiedene Ansichten mit je eigener Begründung; sie zusammenzuführen ist eine
+fachliche Entscheidung darüber, was eine Werkstatt ist, und kein Anhang an eine
+Fehlerbehebung.
+
+**Warum das zählt:** Eine Schaltfläche, die `{"ok":true}` meldet und nichts tut,
+ist schlimmer als eine, die einen Fehler zeigt. Und eine Rückmeldungsansicht,
+die vier vorhandene Rückmeldungen nicht zeigt, lässt den Benutzer glauben, es
+gebe keine.
