@@ -647,6 +647,111 @@ DOPPELT=$(printf '%s' "$PHP_OHNE" | grep -c "clean(\$body\['freitext'\]\|clean(\
     || rot "freitext wird zweimal maskiert – Anzeigefehler statt Sicherheitsgewinn"
 
 echo ""
+echo "Zugehoerigkeit und Konfiguration"
+# ------------------------------------------------------------------
+# Drei Pruefungen zu E36 (Teilnahmepruefung bei Rueckmeldungen),
+# E38 (Klassenzuordnung im PUT) und dem Konfigurationsabgleich.
+# Alle drei arbeiten auf dem Quelltext OHNE Kommentare -- die Regeln sind
+# in denselben Dateien in Prosa erklaert (REIHENREGELN 2).
+# ------------------------------------------------------------------
+API=backend/api/index.php
+if [ ! -f "$API" ]; then
+    rot "$API fehlt"
+    rot "$API fehlt (zweite Pruefung nicht ausfuehrbar)"
+else
+    # Pruefung 1: POST /rueckmeldung prueft die Teilnahme, und zwar VOR dem
+    # Schreiben. Gemessen wird die Abfrage gegen projekt_schueler plus der
+    # Abbruch -- die blosse Anwesenheit eines der beiden genuegt nicht.
+    # Zuerst den Zweig aus der DATEI schneiden, dann die Kommentare
+    # entfernen -- nicht umgekehrt. Die Markierung des PUT-Zweigs ist selbst
+    # ein Kommentar; wer erst entkommentiert, sucht sie danach vergeblich.
+    # Genau daran ist die Klassenpruefung beim ersten Lauf rot geworden.
+    RM_ZWEIG=$(awk '/function handle_rueckmeldung/{an=1} an{print} an&&/^}/{exit}' "$API" \
+               | perl -0777 -pe 's{/\*.*?\*/}{}gs' | grep -v '^[[:space:]]*//')
+    if [ -z "$RM_ZWEIG" ]; then
+        rot "handle_rueckmeldung nicht gefunden"
+    else
+        # Gemessen wird die REIHENFOLGE, nicht nur das Vorkommen: Abfrage
+        # gegen projekt_schueler, dann der Abbruch, dann erst das INSERT.
+        # Stuende der Abbruch dahinter, waeren schon Zeilen geschrieben.
+        # Dazu die Waechterbedingung selbst -- sonst bliebe die Pruefung
+        # gruen, wenn jemand sie zu `if (false)` entwertet.
+        P_ABFRAGE=$(printf '%s\n' "$RM_ZWEIG" | grep -n "FROM projekt_schueler" | head -1 | cut -d: -f1)
+        P_ABBRUCH=$(printf '%s\n' "$RM_ZWEIG" | grep -n "json_error" | awk -F: -v a="${P_ABFRAGE:-0}" '$1>a{print $1; exit}')
+        P_INSERT=$(printf '%s\n' "$RM_ZWEIG" | grep -n "INSERT INTO werkstatt_rueckmeldungen" | head -1 | cut -d: -f1)
+        P_WAECHTER=$(printf '%s' "$RM_ZWEIG" | grep -c 'if (!empty($fremde))' || true)
+        if [ -z "$P_ABFRAGE" ] || [ -z "$P_ABBRUCH" ] || [ -z "$P_INSERT" ]; then
+            rot "POST /rueckmeldung: Abfrage, Abbruch oder INSERT nicht gefunden"
+        elif [ "$P_WAECHTER" -eq 0 ]; then
+            rot "POST /rueckmeldung: die Waechterbedingung auf \$fremde fehlt"
+        elif [ "$P_ABFRAGE" -lt "$P_ABBRUCH" ] && [ "$P_ABBRUCH" -lt "$P_INSERT" ]; then
+            gruen "POST /rueckmeldung prueft die Teilnahme vor dem Schreiben"
+        else
+            rot "POST /rueckmeldung prueft nicht vor dem Schreiben (Abfrage=$P_ABFRAGE, Abbruch=$P_ABBRUCH, INSERT=$P_INSERT)"
+        fi
+    fi
+
+    # Pruefung 2: Der PUT-Zweig wertet klasse_ids aus, mit isset statt ?? [].
+    # Dieselbe Form wie bei schueler_ids (E35).
+    PUT_ZWEIG=$(awk '/\/\/ ----- PUT \/projekte\/\{id\} -----/,/\/\/ ----- DELETE \/projekte\/\{id\} -----/' "$API" \
+                | perl -0777 -pe 's{/\*.*?\*/}{}gs' | grep -v '^[[:space:]]*//')
+    if [ -z "$PUT_ZWEIG" ]; then
+        rot "PUT-Zweig nicht gefunden (Klassenpruefung nicht ausfuehrbar)"
+    else
+        K_ISSET=$(printf '%s' "$PUT_ZWEIG" | grep -c "isset(\$body\['klasse_ids'\])" || true)
+        K_SCHREIBT=$(printf '%s' "$PUT_ZWEIG" | grep -c "INTO projekt_klassen" || true)
+        K_LOESCHT=$(printf '%s' "$PUT_ZWEIG" | grep -c "DELETE FROM projekt_klassen" || true)
+        K_FALSCH=$(printf '%s' "$PUT_ZWEIG" | grep -c "body\['klasse_ids'\][[:space:]]*??" || true)
+        if [ "$K_FALSCH" -gt 0 ]; then
+            rot "PUT-Zweig macht mit ?? [] aus 'nicht geschickt' ein 'alle entfernen'"
+        elif [ "$K_ISSET" -gt 0 ] && [ "$K_SCHREIBT" -gt 0 ] && [ "$K_LOESCHT" -gt 0 ]; then
+            gruen "PUT-Zweig aendert projekt_klassen und unterscheidet fehlendes Feld"
+        else
+            rot "PUT-Zweig aendert die Klassen nicht (isset=$K_ISSET, fuegt=$K_SCHREIBT, loescht=$K_LOESCHT)"
+        fi
+    fi
+fi
+
+# Pruefung 3: config.php fuehrt jede Konstante und jede globale Variable aus
+# config.example.php.
+#
+# NUR NAMEN, KEINE WERTE. Die Datei enthaelt das Datenbankpasswort; sie wird
+# gelesen, aber keine ihrer Zeilen wird ausgegeben -- gemeldet werden
+# ausschliesslich die Namen aus der Beispieldatei, die dort fehlen.
+#
+# Was sie nicht kann: abweichende WERTE sehen. Genau daran ist die
+# Konfiguration zuletzt auseinandergelaufen (secure=false gegen true). Das
+# waere nur mit einer Inhaltspruefung zu fangen, und die ist bei einer Datei
+# mit Zugangsdaten der falsche Weg.
+BSP=backend/config.example.php
+CFG=backend/config.php
+if [ ! -f "$BSP" ]; then
+    rot "$BSP fehlt – Voraussetzung der Konfigurationspruefung"
+elif [ ! -f "$CFG" ]; then
+    rot "$CFG fehlt – Voraussetzung der Konfigurationspruefung, nicht bestanden"
+else
+    NAMEN=$(perl -0777 -pe 's{/\*.*?\*/}{}gs' "$BSP" | grep -v '^[[:space:]]*//' \
+            | grep -oE "define\('[A-Z_0-9]+'|^\\\$[A-Za-z_][A-Za-z_0-9]*" \
+            | sed "s/define('//;s/'$//" | sort -u)
+    ANZ=$(printf '%s\n' "$NAMEN" | grep -c . || true)
+    CFG_OHNE=$(perl -0777 -pe 's{/\*.*?\*/}{}gs' "$CFG" | grep -v '^[[:space:]]*//')
+    if [ "$ANZ" -eq 0 ]; then
+        rot "keine Namen in $BSP gefunden – die Pruefung prueft nichts"
+    else
+        FEHLT=""
+        for N in $NAMEN; do
+            case "$N" in
+                \$*) printf '%s' "$CFG_OHNE" | grep -qF "$N" || FEHLT="$FEHLT $N" ;;
+                *)   printf '%s' "$CFG_OHNE" | grep -qF "define('$N'" || FEHLT="$FEHLT $N" ;;
+            esac
+        done
+        [ -z "$FEHLT" ] \
+            && gruen "config.php fuehrt alle $ANZ Namen aus config.example.php" \
+            || rot "config.php fehlen Namen aus config.example.php:$FEHLT"
+    fi
+fi
+
+echo ""
 GESAMT=$((GRUEN + FEHLER))
 echo "$GRUEN/$GESAMT bestanden, $FEHLER rot"
 if [ "$FEHLER" -eq 0 ]; then echo "ALLES GRÜN"; exit 0; fi

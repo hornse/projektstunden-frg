@@ -731,6 +731,24 @@ function teilnWasErfasst(b) {
   return t.join(', ');
 }
 
+// Kandidaten der Bearbeiten-Ansicht neu laden, wenn die Klassenauswahl sich
+// ändert (E38).
+//
+// Das ist die Stelle, an der die Auswahl verlorengehen kann: Die Kachelliste
+// wird komplett neu gezeichnet. Sie überlebt es, weil `TEILN.we.ids` hier
+// **nicht angefasst** wird -- die Menge ist die Wahrheit, das DOM nur ihre
+// Anzeige (E33). Und die bisherigen Teilnehmer kommen unabhängig von der
+// Klassenwahl in die Kandidatenliste: Wer nicht gezeichnet wird, liesse sich
+// nicht mehr abwählen.
+async function loadSchuelerForWerkstattEdit() {
+  const klassen = [...document.getElementById('we-kl').selectedOptions].map(o => o.value);
+  const liste = klassen.length ? (await GET(`schueler?klassen=${klassen.join(',')}`) || []) : [];
+  for (const t of TEILN.we.bestand) {
+    if (!liste.some(k => Number(k.id) === Number(t.id))) liste.push(t);
+  }
+  teilnKandidaten('we', liste);
+}
+
 function loadSchuelerForProjekt() {
   const selected = [...document.getElementById('p-kl').selectedOptions].map(o => o.value);
   if (!selected.length) { teilnKandidaten('p', []); return; }
@@ -948,6 +966,11 @@ let WS_EDIT_AKTIVER_RAHMEN = 0;
 let WS_EDIT_KOMP_IDS = new Set();
 let WS_EDIT_PHASE = 'alle';
 
+// Die Klassen, wie sie beim Öffnen zugeordnet waren (E38). Nur dafür da,
+// beim Speichern zu zählen, wie viele Teilnehmer zu einer entfernten Klasse
+// gehören.
+let WS_EDIT_KLASSEN = [];
+
 async function openWerkstattBearbeiten(id) {
   WS_EDIT_ID = id;
   go('werkstatt-edit');
@@ -991,6 +1014,14 @@ async function openWerkstattBearbeiten(id) {
     `<option value="${l.id}" ${lbIds.includes(l.id) ? 'selected' : ''}>${l.vorname} ${l.nachname}${l.kuerzel ? ' (' + l.kuerzel + ')' : ''}</option>`
   ).join('');
 
+  // Klassen (E38). Vorbelegt mit den zugeordneten; das Feld gab es vorher
+  // nicht, die Zuordnung war unveränderlich.
+  const wsKl = (proj.klasse_ids || []).map(Number);
+  WS_EDIT_KLASSEN = wsKl.slice();   // Ausgangsstand für die Rückfrage beim Speichern
+  document.getElementById('we-kl').innerHTML = STATE.klassen.map(k =>
+    `<option value="${k.id}" ${wsKl.includes(Number(k.id)) ? 'selected' : ''}>${k.bezeichnung} (${k.schuljahr})</option>`
+  ).join('');
+
   // Teilnehmer (E34, E35)
   //
   // Vorbelegung ist die gefährliche Stelle: Schlägt sie fehl und ersetzt das
@@ -1004,14 +1035,7 @@ async function openWerkstattBearbeiten(id) {
   // Wählbar sind die Schüler der Klassen dieser Werkstatt. Teilnehmer, die
   // in keiner davon sind -- etwa nach einem Klassenwechsel --, kommen
   // hinzu: Wer nicht gezeichnet wird, liesse sich sonst nicht abwählen.
-  const wsKlassen = proj.klasse_ids || [];
-  const kandidaten = wsKlassen.length
-    ? (await GET(`schueler?klassen=${wsKlassen.join(',')}`) || [])
-    : [];
-  for (const t of TEILN.we.bestand) {
-    if (!kandidaten.some(k => Number(k.id) === Number(t.id))) kandidaten.push(t);
-  }
-  teilnKandidaten('we', kandidaten);
+  await loadSchuelerForWerkstattEdit();
 
   // Fach-Grid mit vorhandenen Stunden
   document.getElementById('we-fach-grid').innerHTML = STATE.faecher.map(f => {
@@ -1205,9 +1229,11 @@ async function werkstattEditSpeichern() {
 
   // Teilnehmer aus derselben Menge, aus demselben Grund.
   const schueler_ids = teilnIds('we');
+  const klasse_ids   = [...document.getElementById('we-kl').selectedOptions].map(o => parseInt(o.value));
 
   if (!name || !datum_von) return showMsg('we-msg', 'Name und Startdatum sind Pflichtfelder.', 'err');
   if (!lehrer_ids.length) return showMsg('we-msg', 'Mindestens einen Lernbegleiter wählen.', 'err');
+  if (!klasse_ids.length) return showMsg('we-msg', 'Mindestens eine Klasse wählen.', 'err');
 
   // Rückfrage vor dem Entfernen (E34). Gefragt wird beim Speichern, nicht
   // beim Abwählen: Abwählen ist ein Versuch, gelöscht wird erst hier -- und
@@ -1241,6 +1267,25 @@ async function werkstattEditSpeichern() {
     if (!confirm(text + 'Wirklich entfernen?')) return;
   }
 
+  // Rückfrage beim Entfernen einer Klasse (E38). Sie zählt und blockiert
+  // nicht: Die Teilnehmer bleiben, nichts wird gelöscht. Gesagt werden muss
+  // es trotzdem -- sonst merkt niemand, dass die Werkstatt danach Teilnehmer
+  // aus einer nicht zugeordneten Klasse führt.
+  const wegKlassen = WS_EDIT_KLASSEN.filter(k => !klasse_ids.includes(Number(k)));
+  if (wegKlassen.length) {
+    const betroffen = TEILN.we.bestand.filter(b =>
+      TEILN.we.ids.has(Number(b.id)) && wegKlassen.includes(Number(b.klasse_id)));
+    const namen = wegKlassen
+      .map(k => (STATE.klassen.find(x => Number(x.id) === Number(k)) || {}).bezeichnung || k)
+      .join(', ');
+    let text = `Klasse${wegKlassen.length === 1 ? '' : 'n'} ${namen} wird von dieser Werkstatt entfernt.\n\n`;
+    text += betroffen.length
+      ? `${betroffen.length} Teilnehmer ${betroffen.length === 1 ? 'gehört' : 'gehören'} dazu. `
+        + `${betroffen.length === 1 ? 'Er bleibt' : 'Sie bleiben'} Teilnehmer – es geht nichts verloren.\n\n`
+      : 'Kein Teilnehmer gehört dazu.\n\n';
+    if (!confirm(text + 'Fortfahren?')) return;
+  }
+
   try {
     const r = await fetch('/api/projekte/' + id, {
       method: 'PUT',
@@ -1249,7 +1294,7 @@ async function werkstattEditSpeichern() {
       body: JSON.stringify({
         name, datum_von, datum_bis, laufzeit, praesentation_datum,
         max_schueler, beschreibung, status, schuljahr_id,
-        lehrer_ids, stunden, kompetenz_ids: kompIds, schueler_ids
+        lehrer_ids, stunden, kompetenz_ids: kompIds, schueler_ids, klasse_ids
       })
     });
     const data = await r.json();

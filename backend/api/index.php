@@ -850,7 +850,12 @@ function handle_projekte(string $method, ?int $id, array $body): void {
         }
 
         $name                = clean($body['name']      ?? '');
-        $klasse_ids_put      = array_map('intval', $body['klasse_ids'] ?? []);
+        // Nicht `?? []`: Diese Hilfsvariable dient nur dazu, die Hauptklasse
+        // abzuleiten. Ob die Zuordnung geändert wird, entscheidet weiter
+        // unten `isset($body['klasse_ids'])` -- und ein `?? []` daneben
+        // liesse offen, welche der beiden Formen gilt.
+        $klasse_ids_put      = isset($body['klasse_ids'])
+                               ? array_map('intval', $body['klasse_ids']) : [];
         $klasse_id           = (int)($body['klasse_id'] ?? ($klasse_ids_put[0] ?? 0));
         $schuljahr_id        = (int)($body['schuljahr_id'] ?? 0) ?: null;
         $datum_von           = $body['datum_von'] ?? '';
@@ -871,6 +876,28 @@ function handle_projekte(string $method, ?int $id, array $body): void {
 
         $db->beginTransaction();
         try {
+            // -----------------------------------------------------------
+            // Hauptklasse (`projekte.klasse_id`) nur nachziehen, wenn der
+            // bisherige Wert nicht mehr unter den zugeordneten Klassen ist
+            // (E38). Sonst wechselte sie bei jedem Umsortieren der Auswahl.
+            //
+            // Die Spalte wird an genau einer Stelle gelesen -- im
+            // Einzelprojekt-GET, `JOIN klassen k ON k.id = p.klasse_id`.
+            // Das Ergebnis verwendet das Frontend nirgends, der INNER JOIN
+            // ist aber scharf: Zeigte die Spalte ins Leere, lieferte
+            // GET /projekte/{id} ein 404 "Werkstatt nicht gefunden", ohne
+            // dass etwas von einer Klasse spräche.
+            //
+            // Ein ausdrücklich mitgeschicktes `klasse_id` hat Vorrang; die
+            // Anlegen-Ansicht schickt es, die Bearbeiten-Ansicht nicht.
+            // -----------------------------------------------------------
+            if (!isset($body['klasse_id']) && !empty($klasse_ids_put)) {
+                $stmt = $db->prepare('SELECT klasse_id FROM projekte WHERE id = ? AND schule_id = ?');
+                $stmt->execute([$id, $user['schule_id']]);
+                $bisher = (int)$stmt->fetchColumn();
+                $klasse_id = in_array($bisher, $klasse_ids_put, true) ? 0 : $klasse_ids_put[0];
+            }
+
             // klasse_id nur updaten wenn mitgeschickt (sonst bestehenden Wert behalten)
             if ($klasse_id) {
                 $db->prepare(
@@ -924,6 +951,62 @@ function handle_projekte(string $method, ?int $id, array $body): void {
                         $id, (int)$s['fach_id'],
                         round((float)$s['stunden'], 1), clean($s['notiz'] ?? '')
                     ]);
+                }
+            }
+
+            // ---------------------------------------------------------------
+            // Klassen aktualisieren (E38)
+            //
+            // `isset` wie bei `schueler_ids` (E35): Ein FEHLENDES Feld lässt
+            // die Zuordnung unangetastet, eine ausdrücklich LEERE Liste
+            // entfernt sie. Mit `?? []` leerte ein Aufrufer, der das Feld
+            // vergisst, die Zuordnung -- der Mechanismus aus FALLSTRICKE 3.
+            //
+            // Entfernen wird nicht verweigert und löscht keine Teilnehmer.
+            // Eine Klassenzuordnung ist eine organisatorische Angabe, keine
+            // Aussage über Personen. Teilnehmer aus einer entfernten Klasse
+            // bleiben stehen; damit sie nicht unbedienbar werden, liefert
+            // GET /werkstatt/{id}/schueler sie zusätzlich mit aus.
+            //
+            // Dieser Block steht vor dem Teilnehmerblock, damit die
+            // Reihenfolge im Code der Reihenfolge in der Sache entspricht
+            // (Klassen -> Teilnehmer -> Kompetenzen). Eine mechanische
+            // Abhängigkeit gibt es nicht: Innerhalb des PUT liest nichts
+            // `projekt_klassen`.
+            // ---------------------------------------------------------------
+            if (isset($body['klasse_ids'])) {
+                $ziel_kl = array_values(array_unique(array_filter($klasse_ids_put)));
+
+                // Nur Klassen dieser Schule -- eine erfundene ID gäbe sonst
+                // einen Fremdschlüsselfehler und damit einen 500er.
+                $gueltig = [];
+                if (!empty($ziel_kl)) {
+                    $plh  = implode(',', array_fill(0, count($ziel_kl), '?'));
+                    $chkK = $db->prepare(
+                        "SELECT id FROM klassen WHERE schule_id = ? AND id IN ($plh)"
+                    );
+                    $chkK->execute(array_merge([$user['schule_id']], $ziel_kl));
+                    $gueltig = array_map('intval', $chkK->fetchAll(PDO::FETCH_COLUMN));
+                }
+
+                $stmt = $db->prepare('SELECT klasse_id FROM projekt_klassen WHERE projekt_id = ?');
+                $stmt->execute([$id]);
+                $bestand_kl = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+
+                $weg_kl = array_diff($bestand_kl, $gueltig);
+                if (!empty($weg_kl)) {
+                    $plh = implode(',', array_fill(0, count($weg_kl), '?'));
+                    $db->prepare(
+                        "DELETE FROM projekt_klassen WHERE projekt_id = ? AND klasse_id IN ($plh)"
+                    )->execute(array_merge([$id], array_values($weg_kl)));
+                }
+
+                $neu_kl = array_diff($gueltig, $bestand_kl);
+                if (!empty($neu_kl)) {
+                    $ins_kl = $db->prepare(
+                        'INSERT IGNORE INTO projekt_klassen (projekt_id, klasse_id) VALUES (?, ?)'
+                    );
+                    foreach ($neu_kl as $kid) $ins_kl->execute([$id, $kid]);
                 }
             }
 
@@ -2086,6 +2169,14 @@ function handle_werkstatt(string $method, ?int $id, string $sub, array $body): v
     // ----- GET /api/werkstatt/{id}/schueler -----
     // Alle Schüler der zugeordneten Klassen laden (für Teilnehmer-Auswahl)
     if ($method === 'GET' && $sub === 'schueler') {
+        // Zwei Quellen, vereinigt (E38): die Schüler der zugeordneten Klassen
+        // UND die tatsächlichen Teilnehmer.
+        //
+        // Ohne den zweiten Zweig verschwände ein Teilnehmer aus dem
+        // Details-Modal, sobald seine Klasse nicht mehr zugeordnet ist --
+        // seine Zeile bliebe, die Stundenanrechnung liefe weiter, nur
+        // bedienen könnte ihn niemand mehr. Dasselbe gilt nach einem
+        // Klassenwechsel des Schülers.
         $stmt = $db->prepare(
             'SELECT DISTINCT s.id, s.vorname, s.nachname,
                     k.bezeichnung AS klasse, k.jahrgang,
@@ -2095,9 +2186,20 @@ function handle_werkstatt(string $method, ?int $id, string $sub, array $body): v
              JOIN schueler s ON s.klasse_id = k.id AND s.aktiv = 1
              LEFT JOIN projekt_schueler ps ON ps.projekt_id = ? AND ps.schueler_id = s.id
              WHERE pk.projekt_id = ?
-             ORDER BY k.jahrgang, k.bezeichnung, s.nachname, s.vorname'
+
+             UNION
+
+             SELECT DISTINCT s.id, s.vorname, s.nachname,
+                    k.bezeichnung AS klasse, k.jahrgang,
+                    ps.abgeschlossen
+             FROM projekt_schueler ps
+             JOIN schueler s ON s.id = ps.schueler_id
+             JOIN klassen k ON k.id = s.klasse_id
+             WHERE ps.projekt_id = ?
+
+             ORDER BY jahrgang, klasse, nachname, vorname'
         );
-        $stmt->execute([$id, $id]);
+        $stmt->execute([$id, $id, $id]);
         json_response($stmt->fetchAll());
     }
 
@@ -2265,6 +2367,38 @@ function handle_rueckmeldung(string $method, ?int $id, array $body): void {
         $sichtbar       = (int)($body['sichtbar'] ?? 0);
 
         if (empty($schueler_ids)) json_error('Mindestens einen Schüler angeben.');
+
+        // ---------------------------------------------------------------
+        // Teilnahme prüfen, BEVOR geschrieben wird (E36).
+        //
+        // Bisher schrieb die Schleife für jede übergebene ID, ohne
+        // nachzusehen. Im Bestand standen zwei Rückmeldungen zu Personen,
+        // die keine Teilnehmer sind.
+        //
+        // Alle IDs werden zuerst geprüft; ist eine ungültig, wird NICHTS
+        // geschrieben, und die Antwort nennt alle ungültigen. Überspringen
+        // wäre die bequemere Wahl gewesen und die schlechtere: Wer fünf
+        // Namen anhakt und "5 Rückmeldung(en) gespeichert" liest, verlässt
+        // sich darauf.
+        //
+        // Dass die Schreibschleife ohne Transaktion läuft, ist damit
+        // unerheblich -- vor dieser Prüfung wird nichts geschrieben.
+        // ---------------------------------------------------------------
+        $schueler_ids = array_values(array_unique($schueler_ids));
+        $plh = implode(',', array_fill(0, count($schueler_ids), '?'));
+        $chk = $db->prepare(
+            "SELECT schueler_id FROM projekt_schueler
+             WHERE projekt_id = ? AND schueler_id IN ($plh)"
+        );
+        $chk->execute(array_merge([$projekt_id], $schueler_ids));
+        $teilnehmer = array_map('intval', $chk->fetchAll(PDO::FETCH_COLUMN));
+        $fremde     = array_values(array_diff($schueler_ids, $teilnehmer));
+        if (!empty($fremde)) {
+            json_error(
+                'Rückmeldungen sind nur an Teilnehmer der Werkstatt möglich. '
+                . 'Keine Teilnehmer: ' . implode(', ', $fremde) . '. Es wurde nichts gespeichert.'
+            );
+        }
 
         $stmt = $db->prepare(
             'INSERT INTO werkstatt_rueckmeldungen

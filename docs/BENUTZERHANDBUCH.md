@@ -100,6 +100,8 @@ Klick auf **Details**-Button öffnet ein Modal:
 - Stunden je Fach aktualisierbar
 - Kompetenzen hinzufügen/entfernen — die bereits gewählten sind angehakt,
   auch wenn sie zu einer Phase gehören, die gerade nicht angezeigt wird
+- **Klassen hinzufügen und entfernen** — bestimmt, wer in der
+  Teilnehmerauswahl zur Wahl steht
 - **Teilnehmer hinzufügen und entfernen** — dieselbe Auswahl wie beim
   Anlegen, vorbelegt mit den bisherigen Teilnehmern
 - **Änderungen speichern** → zurück zur Werkstattliste
@@ -122,6 +124,21 @@ verlorengeht. Wer nichts Erfasstes hat, wird ohne Rückfrage entfernt.
 
 Eine Rückfrage kommt ausserdem, wenn **alle** Teilnehmer entfernt würden —
 auch dann, wenn zu keinem etwas erfasst ist.
+
+#### Klassen ändern
+
+Die Klassenauswahl bestimmt, welche Schüler in der Teilnehmerauswahl darunter
+erscheinen. Kommt eine Klasse hinzu, stehen deren Schüler sofort zur Wahl —
+ohne dass die bereits getroffene Auswahl verlorengeht.
+
+**Eine Klasse zu entfernen entfernt keine Teilnehmer.** Wer schon Teilnehmer
+ist, bleibt es; Einschätzungen, Rückmeldungen und der Abschlussvermerk bleiben
+unangetastet. Eine Rückfrage nennt vorher, wie viele Teilnehmer zu den
+entfernten Klassen gehören. Sie bleiben auch im Details-Fenster sichtbar und
+lassen sich weiter als „absolviert" markieren.
+
+Wer sie wirklich loswerden will, wählt sie in der Teilnehmerauswahl ab — dort
+kommt dann die Rückfrage, die zählt, was verlorengeht.
 
 **Max. Teilnehmer** wird beim Bearbeiten nur geprüft, wenn die Teilnehmerzahl
 wächst. Eine Werkstatt, die das Maximum schon überschreitet, bleibt speicherbar;

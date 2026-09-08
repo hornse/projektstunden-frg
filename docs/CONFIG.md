@@ -182,3 +182,38 @@ Sicherstellen dass `webuntis_user` in der `benutzer`-Tabelle gesetzt ist
 
 **WebUntis nicht erreichbar:**
 `WEBUNTIS_ENABLED` auf `false` setzen → nur noch E-Mail/Passwort-Login möglich.
+
+---
+
+## Abgleich mit `config.example.php`
+
+`backend/config.php` steht in `.gitignore`. Sie wird also nie mit ausgeliefert,
+nie mit zurückgeholt und von keinem Werkzeug verglichen — sie kann zwischen
+Arbeitsrechner und Server auseinanderlaufen, ohne dass etwas warnt. Genau das
+ist geschehen: Die lokale Fassung hing drei Änderungen hinter dem Server
+(`secure` auf `false` statt `true`, `SameSite=Strict` statt `Lax`,
+`require_auth()` noch mit `empty($_SESSION['benutzer_id'])`). Aufgefallen ist
+es zufällig, beim Nachlesen für einen anderen Auftrag.
+
+**`tests-projektstunden.sh` prüft seither die Struktur.** Die Prüfung liest die
+Namen aller Konstanten und globalen Variablen aus `config.example.php` und
+verlangt, dass jeder davon auch in `config.php` vorkommt. Fehlt `config.php`,
+gilt die Prüfung als **nicht bestanden** — nicht als übersprungen.
+
+```
+✓ config.php fuehrt alle 12 Namen aus config.example.php
+```
+
+**Nur Namen, keine Werte.** Die Datei enthält das Datenbankpasswort; sie wird
+gelesen, aber keine ihrer Zeilen wird ausgegeben. Gemeldet werden ausschliesslich
+die Namen aus der **Beispieldatei**, die in `config.php` fehlen.
+
+**Was die Prüfung nicht kann.** Sie sieht keine abweichenden Werte — und genau
+daran ist die Konfiguration zuletzt auseinandergelaufen. `secure => false`
+gegen `secure => true` ist für sie derselbe Eintrag. Dafür müsste sie den
+Inhalt bewerten, und das ist bei einer Datei mit Zugangsdaten der falsche Weg.
+
+**Was daraus folgt:** Wer `config.example.php` um einen Eintrag erweitert,
+bekommt beim nächsten Testlauf gesagt, dass `config.php` nachzuziehen ist. Wer
+einen **Wert** auf dem Server ändert, bekommt gar nichts gesagt — das muss
+weiterhin hier vermerkt werden, wie es `CLAUDE.md` verlangt.

@@ -25,6 +25,35 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
   **nicht** zusätzlich maskiert. **59 → 62 Prüfungen.**
 
 ### Hinzugefügt
+- **Klassen sind nachträglich änderbar** (E38) – der Bearbeiten-Screen bekommt
+  ein Klassenfeld, der PUT-Zweig wertet `klasse_ids` aus. Bisher schrieb er
+  `projekt_klassen` nie; die Zuordnung stand nach dem Anlegen fest, und damit
+  liess sich niemand aus einer neuen Klasse aufnehmen. Fehlendes Feld und leere
+  Liste werden unterschieden, wie bei `schueler_ids`.
+- **Teilnehmer bleiben sichtbar, wenn ihre Klasse entfernt wird** –
+  `GET /api/werkstatt/{id}/schueler` vereinigt jetzt die Schüler der
+  zugeordneten Klassen mit den tatsächlichen Teilnehmern. Ohne das verschwand
+  ein Teilnehmer aus dem Details-Modal, sobald seine Klasse nicht mehr
+  zugeordnet war – seine Zeile blieb, die Stundenanrechnung lief weiter, nur
+  bedienen konnte ihn niemand mehr.
+- **`projekte.klasse_id` wird nur nachgezogen, wenn der bisherige Wert
+  herausfällt** – sonst wechselte die „Hauptklasse" bei jedem Umsortieren.
+- **Rubrik „Zugehörigkeit und Konfiguration" in `tests-projektstunden.sh`** –
+  drei Prüfungen: Teilnahmeprüfung vor dem Schreiben (Reihenfolge, nicht nur
+  Vorkommen), `klasse_ids` im PUT mit `isset`, und dass `config.php` alle Namen
+  aus `config.example.php` führt. **62 → 65 Prüfungen.**
+- **`sql/18_migration_verwaiste_rueckmeldungen.sql`** (E37) – löscht
+  Rückmeldungen ohne Teilnehmerbeitrag über die Bedingung, nicht über feste
+  IDs. Nicht additiv; `mysqldump` ist Voraussetzung, nicht Empfehlung.
+
+### Behoben
+- **`POST /api/rueckmeldung/{id}` schrieb ungeprüft** (E36). Für jede
+  übergebene `schueler_id` entstand eine Rückmeldung, auch wenn die Person
+  keine Teilnehmerin der Werkstatt war. Jetzt werden alle IDs zuerst geprüft;
+  ist eine ungültig, wird nichts geschrieben, und die Antwort nennt alle
+  ungültigen.
+
+### Hinzugefügt (vorheriger Auftrag)
 - **Teilnehmer sind nachträglich änderbar** – der Bearbeiten-Screen bekommt
   eine Teilnehmerauswahl, der PUT-Zweig wertet `schueler_ids` aus (E34, E35).
   Bisher schrieb er `projekt_schueler` nie; die Teilnehmerliste stand nach dem
