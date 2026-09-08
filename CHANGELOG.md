@@ -72,6 +72,16 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
   vorkommen (`U+F0FA`, `U+F0A7`, `U+25CF`, nummerierte Klammern), sowie
   übergeordnete Erwartungen ganz ohne Marker in Tabellenform.
 
+- **Phasen-Tabs beim Anlegen und Bearbeiten einer Werkstatt** – dieselbe
+  Bauform wie im Kompetenzkatalog. Ohne Filter zeigte Deutsch 226 Kacheln in
+  28 Blöcken; mit „Erprobungsstufe" sind es 82.
+- **Ein Auswahlfeld für den Kompetenzkatalog** (E32) – `kat-fach` entfällt,
+  `kat-rahmen` gruppiert nach Fach und nennt je Rahmen die Zahl seiner
+  Kompetenzen; leere Rahmen sind als leer gekennzeichnet. Zwei unabhängige
+  Und-Filter konnten einander widerlegen.
+- **Zwei Prüfungen in `tests-projektstunden.sh`** – `KAT_PHASEN` deckt jeden
+  ENUM-Wert der Phase ab; `kat-fach` kommt nicht mehr vor.
+
 ### Behoben
 - **`(fach)sprachlich` → `(fach-)sprachlich`** (2 Einträge) – ein echter
   Bindestrich war beim früheren Lauf der Entsilbentrennung verlorengegangen.
@@ -87,6 +97,16 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
   gefunden hat es der Wortlautvergleich, nicht das Lesen.
 - **`Rollsport/Bootssport/Wintersport` → `Rollsport, Bootssport, Wintersport`**
   (2 Bereichsnamen) – der Bestand wich hier von seiner eigenen Quelle ab (E26).
+- **`sek1_uebergreifend` fehlte in `KAT_PHASEN`** – Migration 14 legte den
+  siebten ENUM-Wert an, das Frontend kannte ihn nicht, und der Filter ließ
+  ihn still wegfallen: 21 Kompetenzerwartungen ohne Tab und über den Filter
+  nicht erreichbar. Ein unbekannter Phasenwert wird jetzt gemeldet und ohne
+  Farbe angezeigt, statt zu verschwinden.
+- **Beim Bearbeiten einer Werkstatt gingen alle gewählten Kompetenzen
+  verloren** (E33) – die Vorbelegung suchte `.komp-cb`, gezeichnet wurde
+  `.we-komp-cb`; ein Klassenselektor trifft keine Teilzeichenketten. Es wurde
+  kein Häkchen gesetzt, und das Speichern schickte eine leere Liste. Die
+  Auswahl liegt jetzt in `WS_EDIT_KOMP_IDS` außerhalb des DOM.
 - **Silbentrennung: fünfte Regel** (E28) – beginnt die Fortsetzung mit einem
   Großbuchstaben, bleibt der Bindestrich stehen. Sie steht hinter den beiden
   Regeln, die das Dokument befragen. Fing `LautBuchstaben-Ebene` statt
@@ -94,7 +114,7 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 - **Ellipsenregel auch innerhalb der Zeile** (E28) – `Satz-und Textebene` statt
   `Satz- und Textebene`; `pdftotext` verschluckt dort den Wortabstand.
 
-**Prüfungen: 48 → 50 → 51 → 52 → 55.** Die Strukturerhebung brachte keine
+**Prüfungen: 48 → 50 → 51 → 52 → 55 → 57.** Die Strukturerhebung brachte keine
 neue Prüfung mit — sie ist ein Dokument, kein Code; die Baumumformung bringt
 drei.
 

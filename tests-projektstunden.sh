@@ -484,6 +484,48 @@ else
 fi
 
 echo ""
+echo "Kompetenzauswahl"
+# Prüfung 1: KAT_PHASEN deckt jeden ENUM-Wert von kompetenzbereiche.phase ab.
+#
+# Der Fehler, den das fängt: Migration 14 legte `sek1_uebergreifend` an, das
+# Frontend kannte den Wert nicht, und `phasenPresent` filterte ihn still weg —
+# 21 Kompetenzerwartungen ohne Tab, ohne Etikett, über den Filter nicht
+# erreichbar. Ein Test auf Vorhandensein einer Zeile fängt das nicht; geprüft
+# wird die VERBINDUNG zwischen Migration und Frontend (REIHENREGELN 2).
+MIG_PHASE=$(ls -1 sql/*_migration_phase_*.sql 2>/dev/null | tail -1)
+if [ -z "$MIG_PHASE" ] || [ ! -f "$MIG_PHASE" ]; then
+    rot "Phasen: keine Phasen-Migration gefunden – die Prüfung fand ihre Voraussetzung nicht"
+else
+    ENUM_WERTE=$(sed -n '/MODIFY COLUMN phase/,/) NULL/p' "$MIG_PHASE" \
+        | grep -oE "'[a-z0-9_]+'" | tr -d "'" | sort -u)
+    JS_WERTE=$(sed -n '/^const KAT_PHASEN = \[/,/^\];/p' frontend/app.js \
+        | grep -oE "key: '[a-z0-9_]+'" | sed "s/key: '//;s/'//" | sort -u)
+    if [ -z "$ENUM_WERTE" ] || [ -z "$JS_WERTE" ]; then
+        # Null Funde sind ein Fehler, kein Ergebnis (REIHENREGELN 2).
+        rot "Phasen: ENUM-Werte oder KAT_PHASEN nicht lesbar – die Prüfung fand ihre Voraussetzung nicht"
+    else
+        FEHLEND=$(comm -23 <(printf '%s\n' "$ENUM_WERTE") <(printf '%s\n' "$JS_WERTE") | tr '\n' ' ')
+        ZUVIEL=$(comm -13 <(printf '%s\n' "$ENUM_WERTE") <(printf '%s\n' "$JS_WERTE") | tr '\n' ' ')
+        ANZ_P=$(printf '%s\n' "$ENUM_WERTE" | wc -l | tr -d ' ')
+        if [ -n "$FEHLEND" ]; then
+            rot "KAT_PHASEN fehlt ein ENUM-Wert: $FEHLEND"
+        elif [ -n "$ZUVIEL" ]; then
+            rot "KAT_PHASEN kennt einen Wert, den der ENUM nicht führt: $ZUVIEL"
+        else
+            gruen "KAT_PHASEN deckt alle $ANZ_P ENUM-Werte der Phase ab"
+        fi
+    fi
+fi
+
+# Prüfung 2: `kat-fach` ist verschwunden (E32).
+# Zwei unabhängige Und-Filter konnten einander widerlegen; das Fachfeld
+# entfällt, `kat-rahmen` führt die gruppierte Liste.
+TREFFER=$(grep -rl 'kat-fach' frontend/ 2>/dev/null | tr '\n' ' ')
+[ -z "$TREFFER" ] \
+    && gruen "kat-fach kommt in frontend/ nicht mehr vor" \
+    || rot "kat-fach noch vorhanden in: $TREFFER"
+
+echo ""
 GESAMT=$((GRUEN + FEHLER))
 echo "$GRUEN/$GESAMT bestanden, $FEHLER rot"
 if [ "$FEHLER" -eq 0 ]; then echo "ALLES GRÜN"; exit 0; fi

@@ -60,7 +60,21 @@ Präsentationsdatum, Laufzeit, Kompetenzanzahl, Status.
 5. **Max. Teilnehmer** – optional; wird beim Speichern geprüft
 6. **Stunden je Fach** – nur beteiligte Fächer ausfüllen
 7. **Kompetenzen** – erst Fächer mit Stunden eintragen, dann erscheinen
-   die passenden KLP-Tabs; MKR ist immer verfügbar
+   die passenden KLP-Tabs; MKR ist immer verfügbar.
+   Unter den Rahmen-Tabs steht eine Zeile **Phasen-Tabs**: „Alle Phasen",
+   „Erprobungsstufe", „Sek I übergreifend", „Erste Stufe", „Zweite Stufe"
+   und die Phasen der Oberstufe. Sie zeigt nur die Phasen, die der gewählte
+   Rahmen führt.
+
+   > Ohne Filter zeigt Deutsch 226 Kompetenzen in 28 Blöcken. Wer eine
+   > Werkstatt für Jahrgang 6 anlegt, schaltet auf **Erprobungsstufe** und
+   > sieht 82. Die Vorauswahl bleibt „Alle Phasen" — die Phase wird nicht
+   > aus den Jahrgängen der Klassen abgeleitet, weil eine Werkstatt
+   > jahrgangsübergreifend sein kann.
+
+   **Ein Phasenwechsel verliert nichts.** Rechts in der Tab-Zeile steht,
+   wie viele Kompetenzen insgesamt gewählt sind — über alle Phasen hinweg,
+   auch die gerade ausgeblendeten.
 8. **Schüler** – erscheinen nach Klassen-Auswahl; Strg/Cmd für Mehrfachauswahl
 9. **Werkstatt speichern** → Formular klappt zu, Werkstatt erscheint in Liste
 
@@ -77,7 +91,8 @@ Klick auf **Details**-Button öffnet ein Modal:
 Öffnet die gleiche Ansicht wie beim Anlegen, vorausgefüllt:
 - Alle Stammdaten änderbar
 - Stunden je Fach aktualisierbar
-- Kompetenzen hinzufügen/entfernen
+- Kompetenzen hinzufügen/entfernen — die bereits gewählten sind angehakt,
+  auch wenn sie zu einer Phase gehören, die gerade nicht angezeigt wird
 - **Änderungen speichern** → zurück zur Werkstattliste
 
 ---

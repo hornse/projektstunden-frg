@@ -756,6 +756,18 @@ function renderWerkstattDetail(p, schueler) {
 let WS_EDIT_ID = null; // aktuelle Werkstatt-ID beim Bearbeiten
 let WS_EDIT_AKTIVER_RAHMEN = 0;
 
+// Die gewählten Kompetenzen beim Bearbeiten – ausserhalb des DOM (E33).
+//
+// Warum nicht aus den Häkchen lesen: Der Phasenfilter zeichnet nur die
+// Kacheln der gewählten Phase. Was nicht gezeichnet ist, hat kein Häkchen –
+// ein Phasenwechsel wäre Datenverlust. Die Menge ist die Wahrheit, das DOM
+// nur ihre Anzeige.
+//
+// Kein Widerspruch zu E6 (kritische IDs ins DOM): E6 löst „überlebt einen
+// Seitenneuladen", hier geht es um „überlebt ein Neuzeichnen".
+let WS_EDIT_KOMP_IDS = new Set();
+let WS_EDIT_PHASE = 'alle';
+
 async function openWerkstattBearbeiten(id) {
   WS_EDIT_ID = id;
   go('werkstatt-edit');
@@ -807,17 +819,17 @@ async function openWerkstattBearbeiten(id) {
   }).join('');
   onWeStundenChange();
 
-  // Kompetenzen laden und vorhandene vorauswählen
+  // Vorhandene Kompetenzen in die Menge übernehmen, BEVOR gezeichnet wird
+  // (E33). Vorher lief das über einen setTimeout und den Selektor
+  // `#we-komp-bereich-list .komp-cb` – der traf nichts, weil hier
+  // `we-komp-cb` gezeichnet wird. Ein CSS-Klassenselektor trifft ganze
+  // Klassennamen, keine Teilzeichenketten. Folge: kein Häkchen wurde
+  // gesetzt, und beim Speichern ging die gesamte Auswahl verloren.
+  WS_EDIT_KOMP_IDS = new Set((proj.kompetenzen || []).map(k => parseInt(k.id)));
+  WS_EDIT_PHASE = 'alle';
+
   await loadKompetenzenFuerFaecherWe([]);
   renderRahmenTabsWe();
-
-  // Vorhandene Kompetenzen markieren
-  const vorhandeneKompIds = (proj.kompetenzen || []).map(k => k.id);
-  setTimeout(() => {
-    document.querySelectorAll('#we-komp-bereich-list .komp-cb').forEach(cb => {
-      cb.checked = vorhandeneKompIds.includes(parseInt(cb.value));
-    });
-  }, 200);
 }
 
 function onWeStundenChange() {
@@ -862,17 +874,65 @@ function switchRahmenWe(rid) {
   renderRahmenTabsWe();
 }
 
+// Ein Klick pflegt die Menge, nicht das DOM. Aufgerufen aus dem onchange
+// jeder Kachel; das Häkchen selbst ist nur Anzeige.
+function weKompUmschalten(id, an) {
+  if (an) WS_EDIT_KOMP_IDS.add(Number(id));
+  else    WS_EDIT_KOMP_IDS.delete(Number(id));
+  weAuswahlzahlZeigen();
+}
+
+// Zeigt, wie viele Kompetenzen insgesamt gewählt sind – über alle Phasen.
+// Ohne diese Zahl wäre nach einem Phasenwechsel nicht erkennbar, dass in
+// einer anderen Phase noch etwas ausgewählt ist.
+function weAuswahlzahlZeigen() {
+  const el = document.getElementById('we-phase-tabs');
+  if (!el) return;
+  const zaehler = el.querySelector('.we-komp-zahl');
+  if (zaehler) zaehler.textContent = WS_EDIT_KOMP_IDS.size + ' gewählt';
+}
+
+function switchWePhase(key) {
+  WS_EDIT_PHASE = key;
+  renderRahmenTabsWe();
+}
+
 function renderKompBereichListWe(rahmen_id, fachIds) {
   // Gleiche Logik wie renderKompBereichList aber für #we-komp-bereich-list
   const fids = fachIds || [];
   const r = STATE.rahmen.find(x => x.id === rahmen_id);
   if (!r) return;
-  const komp = STATE.kompetenzen.filter(k => {
+  let komp = STATE.kompetenzen.filter(k => {
     if (k.rahmen_kuerzel !== r.kuerzel) return false;
     if (k.fach_kuerzel && fids.length > 0)
       return fids.some(fid => { const f = STATE.faecher.find(x => x.id == fid); return f && f.kuerzel === k.fach_kuerzel; });
     return true;
   });
+
+  // Phasen-Tabs wie im Katalog (Befund 3). Ohne sie zeigt Deutsch 226
+  // gleichrangige Kacheln in 28 Blöcken.
+  //
+  // Der Filter blendet nur die ANZEIGE. Die Auswahl steht in
+  // WS_EDIT_KOMP_IDS und bleibt über einen Phasenwechsel hinweg erhalten.
+  const tabsEl = document.getElementById('we-phase-tabs');
+  const phasen = phasenAusKompetenzen(komp);
+  if (tabsEl) {
+    if (phasen.length) {
+      if (WS_EDIT_PHASE !== 'alle' && !phasen.some(p => p.key === WS_EDIT_PHASE)) WS_EDIT_PHASE = 'alle';
+      const tab = (key, label, color) =>
+        `<button type="button" class="ptab${WS_EDIT_PHASE === key ? ' on' : ''}" onclick="switchWePhase('${key}')">` +
+        (color ? `<span class="dot" style="background:${color}"></span>` : '') + `${label}</button>`;
+      tabsEl.innerHTML = tab('alle', 'Alle Phasen', null) +
+        phasen.map(p => tab(p.key, p.label, p.color)).join('') +
+        `<span class="we-komp-zahl" style="margin-left:auto;font-size:11px;color:var(--text2)">${WS_EDIT_KOMP_IDS.size} gewählt</span>`;
+      tabsEl.style.display = 'flex';
+      if (WS_EDIT_PHASE !== 'alle') komp = komp.filter(k => k.phase === WS_EDIT_PHASE);
+    } else {
+      tabsEl.innerHTML = '';
+      tabsEl.style.display = 'none';
+    }
+  }
+
   const allgemeine = komp.filter(k => !k.eltern_kompetenz_id);
   const erwartungen = komp.filter(k => k.eltern_kompetenz_id);
   const erwByEltern = {};
@@ -881,18 +941,29 @@ function renderKompBereichListWe(rahmen_id, fachIds) {
   allgemeine.forEach(k => { const b = k.bereich_code + ': ' + k.bereich_name; (bereiche[b] = bereiche[b] || []).push(k); });
   const el = document.getElementById('we-komp-bereich-list');
   if (!Object.keys(bereiche).length) { el.innerHTML = '<p style="font-size:12px;color:var(--text3)">Keine Kompetenzen verfügbar.</p>'; return; }
+
+  // Jede Kachel liest ihren Zustand aus WS_EDIT_KOMP_IDS – nie umgekehrt.
+  // Sonst laufen Menge und Anzeige beim Neuzeichnen auseinander (E33).
+  // Number() an jeder Stelle: Die Menge führt Zahlen, und ob die API eine ID
+  // als Zahl oder als Zeichenkette liefert, ist nicht durchgängig belegt —
+  // der Bestand vergleicht an manchen Stellen lose (`==`), an anderen streng.
+  // Ein Set unterscheidet 42 und "42"; ohne Number() träfe `has` dann nie.
+  const cb = k => `<input type="checkbox" class="we-komp-cb" value="${k.id}"` +
+    `${WS_EDIT_KOMP_IDS.has(Number(k.id)) ? ' checked' : ''}` +
+    ` onchange="weKompUmschalten(${Number(k.id)}, this.checked)">`;
+
   el.innerHTML = Object.entries(bereiche).map(([b, ks]) => {
     const items = ks.map(k => {
       const kinder = erwByEltern[k.id] || [];
       const tid = 'we-erw-' + k.id;
       let html = `<div class="komp-eltern-row"><label class="komp-pill">
-        <input type="checkbox" class="we-komp-cb" value="${k.id}">
+        ${cb(k)}
         <span class="pill-label" title="${k.beschreibung||''}">${k.kurzname}</span></label>`;
-      if (kinder.length) html += `<button class="komp-eltern-toggle" onclick="toggleErw('${tid}',this)">▸ ${kinder.length}</button>`;
+      if (kinder.length) html += `<button type="button" class="komp-eltern-toggle" onclick="toggleErw('${tid}',this)">▸ ${kinder.length}</button>`;
       html += `</div>`;
       if (kinder.length) {
         html += `<div class="komp-erwartungen" id="${tid}">` +
-          kinder.map(e => `<label class="komp-pill erw"><input type="checkbox" class="we-komp-cb" value="${e.id}">
+          kinder.map(e => `<label class="komp-pill erw">${cb(e)}
             <span class="pill-label" title="${e.beschreibung||''}">${e.kurzname}</span></label>`).join('') + `</div>`;
       }
       return html;
@@ -920,7 +991,10 @@ async function werkstattEditSpeichern() {
     .filter(i => parseFloat(i.value) > 0)
     .map(i => ({ fach_id: parseInt(i.dataset.fid), stunden: parseFloat(i.value) }));
 
-  const kompIds = [...document.querySelectorAll('.we-komp-cb:checked')].map(c => parseInt(c.value));
+  // Aus der Menge, nicht aus dem DOM (E33): Was der Phasenfilter gerade
+  // nicht zeichnet, hat kein Häkchen — wäre die Quelle das DOM, löschte
+  // ein Phasenwechsel die Auswahl der übrigen Phasen.
+  const kompIds = [...WS_EDIT_KOMP_IDS];
 
   if (!name || !datum_von) return showMsg('we-msg', 'Name und Startdatum sind Pflichtfelder.', 'err');
   if (!lehrer_ids.length) return showMsg('we-msg', 'Mindestens einen Lernbegleiter wählen.', 'err');
@@ -1166,19 +1240,54 @@ async function renderKlassenListe() {}
 // KOMPETENZKATALOG
 // ============================================================
 async function initKatalog() {
-  const rEl = document.getElementById('kat-rahmen');
-  const fEl = document.getElementById('kat-fach');
-  rEl.innerHTML = '<option value="">Alle Rahmen</option>' +
-    STATE.rahmen.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
-  fEl.innerHTML = '<option value="">Alle Fächer</option>' +
-    STATE.faecher.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
   const all = await GET('kompetenzen');
   STATE.kompetenzen = all || [];
+  renderKatRahmenAuswahl();
   renderKatalog();
 }
-// Phasen-Metadaten (Reihenfolge + Farbe pro Schulphase)
+
+// Ein Auswahlfeld statt zwei (E32), gruppiert nach Fach, jeder Rahmen mit der
+// Zahl seiner Kompetenzen. Zwei unabhängige Und-Filter konnten einander
+// widerlegen — Rahmen „Sport" plus Fach „Spanisch" ergab eine leere Ansicht.
+//
+// Die Zahl kommt aus STATE.kompetenzen, das ohnehin im Frontend liegt; dafür
+// braucht es keine API-Änderung. Leere Rahmen werden aufgeführt und als leer
+// gekennzeichnet — sonst sind sie nicht von nicht vorhandenen zu unterscheiden.
+function renderKatRahmenAuswahl() {
+  const rEl = document.getElementById('kat-rahmen');
+  if (!rEl) return;
+  const anzahl = {};
+  STATE.kompetenzen.forEach(k => {
+    anzahl[k.rahmen_kuerzel] = (anzahl[k.rahmen_kuerzel] || 0) + 1;
+  });
+  // Nach Fach gruppieren; Rahmen ohne Fach kommen unter „Fächerübergreifend".
+  const gruppen = new Map();
+  STATE.rahmen.forEach(r => {
+    const g = r.fach_name || 'Fächerübergreifend';
+    if (!gruppen.has(g)) gruppen.set(g, []);
+    gruppen.get(g).push(r);
+  });
+  const sortiert = [...gruppen.entries()].sort((a, b) => {
+    if (a[0] === 'Fächerübergreifend') return 1;   // ans Ende
+    if (b[0] === 'Fächerübergreifend') return -1;
+    return a[0].localeCompare(b[0], 'de');
+  });
+  rEl.innerHTML = '<option value="">Alle Rahmen</option>' + sortiert.map(([fach, rs]) =>
+    `<optgroup label="${fach}">` + rs.map(r => {
+      const n = anzahl[r.kuerzel] || 0;
+      const zusatz = n ? ` (${n})` : ' – noch nicht befüllt';
+      return `<option value="${r.id}">${r.name}${zusatz}</option>`;
+    }).join('') + `</optgroup>`
+  ).join('');
+}
+// Phasen-Metadaten (Reihenfolge + Farbe pro Schulphase).
+// Die Reihenfolge dieser Liste bestimmt die Reihenfolge der Tabs; die
+// Schlüssel müssen den ENUM-Werten von kompetenzbereiche.phase entsprechen.
+// Das prüft tests-projektstunden.sh gegen sql/14_… — ein Wert, der hier
+// fehlt, fiel früher still weg (Befund 1).
 const KAT_PHASEN = [
   { key: 'erprobungsstufe',        label: 'Erprobungsstufe',       color: '#93c5fd' }, // hellblau
+  { key: 'sek1_uebergreifend',     label: 'Sek I übergreifend',    color: '#5eead4' }, // helltürkis
   { key: 'erste_stufe',            label: 'Erste Stufe',           color: '#86efac' }, // hellgrün
   { key: 'zweite_stufe',           label: 'Zweite Stufe',          color: '#fde047' }, // hellgelb
   { key: 'einfuehrungsphase',      label: 'Einführungsphase',      color: '#fdba74' }, // hellorange
@@ -1186,6 +1295,34 @@ const KAT_PHASEN = [
   { key: 'qualifikationsphase_lk', label: 'Q-Phase Leistungskurs', color: '#c4b5fd' }, // helllila
 ];
 let AKT_KAT_PHASE = 'alle';
+
+// Bereits gemeldete unbekannte Phasenwerte – damit die Konsole bei jedem
+// Neuzeichnen nicht dieselbe Meldung wiederholt.
+const PHASEN_UNBEKANNT = new Set();
+
+// Liefert die Phasen, die in `komps` wirklich vorkommen, in der Reihenfolge
+// von KAT_PHASEN. Ein Wert, den KAT_PHASEN nicht kennt, wird NICHT
+// verschluckt: Er wird gemeldet und ohne Farbe angehängt.
+//
+// Das ist der eigentliche Gegenstand von Befund 1. Die fehlende Zeile für
+// `sek1_uebergreifend` war nur die Auswirkung; der Fehler war, dass ein
+// unbekannter Wert spurlos verschwand – samt seiner 21 Kompetenzerwartungen.
+function phasenAusKompetenzen(komps) {
+  const bekannt = KAT_PHASEN.filter(p => komps.some(k => k.phase === p.key));
+  const fremd = [];
+  komps.forEach(k => {
+    if (!k.phase) return;                                   // NULL ist zulässig (MKR)
+    if (KAT_PHASEN.some(p => p.key === k.phase)) return;
+    if (fremd.some(f => f.key === k.phase)) return;
+    fremd.push({ key: k.phase, label: k.phase, color: null });
+    if (!PHASEN_UNBEKANNT.has(k.phase)) {
+      PHASEN_UNBEKANNT.add(k.phase);
+      console.warn('[Kompetenzkatalog] Unbekannter Phasenwert "' + k.phase +
+        '" – bitte in KAT_PHASEN aufnehmen (app.js). Wird ohne Farbe angezeigt.');
+    }
+  });
+  return bekannt.concat(fremd);
+}
 
 // Beim Wechsel von Rahmen-/Fachfilter Phasenauswahl zurücksetzen
 function katRahmenWechsel() {
@@ -1199,14 +1336,12 @@ function switchKatPhase(key) {
 
 function renderKatalog() {
   const rid = parseInt(document.getElementById('kat-rahmen').value) || 0;
-  const fid = parseInt(document.getElementById('kat-fach').value)   || 0;
   let komps = STATE.kompetenzen;
   if (rid) komps = komps.filter(k => { const r = STATE.rahmen.find(x => x.id === rid); return r && k.rahmen_kuerzel === r.kuerzel; });
-  if (fid) { const selFach = STATE.faecher.find(x => x.id == fid); komps = komps.filter(k => selFach && k.fach_kuerzel === selFach.kuerzel); }
 
   // Phasen-Tabs: nur anzeigen, wenn die gefilterten Kompetenzen Phasen-Angaben haben
   const tabsEl = document.getElementById('kat-phase-tabs');
-  const phasenPresent = KAT_PHASEN.filter(p => komps.some(k => k.phase === p.key));
+  const phasenPresent = phasenAusKompetenzen(komps);
   if (phasenPresent.length && tabsEl) {
     if (AKT_KAT_PHASE !== 'alle' && !phasenPresent.some(p => p.key === AKT_KAT_PHASE)) AKT_KAT_PHASE = 'alle';
     const tab = (key, label, color) =>
