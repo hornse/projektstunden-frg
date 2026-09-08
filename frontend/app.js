@@ -551,12 +551,162 @@ function toggleErw(id, triggerEl) {
   }
 }
 
+// ============================================================
+//  TEILNEHMERAUSWAHL  (E34, E35)
+//
+//  Zwei Ansichten, ein Verfahren: `p` = Werkstatt anlegen,
+//  `we` = Werkstatt bearbeiten.
+//
+//  Die Auswahl liegt in einer Menge, nicht im DOM. Vorher war sie ein
+//  `select multiple` -- dort IST die Auswahl das DOM (`selectedOptions`),
+//  und die Optionsliste wird bei jedem Klassenwechsel neu gezeichnet. Das
+//  ist genau der Verlust, den E33 bei den Kompetenzen beschreibt, nur an
+//  einer anderen Stelle.
+//
+//  `kandidaten` sind die wählbaren Schüler, `bestand` beim Bearbeiten die
+//  Teilnehmer, wie sie in der Datenbank stehen -- mit dem, was beim
+//  Entfernen verlorenginge.
+// ============================================================
+const TEILN = {
+  p:  { ids: new Set(), kandidaten: [], bestand: [] },
+  we: { ids: new Set(), kandidaten: [], bestand: [] }
+};
+
+function teilnIds(pfx) { return [...TEILN[pfx].ids]; }
+
+function teilnMax(pfx) {
+  const el = document.getElementById(pfx + '-max');
+  const v  = el && el.value ? parseInt(el.value) : NaN;
+  return Number.isFinite(v) && v > 0 ? v : null;
+}
+
+// Kandidaten setzen und zeichnen. Bereits gewählte IDs, die nicht mehr unter
+// den Kandidaten sind, bleiben in der Menge -- sonst verlöre ein
+// Klassenwechsel beim Anlegen die Auswahl der vorigen Klasse, und beim
+// Bearbeiten einen Teilnehmer, der die Klasse gewechselt hat.
+function teilnKandidaten(pfx, liste) {
+  TEILN[pfx].kandidaten = liste || [];
+  renderTeilnehmer(pfx);
+}
+
+function teilnUmschalten(pfx, id, an) {
+  if (an) TEILN[pfx].ids.add(Number(id));
+  else    TEILN[pfx].ids.delete(Number(id));
+  teilnKopf(pfx);
+}
+
+// „Alle hinzufügen" fügt höchstens bis zum Maximum hinzu und sagt, wie viele
+// es ausgelassen hat (E35). Ohne diese Grenze wäre die Auswahlhilfe der
+// bequemste Weg, das Maximum zu überschreiten.
+function teilnAlle(pfx, klasseId) {
+  const max  = teilnMax(pfx);
+  const kand = TEILN[pfx].kandidaten.filter(s => !klasseId || Number(s.klasse_id) === Number(klasseId));
+  let ausgelassen = 0;
+  for (const s of kand) {
+    if (TEILN[pfx].ids.has(Number(s.id))) continue;
+    if (max !== null && TEILN[pfx].ids.size >= max) { ausgelassen++; continue; }
+    TEILN[pfx].ids.add(Number(s.id));
+  }
+  renderTeilnehmer(pfx);
+  if (ausgelassen) {
+    showMsg(pfx + '-msg',
+      `${ausgelassen} nicht hinzugefügt – das Maximum von ${max} ist erreicht.`, 'err');
+  }
+}
+
+function teilnKeine(pfx) {
+  TEILN[pfx].ids.clear();
+  renderTeilnehmer(pfx);
+}
+
+// Kopfzeile: Zählwert, Maximum, Auswahlhilfen. Getrennt vom Zeichnen der
+// Kacheln, damit ein Klick nicht die ganze Liste neu aufbaut.
+function teilnKopf(pfx) {
+  const el = document.getElementById(pfx + '-teiln-kopf');
+  if (!el) return;
+  const n   = TEILN[pfx].ids.size;
+  const max = teilnMax(pfx);
+  const ueber = max !== null && n > max;
+
+  // Klassen in der Reihenfolge, in der sie in der Kandidatenliste stehen
+  const klassen = [];
+  for (const s of TEILN[pfx].kandidaten) {
+    if (!klassen.some(k => Number(k.id) === Number(s.klasse_id))) {
+      klassen.push({ id: s.klasse_id, name: s.klasse,
+                     n: TEILN[pfx].kandidaten.filter(x => Number(x.klasse_id) === Number(s.klasse_id)).length });
+    }
+  }
+
+  el.innerHTML =
+    `<span class="teiln-zahl${ueber ? ' ueber' : ''}">${n} gewählt` +
+    (max !== null ? ` von max. ${max}` : '') +
+    (ueber ? ' – über dem Maximum' : '') + `</span>` +
+    (klassen.length > 1
+      ? klassen.map(k => `<button type="button" class="btn btn-sm" onclick="teilnAlle('${pfx}', ${k.id})">+ ${k.name} (${k.n})</button>`).join('')
+      : '') +
+    `<button type="button" class="btn btn-sm" onclick="teilnAlle('${pfx}')">Alle hinzufügen</button>` +
+    `<button type="button" class="btn btn-sm" onclick="teilnKeine('${pfx}')">Auswahl aufheben</button>`;
+}
+
+function renderTeilnehmer(pfx) {
+  const el = document.getElementById(pfx + '-teiln-list');
+  if (!el) return;
+  teilnKopf(pfx);
+
+  if (!TEILN[pfx].kandidaten.length) {
+    el.innerHTML = '<p style="font-size:12px;color:var(--text3)">Keine Schüler zur Auswahl.</p>';
+    return;
+  }
+
+  // Was zu einem Teilnehmer schon erfasst ist – nur beim Bearbeiten belegt.
+  const info = {};
+  for (const b of TEILN[pfx].bestand) info[Number(b.id)] = b;
+
+  const gruppen = {};
+  for (const s of TEILN[pfx].kandidaten) {
+    const g = s.klasse || '– ohne Klasse –';
+    (gruppen[g] = gruppen[g] || []).push(s);
+  }
+
+  // Jede Kachel liest ihren Zustand aus der Menge – nie umgekehrt (E33).
+  // Number() an jeder Stelle: Die Menge führt Zahlen, und ob die API eine ID
+  // als Zahl oder als Zeichenkette liefert, ist nicht durchgängig belegt.
+  el.innerHTML = Object.entries(gruppen).map(([g, ks]) => {
+    const items = ks.map(s => {
+      const b = info[Number(s.id)];
+      const erfasst = b && (Number(b.bewertungen) > 0 || Number(b.rueckmeldungen) > 0
+                            || Number(b.abgeschlossen) === 1);
+      return `<label class="teiln-pill">` +
+        `<input type="checkbox" class="${pfx}-teiln-cb" value="${s.id}"` +
+        `${TEILN[pfx].ids.has(Number(s.id)) ? ' checked' : ''}` +
+        ` onchange="teilnUmschalten('${pfx}', ${Number(s.id)}, this.checked)">` +
+        `<span class="pill-label"${erfasst ? ` title="${teilnWasErfasst(b)}"` : ''}>` +
+        `${s.nachname}, ${s.vorname}` +
+        `${erfasst ? '<span class="warn-punkt">!</span>' : ''}</span></label>`;
+    }).join('');
+    return `<div class="teiln-gruppe"><div class="teiln-gruppe-titel">${g} (${ks.length})</div>` +
+           `<div class="teiln-grid">${items}</div></div>`;
+  }).join('');
+}
+
+// Was bei diesem Teilnehmer verlorenginge, als Text. „Bewertet" ist dabei
+// nicht die Zeilenexistenz in projekt_schueler_kompetenzen -- der PUT legt
+// dort für jeden Teilnehmer mal jede Kompetenz eine leere Zeile an. Das
+// Backend zählt deshalb nur, was Inhalt trägt (E34).
+function teilnWasErfasst(b) {
+  const t = [];
+  const bw = Number(b.bewertungen) || 0;
+  if (bw > 0) t.push(bw + (bw === 1 ? ' Einschätzung' : ' Einschätzungen'));
+  if (Number(b.rueckmeldungen) > 0) t.push('Rückmeldung vorhanden');
+  if (Number(b.abgeschlossen) === 1) t.push('als abgeschlossen markiert');
+  return t.join(', ');
+}
+
 function loadSchuelerForProjekt() {
   const selected = [...document.getElementById('p-kl').selectedOptions].map(o => o.value);
-  if (!selected.length) { document.getElementById('p-schueler').innerHTML = ''; return; }
+  if (!selected.length) { teilnKandidaten('p', []); return; }
   GET(`schueler?klassen=${selected.join(',')}`).then(list => {
-    document.getElementById('p-schueler').innerHTML = (list || [])
-      .map(s => `<option value="${s.id}">${s.nachname}, ${s.vorname} (${s.klasse})</option>`).join('');
+    teilnKandidaten('p', list || []);
   });
 }
 
@@ -573,7 +723,7 @@ async function projektSpeichern() {
   const beschreibung = document.getElementById('p-desc').value.trim();
   const status      = document.getElementById('p-status').value;
   const lehrer_ids  = [...document.getElementById('p-lehrer').selectedOptions].map(o => parseInt(o.value));
-  const schueler_ids = [...document.getElementById('p-schueler').selectedOptions].map(o => parseInt(o.value));
+  const schueler_ids = teilnIds('p');
 
   if (!name || !klasse_ids.length || !datum_von)
     return showMsg('p-msg', 'Werkstattname, mind. eine Klasse und Startdatum sind Pflichtfelder.', 'err');
@@ -607,6 +757,7 @@ async function projektSpeichern() {
     document.querySelectorAll('#p-fach-grid input').forEach(i => i.value = '');
     document.querySelectorAll('.komp-cb').forEach(c => c.checked = false);
     document.getElementById('p-summe').textContent = '0';
+    teilnKeine('p');
     // Formular einklappen und Liste aktualisieren
     document.getElementById('neue-ws-wrap').style.display = 'none';
     document.getElementById('btn-neue-ws').textContent = '+ Neue Werkstatt';
@@ -773,6 +924,11 @@ async function openWerkstattBearbeiten(id) {
   go('werkstatt-edit');
   document.getElementById('we-id').value = id;
 
+  // Zuerst leeren: Bricht das Laden ab, stünden sonst die Teilnehmer der
+  // zuvor geöffneten Werkstatt in der Menge -- und ein Speichern schriebe
+  // sie in diese hier.
+  TEILN.we = { ids: new Set(), kandidaten: [], bestand: [] };
+
   // Daten laden
   const [proj, sjData] = await Promise.all([
     GET(`projekte/${id}`),
@@ -805,6 +961,28 @@ async function openWerkstattBearbeiten(id) {
   lEl.innerHTML = STATE.lehrer.map(l =>
     `<option value="${l.id}" ${lbIds.includes(l.id) ? 'selected' : ''}>${l.vorname} ${l.nachname}${l.kuerzel ? ' (' + l.kuerzel + ')' : ''}</option>`
   ).join('');
+
+  // Teilnehmer (E34, E35)
+  //
+  // Vorbelegung ist die gefährliche Stelle: Schlägt sie fehl und ersetzt das
+  // Speichern die Liste, sind alle Teilnehmer weg. Bei den Kompetenzen hat
+  // genau das drei Monate lang unbemerkt stattgefunden (E33). Deshalb wird
+  // die Menge hier gefüllt, BEVOR gezeichnet wird, und jede Kachel liest
+  // ihren Zustand aus ihr.
+  TEILN.we.bestand = proj.schueler || [];
+  TEILN.we.ids     = new Set(TEILN.we.bestand.map(x => Number(x.id)));
+
+  // Wählbar sind die Schüler der Klassen dieser Werkstatt. Teilnehmer, die
+  // in keiner davon sind -- etwa nach einem Klassenwechsel --, kommen
+  // hinzu: Wer nicht gezeichnet wird, liesse sich sonst nicht abwählen.
+  const wsKlassen = proj.klasse_ids || [];
+  const kandidaten = wsKlassen.length
+    ? (await GET(`schueler?klassen=${wsKlassen.join(',')}`) || [])
+    : [];
+  for (const t of TEILN.we.bestand) {
+    if (!kandidaten.some(k => Number(k.id) === Number(t.id))) kandidaten.push(t);
+  }
+  teilnKandidaten('we', kandidaten);
 
   // Fach-Grid mit vorhandenen Stunden
   document.getElementById('we-fach-grid').innerHTML = STATE.faecher.map(f => {
@@ -996,8 +1174,43 @@ async function werkstattEditSpeichern() {
   // ein Phasenwechsel die Auswahl der übrigen Phasen.
   const kompIds = [...WS_EDIT_KOMP_IDS];
 
+  // Teilnehmer aus derselben Menge, aus demselben Grund.
+  const schueler_ids = teilnIds('we');
+
   if (!name || !datum_von) return showMsg('we-msg', 'Name und Startdatum sind Pflichtfelder.', 'err');
   if (!lehrer_ids.length) return showMsg('we-msg', 'Mindestens einen Lernbegleiter wählen.', 'err');
+
+  // Rückfrage vor dem Entfernen (E34). Gefragt wird beim Speichern, nicht
+  // beim Abwählen: Abwählen ist ein Versuch, gelöscht wird erst hier -- und
+  // die Rückfrage nennt in einem Zug alles, was verlorengeht.
+  //
+  // Wer nichts Erfasstes hat, geht ohne Rückfrage. Der Schutz ist nicht die
+  // Unmöglichkeit des Entfernens, sondern die Sichtbarkeit dessen, was
+  // verschwindet -- es gibt keinen Papierkorb.
+  const weg = TEILN.we.bestand.filter(b => !TEILN.we.ids.has(Number(b.id)));
+  const wegMitInhalt = weg.filter(b => teilnWasErfasst(b) !== '');
+
+  // Zusätzlich gefragt wird, wenn ALLE Teilnehmer verschwänden -- auch wenn
+  // zu keinem etwas erfasst ist. Genau so sah der Fehler aus E33 aus: eine
+  // leere Liste ist ein gültiger Wert und deshalb von einer fehlgeschlagenen
+  // Vorbelegung nicht zu unterscheiden. Die Rückfrage ist die einzige
+  // Stelle, an der ein Mensch den Unterschied sieht.
+  const leertAlle = TEILN.we.bestand.length > 0 && TEILN.we.ids.size === 0;
+
+  if (wegMitInhalt.length || leertAlle) {
+    let text;
+    if (wegMitInhalt.length) {
+      const zeilen = wegMitInhalt
+        .map(b => `\u2022 ${b.nachname}, ${b.vorname}: ${teilnWasErfasst(b)}`).join('\n');
+      text = `${wegMitInhalt.length === 1 ? 'Ein Teilnehmer wird' : wegMitInhalt.length + ' Teilnehmer werden'} `
+           + `entfernt. Das Erfasste geht dabei unwiderruflich verloren:\n\n${zeilen}\n\n`;
+      if (leertAlle) text += `Die Werkstatt hat danach keine Teilnehmer mehr.\n\n`;
+    } else {
+      text = `Alle ${TEILN.we.bestand.length} Teilnehmer werden entfernt. `
+           + `Die Werkstatt hat danach keine Teilnehmer mehr.\n\n`;
+    }
+    if (!confirm(text + 'Wirklich entfernen?')) return;
+  }
 
   try {
     const r = await fetch('/api/projekte/' + id, {
@@ -1007,7 +1220,7 @@ async function werkstattEditSpeichern() {
       body: JSON.stringify({
         name, datum_von, datum_bis, laufzeit, praesentation_datum,
         max_schueler, beschreibung, status, schuljahr_id,
-        lehrer_ids, stunden, kompetenz_ids: kompIds
+        lehrer_ids, stunden, kompetenz_ids: kompIds, schueler_ids
       })
     });
     const data = await r.json();

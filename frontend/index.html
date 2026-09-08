@@ -16,10 +16,10 @@
          direkt hier. Ausgelagert ist sie zwischenspeicherbar, und die
          index.html schrumpft von 44 KB auf ein Drittel.
          Tokens zuerst, die projekteigene Datei zuletzt. -->
-    <link rel="stylesheet" href="/vendor/ci-css/ci-tokens.css?v=20260908101119">
-    <link rel="stylesheet" href="/vendor/ci-css/ci-komponenten.css?v=20260908101119">
-    <link rel="stylesheet" href="/vendor/ci-css/ci-shell.css?v=20260908101119">
-    <link rel="stylesheet" href="/style.css?v=20260908101119">
+    <link rel="stylesheet" href="/vendor/ci-css/ci-tokens.css?v=20260908140002">
+    <link rel="stylesheet" href="/vendor/ci-css/ci-komponenten.css?v=20260908140002">
+    <link rel="stylesheet" href="/vendor/ci-css/ci-shell.css?v=20260908140002">
+    <link rel="stylesheet" href="/style.css?v=20260908140002">
 </head>
 <body class="ci-seite">
     <a href="#hauptinhalt" class="skip-link">Zum Inhalt springen</a>
@@ -35,7 +35,7 @@
      Navigationspunkte. Vorher schwebte das Formular ohne Leiste im
      Nichts. -->
 <div id="app-view" class="ci-huelle" data-ci-huelle data-leiste="voll"
-     data-ci-icons="/vendor/ci-css/ci-icons.svg?v=20260908101119" style="display:flex">
+     data-ci-icons="/vendor/ci-css/ci-icons.svg?v=20260908140002" style="display:flex">
 <aside class="ci-leiste">
   <div class="ci-schild">
     <span class="ci-schild-platzhalter" id="nav-platzhalter" aria-hidden="true">P</span>
@@ -214,7 +214,7 @@
         </div>
         <div class="g2">
           <div><label>Präsentationsdatum</label><input type="date" id="p-praesentation"></div>
-          <div><label>Max. Teilnehmer</label><input type="number" id="p-max" min="1" max="99" placeholder="unbegrenzt"></div>
+          <div><label>Max. Teilnehmer</label><input type="number" id="p-max" min="1" max="99" placeholder="unbegrenzt" oninput="teilnKopf('p')"></div>
         </div>
         <div class="g2">
           <div>
@@ -239,8 +239,11 @@
 
       <div class="card">
         <h2>Beteiligte Schüler/innen</h2>
-        <p style="font-size:12px;color:var(--text3);margin-bottom:8px">Strg/Cmd für Mehrfachauswahl</p>
-        <select id="p-schueler" multiple></select>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:8px">
+          Zuerst oben die Klassen wählen, dann hier anklicken.
+        </p>
+        <div class="teiln-kopf" id="p-teiln-kopf"></div>
+        <div id="p-teiln-list"></div>
       </div>
 
       <div class="card">
@@ -301,7 +304,7 @@
       </div>
       <div class="g2">
         <div><label>Präsentationsdatum</label><input type="date" id="we-praesentation"></div>
-        <div><label>Max. Teilnehmer</label><input type="number" id="we-max" min="1" max="99" placeholder="unbegrenzt"></div>
+        <div><label>Max. Teilnehmer</label><input type="number" id="we-max" min="1" max="99" placeholder="unbegrenzt" oninput="teilnKopf('we')"></div>
       </div>
       <div class="g2">
         <div>
@@ -320,6 +323,17 @@
       </div>
       <label>Beschreibung</label>
       <textarea id="we-desc" placeholder="Was wird erarbeitet?"></textarea>
+    </div>
+
+    <div class="card">
+      <h2>Teilnehmerinnen und Teilnehmer</h2>
+      <p style="font-size:12px;color:var(--text3);margin-bottom:8px">
+        Ein Ausrufezeichen bedeutet: Zu dieser Person ist schon etwas erfasst.
+        Wer abgewählt wird, verliert beim Speichern seine Bewertungen und seine
+        Rückmeldung zu dieser Werkstatt.
+      </p>
+      <div class="teiln-kopf" id="we-teiln-kopf"></div>
+      <div id="we-teiln-list"></div>
     </div>
 
     <div class="card">
@@ -692,7 +706,7 @@
 </main>
 </div>
 
-<script src="/vendor/ci-css/ci-shell.js?v=20260908101119"></script>
+<script src="/vendor/ci-css/ci-shell.js?v=20260908140002"></script>
 <script src="/app.js"></script>
 </body>
 </html>

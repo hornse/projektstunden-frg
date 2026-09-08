@@ -75,7 +75,14 @@ Präsentationsdatum, Laufzeit, Kompetenzanzahl, Status.
    **Ein Phasenwechsel verliert nichts.** Rechts in der Tab-Zeile steht,
    wie viele Kompetenzen insgesamt gewählt sind — über alle Phasen hinweg,
    auch die gerade ausgeblendeten.
-8. **Schüler** – erscheinen nach Klassen-Auswahl; Strg/Cmd für Mehrfachauswahl
+8. **Schüler** – erscheinen nach der Klassen-Auswahl als anklickbare
+   Namensfelder, nach Klassen gruppiert. Über der Liste stehen
+   **Alle hinzufügen**, **Auswahl aufheben** und – sobald mehr als eine
+   Klasse gewählt ist – je Klasse eine Schaltfläche **+ 7b (24)**, die genau
+   deren Schüler hinzufügt. Links steht, wie viele gewählt sind.
+
+   > Ist **Max. Teilnehmer** gesetzt, fügt „Alle hinzufügen" höchstens bis zu
+   > diesem Wert hinzu und sagt, wie viele es ausgelassen hat.
 9. **Werkstatt speichern** → Formular klappt zu, Werkstatt erscheint in Liste
 
 ### Details und Statusänderung
@@ -93,7 +100,32 @@ Klick auf **Details**-Button öffnet ein Modal:
 - Stunden je Fach aktualisierbar
 - Kompetenzen hinzufügen/entfernen — die bereits gewählten sind angehakt,
   auch wenn sie zu einer Phase gehören, die gerade nicht angezeigt wird
+- **Teilnehmer hinzufügen und entfernen** — dieselbe Auswahl wie beim
+  Anlegen, vorbelegt mit den bisherigen Teilnehmern
 - **Änderungen speichern** → zurück zur Werkstattliste
+
+#### Teilnehmer ändern
+
+Zur Auswahl stehen die Schüler der Klassen, die dieser Werkstatt zugeordnet
+sind. Wer bereits Teilnehmer ist, aber inzwischen in einer anderen Klasse
+steht, erscheint trotzdem — sonst liesse er sich nicht mehr entfernen.
+
+**Ein Ausrufezeichen hinter einem Namen bedeutet: Zu dieser Person ist in
+dieser Werkstatt schon etwas erfasst** — eine Einschätzung, eine Rückmeldung
+oder der Vermerk „absolviert". Der Mauszeiger auf dem Namen zeigt, was genau.
+
+Wer abgewählt und dann gespeichert wird, **verliert dieses Erfasste
+endgültig**: Einschätzungen, Rückmeldung und Abschlussvermerk zu dieser
+Werkstatt werden mitgelöscht. Es gibt keinen Papierkorb. Vor dem Speichern
+kommt deshalb eine Rückfrage, die jeden betroffenen Namen mit dem nennt, was
+verlorengeht. Wer nichts Erfasstes hat, wird ohne Rückfrage entfernt.
+
+Eine Rückfrage kommt ausserdem, wenn **alle** Teilnehmer entfernt würden —
+auch dann, wenn zu keinem etwas erfasst ist.
+
+**Max. Teilnehmer** wird beim Bearbeiten nur geprüft, wenn die Teilnehmerzahl
+wächst. Eine Werkstatt, die das Maximum schon überschreitet, bleibt speicherbar;
+die Zeile über der Liste färbt sich rot und nennt beide Zahlen.
 
 ---
 

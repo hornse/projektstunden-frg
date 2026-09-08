@@ -173,6 +173,22 @@ select[multiple]{height:100px}
 .komp-pill input:checked + .pill-label{background:var(--accent);color:var(--surface);border-color:var(--accent);font-weight:500}
 .komp-pill.erw .pill-label{font-size:11px;padding:3px 9px;border-style:dashed;color:var(--text3)}
 .komp-pill.erw input:checked + .pill-label{background:var(--info-bg);color:var(--info);border-color:var(--info);border-style:solid}
+/* Teilnehmerauswahl in Anlegen- und Bearbeiten-Ansicht (E34, E35).
+   Kacheln statt `select[multiple]`: Ein Mehrfachauswahlfeld hält seine
+   Auswahl im DOM, und die Kandidatenliste wird bei jedem Klassenwechsel neu
+   gezeichnet -- genau der Verlust, den E33 beschreibt. */
+.teiln-kopf{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.teiln-zahl{font-size:12px;color:var(--text2);font-weight:500;margin-right:auto}
+.teiln-zahl.ueber{color:var(--danger);font-weight:600}
+.teiln-gruppe{margin-bottom:10px}
+.teiln-gruppe-titel{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px}
+.teiln-grid{display:flex;flex-wrap:wrap;gap:5px}
+.teiln-pill{display:inline-flex;align-items:center;cursor:pointer;user-select:none}
+.teiln-pill input[type=checkbox]{display:none}
+.teiln-pill .pill-label{padding:4px 11px;border-radius:99px;font-size:12px;border:1px solid var(--border2);background:var(--surface);color:var(--text2);cursor:pointer;transition:all .12s}
+.teiln-pill input:checked + .pill-label{background:var(--accent);color:var(--surface);border-color:var(--accent);font-weight:500}
+.teiln-pill .warn-punkt{color:var(--warn);margin-left:4px}
+.teiln-pill input:checked + .pill-label .warn-punkt{color:var(--surface)}
 /* Fach-Stunden-Grid */
 .fach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:6px}
 .fach-item{display:flex;flex-direction:column;gap:3px}
@@ -252,6 +268,22 @@ select[multiple]{height:100px}
 .hb-table tr:last-child td{border-bottom:none}
 .admin-only{display:none}
 .is-admin .admin-only{display:flex}
+/* Eine Karte ist ein Block, kein Flex-Container.
+
+   `.is-admin .admin-only` darüber setzt `display:flex`; die
+   Navigationsschaltflächen in #admin-gruppe brauchen das und bleiben deshalb
+   unangetastet. An #sch-anlegen-card -- dem einzigen `admin-only`-Element,
+   das zugleich eine `.card` ist -- stellte dieselbe Regel Überschrift,
+   Formularraster und Schaltflächenzeile NEBENeinander statt untereinander.
+   Das war der Befund „die Überschrift klebt am Vornamenfeld": Sie klebte
+   nicht darüber, sie stand daneben.
+
+   Der Selektor trifft nur, was `card` UND `admin-only` trägt (Spezifität
+   0,3,0 gegen 0,2,0) -- die Navigation trägt keine der beiden zusammen.
+   `:not([hidden])` steht dabei nach REIHENREGELN 7: Das Attribut hat das
+   letzte Wort, und eine `display`-Regel im Projekt-CSS überschriebe es
+   sonst. */
+.is-admin .card.admin-only:not([hidden]){display:block}
 .is-admin .nv-group{display:block}
 /* ---- Aufklappbare Administrationsgruppe --------------------
    Untermenues kennt ci-shell.css nicht: Nur projektstunden und

@@ -8,6 +8,36 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 ## [Unreleased]
 
 ### Hinzugefügt
+- **Teilnehmer sind nachträglich änderbar** – der Bearbeiten-Screen bekommt
+  eine Teilnehmerauswahl, der PUT-Zweig wertet `schueler_ids` aus (E34, E35).
+  Bisher schrieb er `projekt_schueler` nie; die Teilnehmerliste stand nach dem
+  Anlegen fest. Fehlendes Feld und leere Liste werden unterschieden: ein
+  fehlendes `schueler_ids` lässt die Teilnehmer unangetastet.
+- **Auswahlhilfe bei der Teilnehmerauswahl** in beiden Ansichten – aus dem
+  `select multiple` werden anklickbare Namensfelder, gruppiert nach Klasse,
+  mit „Alle hinzufügen", „Auswahl aufheben" und je Klasse einer eigenen
+  Schaltfläche. Die Auswahl liegt in einer Menge ausserhalb des DOM (E33).
+- **Rückfrage vor dem Entfernen eines Teilnehmers**, die zählt, was
+  verlorengeht – Einschätzungen, Rückmeldung, Abschlussvermerk (E34). Gelöscht
+  wird ausdrücklich programmiert; auf `projekt_schueler` zeigt kein
+  Fremdschlüssel, eine Kaskade gibt es dort nicht.
+- **Rubrik „Teilnehmer" in `tests-projektstunden.sh`** – zwei Prüfungen über
+  den PUT-Zweig ohne Kommentare: dass er `schueler_ids` auswertet und
+  `projekt_schueler` schreibt, und dass er fehlendes Feld von leerer Liste
+  unterscheidet. **57 → 59 Prüfungen.**
+- **`GET /api/projekte/{id}` liefert `klasse_ids`** und je Teilnehmer
+  `klasse`, `abgeschlossen`, `bewertungen` und `rueckmeldungen`. `bewertungen`
+  zählt nur Zeilen mit Inhalt – der PUT legt in
+  `projekt_schueler_kompetenzen` für jeden Teilnehmer mal jede Kompetenz eine
+  leere Zeile an, Zeilenexistenz heisst dort nicht „bewertet".
+
+### Behoben
+- **Die Überschrift „Neuen Schüler anlegen" stand neben dem Formular statt
+  darüber.** Ursache war `.is-admin .admin-only{display:flex}`: Die Karte
+  `#sch-anlegen-card` trägt beide Klassen und wurde dadurch zum
+  Flex-Container in Zeilenrichtung. Die Regel bleibt – die
+  Navigationsschaltflächen brauchen sie –, die Karte bekommt eine eigene.
+
 - **Deutsch GOSt aus der verabschiedeten Fassung** – `DEU_KLP_SII` wird
   nicht mehr aus dem Entwurf vom 31.07.2025 aufgebaut, sondern aus
   `docs/curricula/gost_klp_d_2026_08_24.pdf`. 197 Kompetenzerwartungen in

@@ -615,11 +615,43 @@ function handle_projekte(string $method, ?int $id, array $body): void {
             $stmt->execute([$id]);
             $proj['lernbegleiter'] = $stmt->fetchAll();
 
-            // Schüler
+            // Klassen der Werkstatt. Die Teilnehmerauswahl beim Bearbeiten
+            // braucht sie, um die in Frage kommenden Schüler zu laden.
+            $stmt = $db->prepare('SELECT klasse_id FROM projekt_klassen WHERE projekt_id = ?');
+            $stmt->execute([$id]);
+            $proj['klasse_ids'] = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+            if (empty($proj['klasse_ids']) && !empty($proj['klasse_id'])) {
+                $proj['klasse_ids'] = [(int)$proj['klasse_id']];
+            }
+
+            // Schüler -- mit dem, was beim Entfernen verlorenginge (E34).
+            //
+            // `bewertungen` zählt NICHT die Zeilen in
+            // projekt_schueler_kompetenzen: Der PUT legt dort beim Speichern
+            // der Kompetenzen für jeden Teilnehmer mal jede Kompetenz eine
+            // Zeile mit lauter NULL an. Eine Zeile heisst „diese Kompetenz
+            // gehört zu dieser Werkstatt", nicht „dieser Schüler wurde
+            // bewertet". Gezählt wird deshalb nur, was Inhalt trägt.
             $stmt = $db->prepare(
-                'SELECT s.id, s.vorname, s.nachname FROM schueler s
+                'SELECT s.id, s.vorname, s.nachname,
+                        k.bezeichnung AS klasse, k.id AS klasse_id,
+                        ps.abgeschlossen,
+                        (SELECT COUNT(*) FROM projekt_schueler_kompetenzen psk
+                          WHERE psk.projekt_id = ps.projekt_id
+                            AND psk.schueler_id = ps.schueler_id
+                            AND (psk.fremd_stufe IS NOT NULL
+                                 OR psk.selbst_stufe IS NOT NULL
+                                 OR (psk.notiz IS NOT NULL AND psk.notiz <> ""))
+                        ) AS bewertungen,
+                        (SELECT COUNT(*) FROM werkstatt_rueckmeldungen r
+                          WHERE r.projekt_id = ps.projekt_id
+                            AND r.schueler_id = ps.schueler_id
+                        ) AS rueckmeldungen
+                 FROM schueler s
                  JOIN projekt_schueler ps ON ps.schueler_id = s.id
-                 WHERE ps.projekt_id = ?'
+                 JOIN klassen k ON k.id = s.klasse_id
+                 WHERE ps.projekt_id = ?
+                 ORDER BY k.bezeichnung, s.nachname, s.vorname'
             );
             $stmt->execute([$id]);
             $proj['schueler'] = $stmt->fetchAll();
@@ -892,6 +924,118 @@ function handle_projekte(string $method, ?int $id, array $body): void {
                         $id, (int)$s['fach_id'],
                         round((float)$s['stunden'], 1), clean($s['notiz'] ?? '')
                     ]);
+                }
+            }
+
+            // ---------------------------------------------------------------
+            // Teilnehmer aktualisieren (E34, E35)
+            //
+            // `isset` statt `?? []`: Ein FEHLENDES Feld lässt die Teilnehmer
+            // unangetastet, eine ausdrücklich LEERE Liste entfernt sie. Mit
+            // `?? []` würde ein Aufrufer, der das Feld vergisst, die Werkstatt
+            // leeren. Das ist derselbe Mechanismus wie `empty(0)` in
+            // FALLSTRICKE 3: ein Konstrukt, das zwei verschiedene Zustände zu
+            // einem zusammenzieht.
+            //
+            // Nicht wie `lehrer_ids` weiter oben mit `!empty()`. Dort ist es
+            // Absicht -- so lässt sich der letzte Lernbegleiter nicht
+            // entfernen. Für Teilnehmer wäre es falsch; eine Werkstatt darf
+            // leer werden.
+            //
+            // Dieser Block steht VOR dem Kompetenzblock, weil der
+            // `projekt_schueler` liest, um jedem Teilnehmer die Kompetenzen
+            // einzutragen. Stünde er dahinter, bekäme ein neu hinzugefügter
+            // Teilnehmer keine Kompetenzzeilen und erschiene im
+            // Bewertungsscreen ohne jede Kompetenz.
+            // ---------------------------------------------------------------
+            if (isset($body['schueler_ids'])) {
+                $ziel_roh = array_map('intval', $body['schueler_ids']);
+
+                // Nur Schüler dieser Schule. Eine erfundene ID gäbe sonst einen
+                // Fremdschlüsselfehler und damit einen 500er statt einer
+                // Meldung.
+                $ziel = [];
+                if (!empty($ziel_roh)) {
+                    $plh  = implode(',', array_fill(0, count($ziel_roh), '?'));
+                    $chkS = $db->prepare(
+                        "SELECT s.id FROM schueler s
+                         JOIN klassen k ON k.id = s.klasse_id
+                         WHERE k.schule_id = ? AND s.id IN ($plh)"
+                    );
+                    $chkS->execute(array_merge([$user['schule_id']], $ziel_roh));
+                    $ziel = array_map('intval', $chkS->fetchAll(PDO::FETCH_COLUMN));
+                }
+
+                $stmt = $db->prepare('SELECT schueler_id FROM projekt_schueler WHERE projekt_id = ?');
+                $stmt->execute([$id]);
+                $bestand = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+
+                $hinzu = array_values(array_diff($ziel, $bestand));
+                $weg   = array_values(array_diff($bestand, $ziel));
+
+                // max_schueler greift nur bei Zuwachs (E35). Werkstatt 4 führt
+                // zwölf Teilnehmer bei einem Maximum von zehn -- entstanden,
+                // weil der PUT das Maximum bisher ungeprüft gespeichert hat.
+                // Eine harte Prüfung machte sie unspeicherbar, ohne dass jemand
+                // etwas an ihr geändert hätte. Ein Speichern, das die Zahl
+                // gleich lässt oder senkt, geht deshalb immer durch.
+                if ($max_schueler !== null
+                    && count($ziel) > count($bestand)
+                    && count($ziel) > $max_schueler) {
+                    $db->rollBack();
+                    json_error('Zu viele Teilnehmer: max. ' . $max_schueler
+                        . ' erlaubt, ' . count($ziel) . ' ausgewählt.');
+                }
+
+                // Die Kompetenzen der Werkstatt merken, BEVOR Zeilen
+                // verschwinden -- sonst stünde nichts mehr da, wenn alle
+                // bisherigen Teilnehmer ersetzt werden.
+                $stmt = $db->prepare(
+                    'SELECT DISTINCT kompetenz_id FROM projekt_schueler_kompetenzen WHERE projekt_id = ?'
+                );
+                $stmt->execute([$id]);
+                $ws_komp = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+
+                // Entfernen wird ausdrücklich programmiert, nicht der Datenbank
+                // überlassen: Auf `projekt_schueler` zeigt kein einziger
+                // Fremdschlüssel. Ein DELETE dort löst keine Kaskade aus, und
+                // Bewertungen wie Rückmeldungen blieben als verwaiste Zeilen
+                // stehen -- ein Zustand, der im Bestand bereits zweimal
+                // existiert (E34).
+                if (!empty($weg)) {
+                    $delK = $db->prepare('DELETE FROM projekt_schueler_kompetenzen WHERE projekt_id = ? AND schueler_id = ?');
+                    $delR = $db->prepare('DELETE FROM werkstatt_rueckmeldungen     WHERE projekt_id = ? AND schueler_id = ?');
+                    $delT = $db->prepare('DELETE FROM projekt_schueler             WHERE projekt_id = ? AND schueler_id = ?');
+                    foreach ($weg as $sid) {
+                        $delK->execute([$id, $sid]);
+                        $delR->execute([$id, $sid]);
+                        $delT->execute([$id, $sid]);
+                    }
+                }
+
+                if (!empty($hinzu)) {
+                    $insT = $db->prepare(
+                        'INSERT IGNORE INTO projekt_schueler (projekt_id, schueler_id) VALUES (?, ?)'
+                    );
+                    foreach ($hinzu as $sid) {
+                        $insT->execute([$id, $sid]);
+                    }
+
+                    // Kompetenzzeilen für neue Teilnehmer selbst nachtragen
+                    // (E35). Sonst hinge das Ergebnis daran, dass ein Aufrufer
+                    // `kompetenz_ids` immer mitschickt -- eine Zusicherung, die
+                    // von der Disziplin des Aufrufers abhängt, ist keine.
+                    if (!empty($ws_komp)) {
+                        $insK = $db->prepare(
+                            'INSERT IGNORE INTO projekt_schueler_kompetenzen
+                             (projekt_id, schueler_id, kompetenz_id) VALUES (?, ?, ?)'
+                        );
+                        foreach ($hinzu as $sid) {
+                            foreach ($ws_komp as $kid) {
+                                $insK->execute([$id, $sid, $kid]);
+                            }
+                        }
+                    }
                 }
             }
 

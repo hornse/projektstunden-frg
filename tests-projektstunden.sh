@@ -526,6 +526,67 @@ TREFFER=$(grep -rl 'kat-fach' frontend/ 2>/dev/null | tr '\n' ' ')
     || rot "kat-fach noch vorhanden in: $TREFFER"
 
 echo ""
+echo "Teilnehmer"
+# ------------------------------------------------------------------
+# Befund: Teilnehmer waren nach dem Anlegen unveränderlich. Der PUT-Zweig
+# las `projekt_schueler` (für die Kompetenzen), schrieb aber nie hinein.
+# E34 und E35 entscheiden, wie er es jetzt tut.
+#
+# Beide Prüfungen laufen NUR über den PUT-Zweig, nicht über die ganze
+# Datei: Im POST-Zweig steht `schueler_ids` seit jeher, ein Ausdruck über
+# index.php insgesamt wäre also von Anfang an grün gewesen -- und hätte den
+# Befund nie gefangen.
+#
+# Und sie laufen über den Zweig OHNE Kommentare. Die Regeln sind dort in
+# Prosa erklärt, samt `?? []` und `schueler_ids`; ein ungeankerter Ausdruck
+# träfe die Erklärung statt der Sache (REIHENREGELN 2). Gegenprobe dazu:
+# den Code löschen, den Kommentar stehen lassen -- die Prüfung muss rot
+# werden.
+# ------------------------------------------------------------------
+API=backend/api/index.php
+if [ ! -f "$API" ]; then
+    rot "$API fehlt"
+    rot "$API fehlt (zweite Teilnehmerprüfung nicht ausführbar)"
+else
+    PUT_ZWEIG=$(awk '/\/\/ ----- PUT \/projekte\/\{id\} -----/,/\/\/ ----- DELETE \/projekte\/\{id\} -----/' "$API" \
+        | perl -0777 -pe 's{/\*.*?\*/}{}gs' | grep -v '^[[:space:]]*//')
+
+    if [ -z "$PUT_ZWEIG" ]; then
+        # Ohne Voraussetzung gilt eine Prüfung nicht als bestanden, sie sagt
+        # es (REIHENREGELN 2). Ein leerer Zweig sähe sonst sauber aus.
+        rot "PUT-Zweig in $API nicht gefunden – Markierungskommentare geändert?"
+        rot "PUT-Zweig in $API nicht gefunden (zweite Teilnehmerprüfung nicht ausführbar)"
+    else
+        # Prüfung 1: Der PUT-Zweig wertet `schueler_ids` aus UND schreibt
+        # damit `projekt_schueler`. Lesen allein genügt nicht -- genau das
+        # tat er vorher schon.
+        P1_LIEST=$(printf '%s' "$PUT_ZWEIG" | grep -c "body\['schueler_ids'\]" || true)
+        P1_FUEGT=$(printf '%s' "$PUT_ZWEIG" | grep -c "INSERT IGNORE INTO projekt_schueler " || true)
+        P1_LOEST=$(printf '%s' "$PUT_ZWEIG" | grep -c "DELETE FROM projekt_schueler " || true)
+        if [ "$P1_LIEST" -gt 0 ] && [ "$P1_FUEGT" -gt 0 ] && [ "$P1_LOEST" -gt 0 ]; then
+            gruen "PUT-Zweig wertet schueler_ids aus und schreibt projekt_schueler"
+        else
+            rot "PUT-Zweig ändert die Teilnehmer nicht (liest=$P1_LIEST, fügt=$P1_FUEGT, löscht=$P1_LOEST)"
+        fi
+
+        # Prüfung 2: Fehlendes Feld und leere Liste werden unterschieden.
+        # `isset` muss da sein UND `?? []` darf nicht danebenstehen -- die
+        # Anwesenheit der richtigen Form schliesst die falsche nicht aus
+        # (REIHENREGELN 2). Mit `?? []` würde ein Aufrufer, der das Feld
+        # vergisst, die Werkstatt leeren.
+        P2_ISSET=$(printf '%s' "$PUT_ZWEIG" | grep -c "isset(\$body\['schueler_ids'\])" || true)
+        P2_FALSCH=$(printf '%s' "$PUT_ZWEIG" | grep -c "body\['schueler_ids'\][[:space:]]*??" || true)
+        if [ "$P2_ISSET" -gt 0 ] && [ "$P2_FALSCH" -eq 0 ]; then
+            gruen "PUT-Zweig unterscheidet fehlendes schueler_ids von leerer Liste"
+        elif [ "$P2_FALSCH" -gt 0 ]; then
+            rot "PUT-Zweig macht mit ?? [] aus 'nicht geschickt' ein 'alle entfernen'"
+        else
+            rot "PUT-Zweig prüft schueler_ids nicht mit isset()"
+        fi
+    fi
+fi
+
+echo ""
 GESAMT=$((GRUEN + FEHLER))
 echo "$GRUEN/$GESAMT bestanden, $FEHLER rot"
 if [ "$FEHLER" -eq 0 ]; then echo "ALLES GRÜN"; exit 0; fi
