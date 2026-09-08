@@ -2246,6 +2246,21 @@ function handle_rueckmeldung(string $method, ?int $id, array $body): void {
         $schueler_ids   = array_map('intval', $body['schueler_ids'] ?? []);
         $bewertung_stufe = isset($body['bewertung_stufe']) && $body['bewertung_stufe'] !== ''
                           ? (int)$body['bewertung_stufe'] : null;
+        // Der Freitext wird ABSICHTLICH nicht durch clean() geschickt --
+        // anders als jedes andere Textfeld dieser Datei. Maskiert wird er
+        // erst bei der Ausgabe, in `escHtml()` (frontend/app.js), an beiden
+        // Anzeigestellen: Bewertungsansicht und Schülerportal.
+        //
+        // Warum dort und nicht hier: Eine Eingangsprüfung schützt die Zeilen
+        // nicht, die vor ihr entstanden sind; im Bestand standen vier
+        // ungeprüfte. Und die Zusicherung „jeder Schreibweg ruft clean()"
+        // gilt in diesem Projekt nachweislich nicht -- der CSV-Import
+        // schreibt Namen mit blossem trim().
+        //
+        // Wer hier clean() ergänzt, maskiert ZWEIMAL: In der Datenbank
+        // stünde `&amp;`, escHtml() machte `&amp;amp;` daraus, und aus
+        // „Toll & gut" würde sichtbar „Toll &amp; gut". Das Testskript
+        // schlägt in diesem Fall an.
         $freitext       = $body['freitext'] ?? '';
         $sichtbar       = (int)($body['sichtbar'] ?? 0);
 

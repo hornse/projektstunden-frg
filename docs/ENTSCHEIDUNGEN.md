@@ -1174,3 +1174,54 @@ Fehlerbehebung.
 ist schlimmer als eine, die einen Fehler zeigt. Und eine Rückmeldungsansicht,
 die vier vorhandene Rückmeldungen nicht zeigt, lässt den Benutzer glauben, es
 gebe keine.
+
+---
+
+## E40 — Benutzertext wird genau einmal maskiert, und zwar bei der Ausgabe (08.09.2026)
+
+**Anlass:** `werkstatt_rueckmeldungen.freitext` wurde weder beim Schreiben
+noch bei der Ausgabe maskiert. Er landet an zwei Stellen roh in `innerHTML`:
+in der Bewertungsansicht (`app.js`) und im **Schülerportal**. Eine Lehrkraft
+mit Schreibrecht auf eine Werkstatt konnte damit Markup in die Ansicht eines
+Minderjährigen schreiben.
+
+**Befund:** `freitext` war das einzige Textfeld aus dem JSON-Body ohne
+`clean()` — alle dreizehn anderen Fundstellen rufen es. Nachgewiesen mit einem
+Freitext aus `<script>`, `<img onerror=…>`, `&` und Anführungszeichen: Er stand
+unverändert in der Datenbank und kam durch beide Ansichten als lebendes Markup
+heraus.
+
+**Entscheidung:** Maskiert wird **einmal, bei der Ausgabe**, durch `escHtml()`
+in `frontend/app.js`. `freitext` bleibt beim Schreiben absichtlich unmaskiert.
+
+**Warum nicht beim Schreiben, wie der Rest:** Zwei Gründe, und der zweite ist
+der wichtigere.
+
+Erstens schützt eine Eingangsprüfung nicht, was vor ihr entstanden ist. Im
+Bestand standen vier ungeprüfte Rückmeldungen; sie blieben gefährlich.
+
+Zweitens gilt die Zusicherung „jeder Schreibweg ruft `clean()`" in diesem
+Projekt nachweislich nicht. Der CSV-Import schreibt `vorname`, `nachname`,
+`bezeichnung` und `klassenlehrer` mit blossem `trim()`, die WebUntis-Selbstanlage
+ebenso. Wer sich auf die Schreibseite verlässt, verlässt sich auf eine Zusage,
+die an anderer Stelle bereits gebrochen ist.
+
+**Warum nicht beides:** Weil Maskierung nicht idempotent ist. Stünde `&amp;` in
+der Datenbank und maskierte `escHtml()` erneut, käme `&amp;amp;` heraus, und
+aus „Toll & gut" würde für den Leser sichtbar „Toll &amp; gut". Doppelt
+maskieren ist kein Sicherheitsgewinn, sondern ein Anzeigefehler. Das Testskript
+prüft deshalb ausdrücklich **beide Hälften**: dass bei der Ausgabe maskiert
+wird, und dass es beim Schreiben nicht geschieht.
+
+**Was das nicht heißt:** Die übrigen Felder werden **nicht** umgestellt. Sie
+stehen maskiert in der Datenbank und werden roh ausgegeben; das zeigt sich
+richtig an und ist gegen Einschleusung dicht, solange der Schreibweg `clean()`
+ruft. Wer dort `escHtml()` ergänzt, ohne gleichzeitig `clean()` zu entfernen,
+erzeugt genau den Anzeigefehler von oben. Die Umstellung wäre ein eigener
+Vorgang mit einer Datenmigration.
+
+**Offen, gemeldet, nicht behoben:** Der CSV-Import und die WebUntis-Selbstanlage
+schreiben Namen ohne `clean()`, und 26 Zeilen in `app.js` geben Namen roh aus.
+Ein Schülername aus einer feindlichen Importdatei wäre dieselbe Bauform. Das
+braucht eine eigene Entscheidung — Schreibseite nachziehen oder Ausgabeseite
+umstellen —, und die eine Hälfte ohne die andere macht es schlimmer.

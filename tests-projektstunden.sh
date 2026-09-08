@@ -587,6 +587,66 @@ else
 fi
 
 echo ""
+echo "Maskierung"
+# ------------------------------------------------------------------
+# `werkstatt_rueckmeldungen.freitext` war das einzige Textfeld, das weder
+# beim Schreiben noch bei der Ausgabe maskiert wurde. Ausgegeben wird er an
+# zwei Stellen roh in innerHTML -- eine davon das Schülerportal.
+#
+# Maskiert wird genau EINMAL, bei der Ausgabe. Die drei Prüfungen sichern
+# beide Hälften dieser Festlegung: dass dort maskiert wird, und dass es
+# beim Schreiben NICHT geschieht. Zweimal maskieren ist kein Sicherheits-
+# gewinn, sondern ein Anzeigefehler: aus "Toll & gut" würde "Toll &amp; gut".
+#
+# Alle drei laufen über den Quelltext OHNE Kommentare -- die Erklärung
+# dieser Regel steht in denselben Dateien und enthält ihre eigenen
+# Stichwörter (REIHENREGELN 2).
+# ------------------------------------------------------------------
+API=backend/api/index.php
+JS_OHNE=$(perl -0777 -pe 's{/\*.*?\*/}{}gs' "$JS" | grep -v '^[[:space:]]*//')
+PHP_OHNE=$(perl -0777 -pe 's{/\*.*?\*/}{}gs' "$API" | grep -v '^[[:space:]]*//')
+
+# Prüfung 1: beide Ausgabestellen maskieren, keine roh
+ESC=$(printf '%s' "$JS_OHNE" | grep -c 'escHtml(r\.freitext)' || true)
+ROH=$(printf '%s' "$JS_OHNE" | grep -c '${r\.freitext}' || true)
+if [ "$ESC" -eq 2 ] && [ "$ROH" -eq 0 ]; then
+    gruen "freitext wird an beiden Ausgabestellen maskiert"
+else
+    rot "freitext-Ausgabe: $ESC maskiert (erwartet 2), $ROH roh (erwartet 0)"
+fi
+
+# Prüfung 2: escHtml maskiert alle fünf Zeichen, und & zuerst.
+# Stünde & nicht zuerst, machte die Funktion aus einem erzeugten &lt;
+# ein &amp;lt; -- die Maskierung wäre kaputt, ohne dass ein Zeichen fehlte.
+ESC_RUMPF=$(printf '%s' "$JS_OHNE" | awk '/^function escHtml\(/{an=1} an{print} an&&/^}/{exit}')
+if [ -z "$ESC_RUMPF" ]; then
+    rot "escHtml() nicht gefunden"
+else
+    FEHLT=""
+    for PAAR in '/&/g:&amp;' '/</g:&lt;' '/>/g:&gt;' '/"/g:&quot;' "/'/g:&#39;"; do
+        MUSTER="${PAAR%%:*}"; ERSATZ="${PAAR##*:}"
+        printf '%s' "$ESC_RUMPF" | grep -qF "replace($MUSTER, '$ERSATZ')" || FEHLT="$FEHLT $MUSTER"
+    done
+    POS_AMP=$(printf '%s' "$ESC_RUMPF" | grep -nF "replace(/&/g" | head -1 | cut -d: -f1)
+    POS_LT=$(printf '%s' "$ESC_RUMPF" | grep -nF "replace(/</g" | head -1 | cut -d: -f1)
+    if [ -n "$FEHLT" ]; then
+        rot "escHtml maskiert nicht:$FEHLT"
+    elif [ -z "$POS_AMP" ] || [ -z "$POS_LT" ] || [ "$POS_AMP" -ge "$POS_LT" ]; then
+        rot "escHtml ersetzt & nicht als erstes – die Maskierung maskiert sich selbst"
+    else
+        gruen "escHtml maskiert & < > \" ' und & als erstes"
+    fi
+fi
+
+# Prüfung 3: beim Schreiben wird NICHT maskiert.
+# Das ist die Gegenrichtung: Die Anwesenheit der Ausgabemaskierung schliesst
+# eine zweite beim Schreiben nicht aus.
+DOPPELT=$(printf '%s' "$PHP_OHNE" | grep -c "clean(\$body\['freitext'\]\|clean(\$freitext" || true)
+[ "$DOPPELT" -eq 0 ] \
+    && gruen "freitext wird beim Schreiben nicht zusätzlich maskiert" \
+    || rot "freitext wird zweimal maskiert – Anzeigefehler statt Sicherheitsgewinn"
+
+echo ""
 GESAMT=$((GRUEN + FEHLER))
 echo "$GRUEN/$GESAMT bestanden, $FEHLER rot"
 if [ "$FEHLER" -eq 0 ]; then echo "ALLES GRÜN"; exit 0; fi

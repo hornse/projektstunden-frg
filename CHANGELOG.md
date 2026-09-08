@@ -7,6 +7,23 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 
 ## [Unreleased]
 
+### Sicherheit
+- **Gespeichertes XSS im Rückmeldungs-Freitext behoben** (E40).
+  `werkstatt_rueckmeldungen.freitext` war das einzige Textfeld ohne
+  `clean()` beim Schreiben und wurde an zwei Stellen roh in `innerHTML`
+  eingesetzt – in der Bewertungsansicht und im **Schülerportal**. Eine
+  Lehrkraft mit Schreibrecht auf eine Werkstatt konnte damit Markup in die
+  Ansicht eines Minderjährigen schreiben. Maskiert wird jetzt bei der
+  Ausgabe, durch `escHtml()`; der Freitext bleibt beim Schreiben
+  absichtlich unmaskiert, weil zweimal maskieren aus „Toll & gut" sichtbar
+  „Toll &amp; gut" machte.
+  **Das schützt auch die vier Zeilen, die vor der Behebung entstanden sind** –
+  eine Eingangsprüfung hätte das nicht getan.
+- **Rubrik „Maskierung" in `tests-projektstunden.sh`** – drei Prüfungen über
+  den Quelltext ohne Kommentare: beide Ausgabestellen maskieren, `escHtml`
+  ersetzt alle fünf Zeichen und `&` als erstes, und beim Schreiben wird
+  **nicht** zusätzlich maskiert. **59 → 62 Prüfungen.**
+
 ### Hinzugefügt
 - **Teilnehmer sind nachträglich änderbar** – der Bearbeiten-Screen bekommt
   eine Teilnehmerauswahl, der PUT-Zweig wertet `schueler_ids` aus (E34, E35).

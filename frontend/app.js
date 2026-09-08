@@ -35,6 +35,35 @@ const POST   = (path, body)  => api('POST',   path, body);
 const DELETE = (path)        => api('DELETE', path);
 
 // ============================================================
+// Benutzertext in HTML einsetzen
+//
+// Fast jedes Textfeld wird im Backend beim Schreiben durch `clean()`
+// geschickt (htmlspecialchars) und steht deshalb bereits maskiert in der
+// Datenbank; roh in `innerHTML` eingesetzt zeigt es sich richtig an.
+//
+// `werkstatt_rueckmeldungen.freitext` ist die Ausnahme: Er wird
+// **absichtlich unmaskiert gespeichert** und erst hier maskiert. Zwei
+// Gründe. Erstens schützt eine Eingangsprüfung die vier Zeilen nicht, die
+// vor ihr entstanden sind -- und genau die standen ungeprüft im Bestand.
+// Zweitens ist die Zusicherung „jeder Schreibweg ruft clean()" in diesem
+// Projekt nachweislich nicht wahr: Der CSV-Import schreibt Namen mit
+// blossem `trim()`.
+//
+// Maskiert wird genau EINMAL. Käme `clean()` beim Schreiben dazu, stünde
+// `&amp;` in der Datenbank, diese Funktion machte `&amp;amp;` daraus, und
+// aus „Toll & gut" würde sichtbar „Toll &amp; gut". Das Testskript prüft
+// deshalb beides: dass hier maskiert wird, und dass es beim Schreiben
+// nicht geschieht.
+function escHtml(wert) {
+  return String(wert ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ============================================================
 // STATE – globale In-Memory-Daten (werden nach Login geladen)
 // ============================================================
 let STATE = { faecher: [], klassen: [], lehrer: [], rahmen: [], kompetenzen: [], user: null };
@@ -2337,7 +2366,7 @@ async function ladeBewRueckmeldungen(projekt_id) {
           sichtbar
         </label>
       </div>
-      ${r.freitext ? `<p style="font-size:13px;color:var(--text2);margin:6px 0 0">${r.freitext}</p>` : ''}
+      ${r.freitext ? `<p style="font-size:13px;color:var(--text2);margin:6px 0 0">${escHtml(r.freitext)}</p>` : ''}
       <p style="font-size:11px;color:var(--text3);margin:4px 0 0">
         ${r.lb_vorname} ${r.lb_nachname} · ${(r.geaendert_am || r.erstellt_am || '').substring(0,10)}
       </p>
@@ -2737,7 +2766,7 @@ async function schuelerWerkstattDetail(werkstatt_id) {
       ${r.bewertung_stufe
         ? `<span class="bew-chip bew-${r.bewertung_stufe}" style="margin-bottom:6px;display:inline-block">
            ${r.bewertung_stufe} – ${STUFEN[r.bewertung_stufe]}</span>` : ''}
-      ${r.freitext ? `<p style="font-size:13px;margin:0 0 4px">${r.freitext}</p>` : ''}
+      ${r.freitext ? `<p style="font-size:13px;margin:0 0 4px">${escHtml(r.freitext)}</p>` : ''}
       <p style="font-size:11px;color:var(--text3);margin:0">
         ${r.lb_vorname} ${r.lb_nachname} · ${(r.geaendert_am || r.erstellt_am || '').substring(0,10)}
       </p>
