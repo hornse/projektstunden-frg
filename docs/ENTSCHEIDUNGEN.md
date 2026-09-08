@@ -891,3 +891,77 @@ gehört in einen eigenen Vorgang.
 wird per `UPDATE` behandelt und liegt damit außerhalb — für ihn gilt die
 Integrität nur gegen die Datenbank, nicht beim Deploy. Diese Lücke ist bekannt
 und in `sql/gen/README.md` festzuhalten.
+
+---
+
+## E32 — Ein Auswahlfeld für den Kompetenzkatalog, gruppiert nach Fach (07.09.2026)
+
+**Anlass:** Der Kompetenzkatalog führte zwei unabhängige Und-Filter, `kat-rahmen`
+und `kat-fach`. Belegt: Rahmen „Sport KLP NRW G9 Sek I" zusammen mit Fach
+„Spanisch" ergibt „Keine Kompetenzen gefunden."
+
+**Befund:** `kat-fach` wird aus `STATE.faecher` gefüllt — 18 Fächer, von denen
+zwei Kompetenzen führen. Die 106 Kompetenzen des MKR zählen bei keinem Fach, weil
+er `fach_id IS NULL` hat. Sechzehn von achtzehn Einträgen führen in eine leere
+Ansicht.
+
+**Entscheidung:** `kat-fach` entfällt. `kat-rahmen` wird ein Auswahlfeld mit
+`<optgroup>` je Fach, jeder Eintrag mit der Zahl seiner Kompetenzen. Der MKR
+steht unter „Fächerübergreifend". Aufgeführt werden alle Rahmen, auch leere —
+sie sind dann als leer erkennbar statt als nicht vorhanden.
+
+**Warum:** Zwei Felder, von denen jedes das andere widerlegen kann, sind ein Feld
+zu viel. Die Zahl dahinter kostet nichts — `STATE.kompetenzen` liegt ohnehin im
+Frontend — und sie beantwortet die Frage, die sonst nur ein leerer Bildschirm
+beantwortet. Der Fall ist eingetreten: `WPWI_KLP` war nach E13 angelegt und
+unbefüllt.
+
+**Nicht geändert:** Die Fach-Filterung in `renderKompBereichListWe`. Sie tut
+etwas anderes — dort leitet sich die Rahmenauswahl aus den angerechneten Stunden
+ab (`#we-fach-grid`), ist also keine Filterbedienung, sondern eine Folge der
+Stundenverteilung. Sie durch dieselbe Auswahl zu ersetzen hieße, einen Rahmen
+wählbar zu machen, für den keine Stunden angerechnet sind. Das wäre eine
+fachliche Änderung, keine Anzeigekorrektur. Ebenso unangetastet bleiben
+`renderRahmenTabs` und `renderRahmenTabsWe`.
+
+---
+
+## E33 — Die Kompetenzauswahl beim Bearbeiten lebt außerhalb des DOM (07.09.2026)
+
+**Anlass:** Beim Bau des Phasenfilters für die Werkstatt-Kompetenzauswahl fiel
+ein Fehler auf, der älter ist und schwerer wiegt.
+
+**Befund:** `openWerkstattBearbeiten` belegt die Auswahl über den Selektor
+`#we-komp-bereich-list .komp-cb` vor. Gezeichnet wird aber
+`class="we-komp-cb"`. Ein CSS-Klassenselektor trifft ganze Klassennamen, keine
+Teilzeichenketten — `.komp-cb` trifft `we-komp-cb` nicht. Die Klasse `komp-cb`
+gibt es nur in der Anlegen-Ansicht.
+
+Folge: Beim Bearbeiten wird kein Häkchen gesetzt. Wer eine Werkstatt öffnet,
+etwas anderes ändert und speichert, schickt `kompetenz_ids: []` — die
+vorhandene Auswahl wird gelöscht. Der Fehler stammt aus dem Juli 2026 und ist
+seither unbemerkt geblieben, weil eine leere Liste beim Speichern wie ein
+gültiger Wert aussieht.
+
+**Entscheidung:** Der Fehler wird behoben, und die Auswahl wandert aus dem DOM
+in eine Menge `WS_EDIT_KOMP_IDS`. Sie wird beim Öffnen aus `proj.kompetenzen`
+gefüllt, bei jedem Klick gepflegt und beim Speichern gelesen. Das DOM wird
+gezeichnet, nicht befragt.
+
+**Warum:** Ein Anzeigefilter, der Kacheln nicht zeichnet, entfernt sonst auch
+ihre Häkchen — bei einer Werkstatt über zwei Phasen wäre der Phasenwechsel
+Datenverlust. Die Alternative, alle Phasen zu zeichnen und per CSS zu verbergen,
+löst weder den Selektor-Fehler noch das Mengenproblem: Bei Deutsch blieben 226
+Kacheln im DOM, und genau das sollte der Filter vermeiden.
+
+**Verhältnis zu E6:** E6 hat entschieden, kritische Werte ins DOM zu legen, weil
+JavaScript-Variablen einen Deploy nicht überleben. Das ist kein Widerspruch,
+sondern ein anderes Problem. E6 löst „überlebt einen Seitenneuladen"; hier geht
+es um „überlebt ein Neuzeichnen innerhalb derselben Seite". Lädt die Seite
+während des Bearbeitens neu, ist die Bearbeitung ohnehin verloren — die
+Anwendung startet im Dashboard.
+
+**Was dabei zu beachten ist:** Ersetzt `innerHTML` die Kachelliste, gehen daran
+hängende Ereignisbehandlungen verloren. Jede Kachel muss ihren Zustand beim
+Zeichnen aus der Menge lesen, sonst laufen Menge und Anzeige auseinander — das
+wäre derselbe Fehler in neuer Form.
