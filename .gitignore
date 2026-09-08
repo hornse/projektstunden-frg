@@ -28,3 +28,6 @@ error_log
 node_modules/
 bundles/
 NEUES_PROJEKT_PROMPT.md
+
+# Sicherungen der Konfiguration – enthalten Passwörter
+backend/config.php.*
