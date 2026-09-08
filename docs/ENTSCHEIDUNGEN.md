@@ -965,3 +965,86 @@ Anwendung startet im Dashboard.
 hängende Ereignisbehandlungen verloren. Jede Kachel muss ihren Zustand beim
 Zeichnen aus der Menge lesen, sonst laufen Menge und Anzeige auseinander — das
 wäre derselbe Fehler in neuer Form.
+
+---
+
+## E34 — Entfernen eines bewerteten Teilnehmers: warnen und mitlöschen (08.09.2026)
+
+**Anlass:** Der Bearbeiten-Screen bekommt eine Teilnehmerverwaltung. Zu klären
+war, was geschieht, wenn ein Teilnehmer entfernt wird, zu dem schon etwas
+erfasst ist.
+
+**Befund, der die Frage dreht:** „Bewertet" ist nicht an der Zeilenexistenz
+ablesbar. Der PUT-Zweig legt beim Speichern der Kompetenzen für jeden
+Teilnehmer × jede Kompetenz eine Zeile in `projekt_schueler_kompetenzen` an,
+mit `fremd_stufe`, `selbst_stufe` und `notiz` sämtlich `NULL`. Werkstatt 4 hat
+228 solcher Zeilen, davon 32 mit einer Fremdeinschätzung. Eine Zeile bedeutet
+„diese Kompetenz gehört zu dieser Werkstatt", nicht „dieser Schüler wurde
+bewertet".
+
+Bewertet heißt deshalb:
+`fremd_stufe IS NOT NULL OR selbst_stufe IS NOT NULL OR (notiz IS NOT NULL AND notiz <> '')`.
+Bei `werkstatt_rueckmeldungen` ist jede Zeile Inhalt — sie entsteht nur durch
+eine Eingabe.
+
+**Entscheidung:** Gestaffelt. Ein Teilnehmer ohne Bewertung, ohne Rückmeldung
+und ohne `abgeschlossen = 1` wird ohne Rückfrage entfernt. Andernfalls kommt
+eine Rückfrage, die zählt, was verloren geht — „n Fremdeinschätzungen,
+Rückmeldung vorhanden, als abgeschlossen markiert" —, und erst dann wird
+entfernt.
+
+Gelöscht wird ausdrücklich programmiert, in einer Transaktion, in dieser
+Reihenfolge: `projekt_schueler_kompetenzen`, `werkstatt_rueckmeldungen`,
+`projekt_schueler`. Nicht der Datenbank über `ON DELETE CASCADE` überlassen.
+
+**Warum nicht verweigern:** „Verweigern" macht die Teilnehmerliste nach der
+ersten Bewertung wieder unveränderlich — also genau den Zustand, den dieser
+Auftrag beheben soll. Ein Schüler, der die Schule verlässt oder die Werkstatt
+wechselt, bliebe dauerhaft eingetragen.
+
+**Warum nicht ohne Löschen entfernen:** Verwaiste Zeilen tauchen in der
+Kompetenzansicht wieder auf, weil sie über `projekt_id` und `schueler_id`
+gelesen wird, nicht über den Teilnehmerbeitritt. Der Zustand existiert bereits
+zweimal im Bestand; ihn zum Regelfall zu machen hieße, jede spätere Auswertung
+an einen Sonderfall zu binden.
+
+**Was das nicht heißt:** Das Löschen ist unwiederbringlich; es gibt kein
+Papierkorb-Konzept. Der Schutz ist nicht die Unmöglichkeit des Entfernens,
+sondern die Sichtbarkeit dessen, was verschwindet.
+
+**Zu den zwei vorhandenen Waisen:** Sie werden aufgeräumt, aber erst nachdem
+ihr Inhalt angesehen wurde. Trägt eine von ihnen eine Fremdeinschätzung, wird
+sie vorgelegt statt gelöscht.
+
+---
+
+## E35 — Wie der PUT-Zweig Teilnehmer behandelt (08.09.2026)
+
+**Anlass:** Umsetzung der Teilnehmerverwaltung im Bearbeiten-Screen.
+
+**Fehlendes Feld ist nicht leere Liste.** `$body['schueler_ids'] ?? []` macht
+aus „nicht geschickt" ein „alle entfernen". Geprüft wird mit `isset`, wie es
+der Kompetenzblock in Zeile 898 bereits tut — nicht wie `lehrer_ids` in Zeile
+872, wo `!empty()` verhindert, dass der letzte Lernbegleiter entfernt werden
+kann. Für Teilnehmer wäre das falsch.
+
+Dies ist derselbe Mechanismus wie `empty(0)` in FALLSTRICKE 3: ein
+Sprachkonstrukt, das zwei verschiedene Zustände zu einem zusammenzieht.
+
+**Der Teilnehmerblock steht vor dem Kompetenzblock.** Der Kompetenzblock liest
+`projekt_schueler`, um jedem Teilnehmer die Kompetenzzeilen anzulegen. Steht er
+davor, bekommt ein neu hinzugefügter Teilnehmer keine Kompetenzzeilen und
+erscheint im Bewertungsscreen ohne jede Kompetenz.
+
+**Der Teilnehmerblock trägt Kompetenzzeilen für neue Teilnehmer selbst nach.**
+Sonst hinge das Ergebnis daran, dass ein Aufrufer `kompetenz_ids` immer
+mitschickt. Eine Zusicherung, die von der Disziplin des Aufrufers abhängt, ist
+keine.
+
+**`max_schueler` greift nur bei Zuwachs.** Der PUT speichert das Maximum bisher
+ohne jede Prüfung; so ist Werkstatt 4 mit zwölf Teilnehmern bei einem Maximum
+von zehn entstanden. Eine harte Prüfung machte sie unspeicherbar, ohne dass
+jemand etwas an ihr geändert hätte. Deshalb: Ein Speichern, das die
+Teilnehmerzahl gleich lässt oder senkt, geht immer durch. Die Oberfläche zeigt
+den Verstoß an, ohne zu blockieren. „Alle hinzufügen" fügt höchstens bis zum
+Maximum hinzu und nennt, wie viele es ausgelassen hat.
