@@ -1758,3 +1758,61 @@ wie E36. Der Zweig, der alle Teilnehmer betrifft, braucht nichts: Er arbeitet
 und das ist nach derselben Messung die Zahl der **geänderten** Zeilen. Bei zwölf
 Teilnehmern, von denen zehn schon abgeschlossen waren, steht dort 2. Wer das als
 „zwölf markiert" liest, liest falsch.
+
+---
+
+## E54 — Das Entfernen eines Teilnehmers hinterlässt keine brauchbare Spur (09.09.2026)
+
+**Anlass:** Nach dem Auftrag zu E39 stimmten die Teilnehmerzahlen von Werkstatt
+4 nicht mehr: 12 auf 10. Aufgefallen ist es nur, weil eine Zahl vor und nach dem
+Auftrag verglichen wurde.
+
+**Befund:** Die Ursache war eine Testlöschung über den Bearbeiten-Screen. Das
+Verhalten aus E34 hat gegriffen — 228 minus 190 sind 38 Kompetenzzeilen, genau
+zweimal 19, und 12 minus 10 sind 2 Rückmeldungen. Mitgelöscht nach Rückfrage,
+wie beschlossen. Das ist der erste Fall, in dem E34 im Betrieb ausgelöst wurde,
+und es hat funktioniert.
+
+Was nicht funktioniert hat, ist die Spur. Der PUT protokolliert nur
+`audit(…, 'projekte', $id, 'UPDATE', null, ['name' => $name])`. Dass dabei zwei
+Teilnehmer samt 38 Kompetenzzeilen und 2 Rückmeldungen gelöscht wurden, steht
+nirgends. Rekonstruierbar war **wann** und **über welchen Weg**, nicht **was**.
+
+**Entscheidung:** Festgehalten, nicht behoben. Was protokolliert werden soll,
+ist eine eigene Entscheidung — sie betrifft nicht nur diesen Endpunkt, sondern
+die Frage, welche Wirkungen einer Änderung überhaupt festzuhalten sind.
+
+**Warum das zählt:** Bei einer Testlöschung ist es folgenlos. Im Betrieb ist es
+der Unterschied zwischen „wir wissen, was weg ist" und „wir wissen, dass etwas
+weg ist". E34 hat das Löschen ausdrücklich zugelassen, weil die Rückfrage den
+Schutz bildet — die Rückfrage sieht aber nur, wer sie beantwortet, und nur in
+dem Augenblick.
+
+**Gemeldet im selben Zug:** Der Zweig von `PUT /abschluss`, der alle Teilnehmer
+betrifft, gibt eine Zahl `aktualisiert` zurück. Das ist die Zahl der
+**geänderten** Zeilen (E52). Bei zehn Teilnehmern, von denen acht schon
+abgeschlossen waren, steht dort 2. Wer das als „zehn markiert" liest, liest
+falsch.
+
+---
+
+## E55 — `.komp-cb{display:none}` ist der Rest eines Selektors, der nie traf (09.09.2026)
+
+**Anlass:** Bei der Bestandsaufnahme der Kästchen gefunden.
+
+**Befund:** Die Regel in `frontend/style.css` verbirgt Elemente mit der Klasse
+`komp-cb`. Beide Kästchen mit dieser Klasse liegen in `.komp-pill`, und die
+Regel `.komp-pill input[type=checkbox]{display:none}` verbirgt sie bereits. Die
+Zeile ist wirkungslos.
+
+Sie stammt aus der Zeit vor E33 — dort suchte die Vorbelegung des
+Bearbeiten-Screens `#we-komp-bereich-list .komp-cb`, während
+`class="we-komp-cb"` gezeichnet wurde. Der Selektor traf drei Monate lang nicht
+und löschte bei jeder Bearbeitung die Kompetenzauswahl.
+
+**Entscheidung:** Gemeldet, nicht entfernt. Sie ist harmlos, und ihre Entfernung
+ist ein eigener Handgriff.
+
+**Warum sie trotzdem hier steht:** Eine tote Regel ist eine falsche Auskunft
+über den Bestand. Wer sie liest, nimmt an, es gebe Kästchen, die nur über diese
+Klasse verborgen werden — und richtet sich beim nächsten Anbau danach.
