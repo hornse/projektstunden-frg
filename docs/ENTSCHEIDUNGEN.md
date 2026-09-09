@@ -1373,3 +1373,35 @@ Schüler, davon 0 von Hand angelegt (alle mit `schild_id`), 0 mit einem Zeichen,
 das `clean()` verändert hätte, 0 mit einer bereits gespeicherten Entity; 12
 Klassen ebenso. Nach dem Umbau dieselben Zahlen. Eine Datenmigration war damit
 nicht nötig, und das ist nachgerechnet, nicht angenommen.
+
+---
+
+## E44 — Die Fehlerliste der Import-Vorschau ist kaputt, und ihre Behebung ist eine Falle (08.09.2026)
+
+**Anlass:** Beim Maskieren der Namensausgaben (E41) gefunden, nicht gesucht.
+
+**Befund:** Das Frontend liest bei den Fehlern der Import-Vorschau ein Feld
+`meldung`. Das Backend liefert an dieser Stelle `grund` und `daten`
+(`index.php:1902`). Das gelesene Feld ist damit immer undefiniert, und weil die
+Ausgabe auf das ganze Objekt zurückfällt, liest der Benutzer Zeilen der Form
+„12: [object Object]" statt einer Fehlerbeschreibung.
+
+Wer eine CSV-Datei mit fehlerhaften Zeilen hochlädt, erfährt also nicht, was an
+ihnen fehlerhaft ist.
+
+**Entscheidung:** Festgehalten, nicht behoben. Es ist ein Anzeigefehler, kein
+Sicherheitsloch, und er lag außerhalb des laufenden Auftrags.
+
+**Warum das trotzdem ins Protokoll gehört:** Die naheliegende Behebung ist eine
+Sicherheitslücke. `daten` enthält den rohen Inhalt der hochgeladenen Zeile. Wer
+nur den Feldnamen richtigstellt und den Wert wie bisher einbettet, stellt genau
+den Zustand wieder her, den E41 und E42 beseitigt haben — hochgeladener Inhalt,
+der ohne Umweg über die Datenbank als Markup ausgeführt wird.
+
+Der nächste Bearbeiter sieht „falscher Feldname" und hält es für eine
+Kleinigkeit. Deshalb steht es hier und nicht in einer Merkliste.
+
+**Was bei der Behebung gilt:** `grund` ist eine Meldung aus dem Programm und
+unbedenklich. `daten` stammt aus der hochgeladenen Datei und muss durch
+`escHtml` — oder gar nicht angezeigt werden. Die Prüfung aus E41 fängt den Fall
+nicht, weil `daten` kein Namensträger ist.
