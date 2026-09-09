@@ -1509,3 +1509,45 @@ Anfangsbuchstaben ein Leerzeichen: `I NTERKULTURELLE KOMMUNIKATIVE K OMPETENZ`,
 `T EXT - UND M EDIENKOMPETENZ`. Zwei Ersetzungen stellen alle zwölf
 Überschriften wieder her — Leerzeichen nach einem einzelnen Großbuchstaben
 tilgen, Leerzeichen vor `-`, `/` und `:` tilgen.
+
+---
+
+## E48 — Regel 6 zählt nur Belege mit kleingeschriebener rechter Hälfte (09.09.2026)
+
+**Anlass:** Die Auflage aus E45 — die drei vorhandenen Erzeuger mit der neuen
+Regel gegen die ausgelieferten Seeds halten — hat eine Abweichung gefunden.
+Regel 6 in der Fassung von E45 ändert `sql/11_seed_deutsch_sii.sql` an zwei
+Stellen: `Autorschaft` wird zu `Autor-schaft`, in `DE_QGK_UEB_REZ_08` und
+`DE_QLK_UEB_REZ_10`.
+
+**Befund:** Das ist nachweislich falsch, und es ist genau die Stelle, die der
+Nachtrag zu E22 einzeln abgesichert hat — dort wurde `Autorschaft` über den
+Entwurf vom 31.07.2025 belegt, wo derselbe Satz ungetrennt steht.
+
+Der Beleg, auf den Regel 6 sich stützte, ist `Autor-Rezipienten`: ein
+Substantiv-Substantiv-Kompositum mit großgeschriebener rechter Hälfte. Das ist
+eine andere Bauform als `Autor-schaft`. Bei Englisch dagegen ist der Beleg
+`kritisch-konstruktiv` — Adjektiv-Adjektiv, rechte Hälfte klein, dieselbe
+Bauform wie `kritisch-distanzierend`.
+
+**Entscheidung:** Regel 6 zählt nur Belege, deren rechte Hälfte
+kleingeschrieben ist.
+
+**Warum das keine Zurechtbiegung auf den Einzelfall ist:** Regel 5 entscheidet
+großgeschriebene Fortsetzungen bereits vollständig (E28). Regel 6 wird also nur
+für kleingeschriebene Fortsetzungen überhaupt befragt — dann darf sie sich auch
+nur auf Belege ihrer eigenen Bauform stützen. Ein Beleg mit großgeschriebener
+rechter Hälfte gehört zu einer Bauform, über die Regel 6 nie zu entscheiden hat.
+
+**Gemessen:** Unter der engen Fassung sind alle drei Seeds byteweise identisch
+mit den ausgelieferten. `kritisch-reflektiert` und `kritisch-distanzierend`
+werden weiterhin richtig entschieden, die übrigen 25 Regel-4-Fälle bei Englisch
+bleiben unberührt. Die Menge der belegten linken Hälften schrumpft bei Englisch
+von 18 auf 10; die zehn sind durchweg Adjektive und Adverbien — analytisch,
+darstellerisch, didaktisch, kreativ, kritisch, literarisch, respektvoll,
+sprachlich, tolerant, weltoffen.
+
+**Was das über das Verfahren sagt:** Die Auflage aus E45 war keine Formalie. Sie
+hat einen Fehler gefunden, der beim Formulieren der Regel entstanden ist und den
+kein Testlauf am neuen Fach gezeigt hätte — er lag in einem Fach, das seit Tagen
+ausgeliefert war.
