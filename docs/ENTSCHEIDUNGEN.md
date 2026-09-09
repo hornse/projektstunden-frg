@@ -1405,3 +1405,107 @@ Kleinigkeit. Deshalb steht es hier und nicht in einer Merkliste.
 unbedenklich. `daten` stammt aus der hochgeladenen Datei und muss durch
 `escHtml` — oder gar nicht angezeigt werden. Die Prüfung aus E41 fängt den Fall
 nicht, weil `daten` kein Namensträger ist.
+
+---
+
+## E45 — E22 bekommt eine sechste Regel: belegte linke Kompositumshälfte (09.09.2026)
+
+**Anlass:** Beim Englisch-Import fielen von 27 Trennstellen nach E22 Regel 4
+zwei falsch aus: `kritisch- / reflektiert` und `kritisch- / distanzierend`
+wurden zu `kritischreflektiert` und `kritischdistanzierend` aufgelöst.
+
+**Befund:** Regel 5 greift nicht, weil die Fortsetzung mit einem Kleinbuchstaben
+beginnt. Die Regeln 2 und 3 finden keinen Beleg, weil beide Wörter im Dokument
+nur an dieser einen, getrennten Stelle vorkommen. Der Beleg liegt aber im
+Dokument, nur an anderer Stelle: `kritisch-konstruktiv` steht dort ungetrennt.
+`kritisch-` ist damit als linke Hälfte eines echten Kompositums belegt.
+
+**Entscheidung:** E22 bekommt eine sechste Regel, eingeordnet **hinter Regel 3
+und vor Regel 5**: *Kommt die linke Hälfte im Dokument als linke Hälfte eines
+ungetrennt belegten Bindestrich-Kompositums vor, gilt der Bindestrich als echt.*
+
+**Warum diese Stellung:** Die Regel stützt sich auf einen Beleg im Dokument,
+wie die Regeln 2 und 3. Regel 5 ist eine orthografische Faustregel. Wo ein
+Beleg vorliegt, gilt der Beleg — das ist dieselbe Ordnung, die E28 für Regel 5
+festgelegt hat.
+
+**Auflagen:** Vor dem Einbau ist zu belegen, dass die übrigen 25 Regel-4-Fälle
+unberührt bleiben; die Zahl gehört in den Bericht. Und wie bei E28 sind die drei
+vorhandenen Erzeuger mit der neuen Regel laufen zu lassen und gegen die
+ausgelieferten Seeds zu halten. Erwartet ist keine Abweichung; kommt eine,
+anhalten statt ausliefern.
+
+**Was das nicht heißt:** Regel 4 bleibt der ungestützte Zweig. Ihre Fälle
+gehören weiterhin einzeln in den Bericht.
+
+---
+
+## E46 — Knotenmodell und Codeschema für Englisch (09.09.2026)
+
+**Anlass:** Englisch ist der erste Fachimport mit dritter Gliederungsebene.
+
+**Die Interkulturelle kommunikative Kompetenz hat drei Unterbereiche.** Die
+Sollzahlentabelle des Auftrags führte sie flach; `docs/curricula/STRUKTUR.md`
+und der Lehrplan gliedern sie in Soziokulturelles Orientierungswissen,
+Interkulturelle Einstellungen und Bewusstheit sowie Interkulturelles Verstehen
+und Handeln. Die Summen stimmen (6 / 7 / 7), die Gliederung nicht.
+
+**Entscheidung:** Die Ebene kommt mit. Damit 16 Blätter je Phase, zusammen
+**48**, nicht die im Auftrag angesagten 42.
+
+**Warum:** Nach E26 gilt bei Widerspruch zwischen Vorgabe und Quelle die Quelle.
+Ohne die Ebene hingen 20 Erwartungen an einem Knoten, der laut Lehrplan Kinder
+hat — ein Verstoß gegen E31.
+
+**Codeschema:** `EN_<Phase>_<Kompetenzbereich>[_<Unterbereich>]_<lfd>`, mit den
+Phasen EP / S1 / S2 wie bei Deutsch. Beispiele: `EN_EP_HOR_01`,
+`EN_S1_VSM_GRA_01`, `EN_S2_TMK_01`, `EN_EP_IKK_SOW_01`.
+
+Der Unterbereich steht nur, wo es einen gibt. Der Code ist damit unterschiedlich
+lang — er bildet den Baum ab, statt eine feste Tiefe zu behaupten, die es nicht
+gibt. Bei Englisch treten die sieben Teilbereiche der Funktionalen
+kommunikativen Kompetenz an die Stelle, an der bei Deutsch das Inhaltsfeld
+steht; `inhaltsfeld` kommt hier nicht vor.
+
+**`art`:** `kompetenzbereich`, `teilbereich`, `unterbereich`.
+
+**Was das nicht heißt:** Das Schema gilt für Englisch, Französisch und Spanisch,
+die dieselbe Gliederung führen. Für Fächer mit anderer Struktur ist es neu zu
+entscheiden.
+
+---
+
+## E47 — Zwei Eigenheiten des Englisch-Plans (09.09.2026)
+
+Festgehalten, weil sie für Französisch und Spanisch wiederkehren.
+
+**Zweispaltiger Satz, Trennung über Koordinaten.** `pdftotext -layout` taugt
+hier nicht: Der linke Block ist im Blocksatz gesetzt, die rechte Spalte beginnt
+je nach Zeile bei Zeichen 41, 45 oder 51. Ein Seitenzuschnitt über `-x/-y/-W/-H`
+taugt ebenfalls nicht, weil auf derselben Seite ein- und zweispaltige Blöcke
+stehen.
+
+Das Verfahren arbeitet mit `pdftotext -bbox-layout`: Zeilen aus den Wörtern über
+die Grundlinie neu bilden, Blöcke aus Markerzeile plus Fortsetzungen bilden, die
+Spaltenfrage **am Block** entscheiden — deckt eine Zeile des Blocks die Rinne
+zwischen 293 und 300 pt ab, ist der Block einspaltig —, und innerhalb
+zweispaltiger Blöcke am ersten Wort ab 300 pt mit mindestens 8 pt Abstand
+trennen.
+
+Belegt: 117 Trennungen, die rechte Hälfte beginnt ausnahmslos an einem der vier
+tatsächlichen Spaltenränder (302, 303, 320, 331), keine Ausreißer.
+
+Die Blockentscheidung ist nicht Formsache, sondern die Lehre aus einem
+Fehlschlag: Eine zeilenweise Entscheidung zog `nische Texte; Videoclips` aus der
+rechten Spalte in eine Kompetenzerwartung.
+
+**Grenzen:** Die Rinne ist gemessen, nicht allgemein — für jedes weitere Fach
+neu zu bestimmen. Ein einspaltiger Block, dessen Zeilen zufällig alle einen
+Wortzwischenraum auf der Rinne haben, würde zerschnitten; im Bestand tritt das
+nicht auf.
+
+**Kapitälchen kommen zerlegt an.** `pdftotext` setzt hinter jeden großen
+Anfangsbuchstaben ein Leerzeichen: `I NTERKULTURELLE KOMMUNIKATIVE K OMPETENZ`,
+`T EXT - UND M EDIENKOMPETENZ`. Zwei Ersetzungen stellen alle zwölf
+Überschriften wieder her — Leerzeichen nach einem einzelnen Großbuchstaben
+tilgen, Leerzeichen vor `-`, `/` und `:` tilgen.
