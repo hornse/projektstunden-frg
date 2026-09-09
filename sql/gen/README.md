@@ -127,6 +127,7 @@ Quelldatei (E19/E20).
 | `gen_deutsch_sii.py` | `sql/11_seed_deutsch_sii.sql` | `gost_klp_d_2026_08_24.pdf` |
 | `gen_sport_klp.py` | `sql/12_seed_sport_klp.sql` | `g9_sp_klp_3426_2019_06_23.pdf` |
 | `gen_deutsch_klp.py` | `sql/10_seed_deutsch_klp.sql` | `g9_d_klp_3409_2019_06_23.pdf` |
+| `gen_englisch_klp.py` | `sql/19_seed_englisch_klp.sql` | `g9_e_klp_3417_2019_06_23.pdf` |
 
 Damit führt **jede** Datei mit Fachdaten einen Quellennachweis; der Rückstand
 aus E21 ist erledigt. Das Testskript prüft beides: dass eine Quelle deklariert
@@ -161,6 +162,30 @@ oder einen **Vergleich** gefunden, nie durch Hinsehen:
 - **Der Wortlautvergleich gegen einen vorhandenen Bestand fängt alles davon.**
   Bei einem Fach ohne Vorgänger gibt es diesen Vergleich nicht — dort sind die
   Zeichenauszählung und die Aufteilung je Marker die einzige Absicherung.
+- **Zweispaltiger Satz** (E47). Die sechs Sprachpläne setzen den Kompetenzteil
+  zweispaltig: links die Erwartungen, rechts die fachlichen Konkretisierungen.
+  `pdftotext -layout` zieht beide in dieselbe Textzeile, und weil der linke
+  Block im Blocksatz steht, beginnt die rechte Spalte je nach Zeile bei
+  Zeichen 41, 45 oder 51 — eine feste Schnittstelle im Textbild gibt es nicht.
+  Ein Seitenzuschnitt über `-x/-y/-W/-H` scheitert daran, dass auf derselben
+  Seite ein- und zweispaltige Blöcke stehen.
+
+  Der Weg geht über `pdftotext -bbox-layout`: Zeilen aus den Wörtern über die
+  Grundlinie neu bilden, Blöcke aus Markerzeile plus Fortsetzungen bilden,
+  **die Spaltenfrage am Block entscheiden** und innerhalb zweispaltiger Blöcke
+  am ersten Wort ab der Spaltengrenze trennen. Die Rinne ist zu messen, nicht
+  zu übernehmen — bei Englisch liegt sie zwischen 293 und 300 pt.
+- **Zwei Marker für dieselbe Sache, unangekündigt.** Englisch führt 170 `à`
+  und 7 `•`; letztere nur in einem einzigen Abschnitt. Wer nur `à` kennt,
+  bekommt 170 und eine Summe, die stimmig aussieht. Die Aufteilung je Marker
+  gehört deshalb in die Sollzahlen (E28).
+- **Überschriften haben in einem Plan mehrere Formen.** Bei Englisch drei:
+  Kapitälchen, kurze Zeile mit Doppelpunkt, kurze Zeile ohne. Wer über die
+  Form entscheidet, verliert eine davon; wer über ein Verzeichnis der
+  erwarteten Namen entscheidet, bekommt beim Fehlen einen Abbruch statt einer
+  stillen Fehlzuordnung.
+- **Kapitälchen kommen zerlegt an** (E47): `I NTERKULTURELLE KOMMUNIKATIVE
+  K OMPETENZ`. Zwei Ersetzungen bauen sie zurück.
 
 Die Formregeln — Codeschema, Kürzungsgrenze, Sortierung, Behandlung des
 Schlusszeichens — werden aus dem Bestand rekonstruiert und gegen ihn geprüft,

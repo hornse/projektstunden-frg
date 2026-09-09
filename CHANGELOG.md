@@ -7,6 +7,28 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Englisch Sek I** (E46, E49) – `ENG_KLP` aus
+  `docs/curricula/g9_e_klp_3417_2019_06_23.pdf`: **177 Kompetenzerwartungen an
+  48 Blättern, 57 Knoten** (EP 53, S1 67, S2 57). Der Rahmen existierte bisher
+  gar nicht; der Seed legt ihn an.
+- **`sql/gen/gen_englisch_klp.py`** – erster Erzeuger mit **Spaltentrennung
+  über Koordinaten** (E47) und **drei Gliederungsebenen** (E46). Der Plan ist
+  zweispaltig gesetzt und führt zwei Aufzählungsmarker mit derselben
+  Bedeutung: 170× `à`, 7× `•`.
+- **`sql/19_seed_englisch_klp.sql`** – drei INSERTs auf `kompetenzbereiche`
+  statt der bisherigen zwei, weil der Baum hier drei Ebenen tief wird.
+- **E22 bekommt eine sechste Trennregel** (E45, E48): Ist die linke Hälfte im
+  Dokument als linke Hälfte eines ungetrennt belegten Bindestrich-Kompositums
+  mit **kleingeschriebener** rechter Hälfte belegt, bleibt der Bindestrich.
+  Sie greift bei Englisch zweimal (`kritisch-reflektiert`,
+  `kritisch-distanzierend`); die drei vorhandenen Seeds bleiben byteweise
+  unverändert.
+
+Prüfungszahl unverändert **66** – der Seed fällt unter die bestehenden
+Fachdatenprüfungen, die jetzt vier statt drei Erzeuger und fünf statt vier
+Dateien mit Fachdaten sehen.
+
 ### Sicherheit
 - **Namen werden bei der Ausgabe maskiert** (E41, E43). `schueler.vorname`,
   `nachname`, `klassen.bezeichnung` und `klassen.schuljahr` stehen roh in der

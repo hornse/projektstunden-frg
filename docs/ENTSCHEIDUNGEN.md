@@ -1551,3 +1551,43 @@ sprachlich, tolerant, weltoffen.
 hat einen Fehler gefunden, der beim Formulieren der Regel entstanden ist und den
 kein Testlauf am neuen Fach gezeigt hätte — er lag in einem Fach, das seit Tagen
 ausgeliefert war.
+
+---
+
+## E49 — Englisch Sek I ist eingespielt (09.09.2026)
+
+Abschlusseintrag nach REIHENREGELN 10, mit den gemessenen Zahlen.
+
+**177 Kompetenzerwartungen an 48 Blättern, 57 Knoten insgesamt.** Die
+Knotenzahl steht in keiner Vorgabe und ergibt sich aus dem Baum: je Phase ein
+Wurzelknoten für jeden der fünf Kompetenzbereiche, darunter sieben
+Teilbereiche unter der Funktionalen kommunikativen Kompetenz und drei
+Unterbereiche unter der Interkulturellen, dazu vier Unterbereiche unter
+„Verfügen über sprachliche Mittel" — 19 Knoten je Phase, davon 16 Blätter.
+
+Aufteilung: Erprobungsstufe 53, Erste Stufe 67, Zweite Stufe 57. Marker: 170
+`à` und 7 `•`. Alle Zahlen stimmen mit den unabhängig ausgezählten Sollwerten
+überein, bis auf die Blätterzahl, die der Auftrag mit 42 angab (E46).
+
+**Regel 6 hat im ganzen Plan genau zweimal gegriffen** —
+`kritisch-reflektiert` und `kritisch-distanzierend` —, Regel 4 fünfundzwanzigmal.
+Die drei vorhandenen Seeds bleiben unter der engen Fassung byteweise
+unverändert (E48).
+
+**Eine dritte Form der Überschrift**, die weder E46 noch E47 nennt: Die vier
+Unterbereiche von „Verfügen über sprachliche Mittel" stehen als kurze Zeile am
+linken Rand **ohne** Doppelpunkt (`Wortschatz`, `Grammatik`, `Aussprache und
+Intonation`, `Orthografie`), während die drei der Interkulturellen Kompetenz
+einen tragen und die Kompetenzbereiche in Kapitälchen stehen. Der Erzeuger
+entscheidet deshalb nicht über die Form, sondern über das Verzeichnis: Steht
+der Text dort, ist es eine Überschrift. Das ist zugleich die Absicherung
+dagegen, dass eine unbekannte Überschrift stillschweigend als Fließtext
+durchgeht — sie führte zum Abbruch „Erwartung ohne Blatt", und genau so ist
+diese Form gefunden worden.
+
+**Was das nicht heißt:** Das Codeschema lässt die Funktionale kommunikative
+Kompetenz im Code aus (`EN_EP_HOR_01`, nicht `EN_EP_FKK_HOR_01`), behält aber
+die Interkulturelle (`EN_EP_IKK_SOW_01`). Das folgt den Beispielen aus E46 und
+ist eine Festlegung, keine Ableitung: FKK ist die Klammer über sieben
+Teilbereiche, deren Kürzel schon für sich eindeutig sind; IKK trägt drei
+Unterbereiche, deren Kürzel es ohne den Bereich nicht wären.

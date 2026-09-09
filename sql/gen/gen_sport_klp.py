@@ -171,6 +171,30 @@ def baue_wortschatz(zeilen) -> collections.Counter:
     return schatz
 
 
+def linke_kompositumshaelften(schatz) -> frozenset:
+    """E45: linke Haelften der im Dokument ungetrennt belegten
+    Bindestrich-Komposita. `kritisch-konstruktiv` belegt `kritisch`.
+
+    Am Zeilenende getrennte Woerter geraten nicht hinein: Dort steht der
+    Bindestrich am Schluss, und WORT verlangt hinter ihm einen Buchstaben.
+
+    NUR Belege mit KLEIN geschriebener rechter Haelfte zaehlen. Ein
+    grossgeschriebener rechter Teil gehoert zu einer anderen Bauform: Bei
+    Deutsch GOSt belegt `Autor-Rezipienten` sonst `Autor-`, und aus dem
+    belegten `Autorschaft` wuerde `Autor-schaft`. Regel 5 entscheidet
+    grossgeschriebene Fortsetzungen ohnehin schon -- Regel 6 braucht deshalb
+    nur Belege ihrer eigenen Bauform.
+    """
+    aus = set()
+    for wort in schatz:
+        if "-" not in wort:
+            continue
+        links_, rechts_ = wort.split("-", 1)
+        if rechts_[:1].islower():
+            aus.add(links_)
+    return frozenset(aus)
+
+
 # ---------------------------------------------------------------------------
 # 3 -- Aufbau des Kompetenzteils
 # ---------------------------------------------------------------------------
@@ -264,7 +288,7 @@ def sammle_eintraege(zeilen):
 # ---------------------------------------------------------------------------
 # 4 -- Zeilen zusammenfuegen, Silbentrennung nach E22
 # ---------------------------------------------------------------------------
-def fuege_zusammen(rohzeilen, schatz, zeilennr, protokoll):
+def fuege_zusammen(rohzeilen, schatz, zeilennr, protokoll, linke_haelften=frozenset()):
     text = ""
     for stelle, zeile in enumerate(rohzeilen):
         if stelle == 0:
@@ -291,6 +315,17 @@ def fuege_zusammen(rohzeilen, schatz, zeilennr, protokoll):
         elif mit_strich > 0 and verschmolzen > 0:
             text = text[:-1] + zeile
             grund = "beide Formen belegt -- aufgeloest"
+        elif anfang in linke_haelften:                          # Regel 6 (E45)
+            # Die linke Haelfte ist im Dokument als linke Haelfte eines
+            # ungetrennt belegten Bindestrich-Kompositums belegt -- etwa
+            # `kritisch-` durch `kritisch-konstruktiv`. Dann ist der
+            # Bindestrich hier echt.
+            #
+            # Die Regel steht HINTER 2 und 3, weil sie sich wie diese auf
+            # einen Beleg im Dokument stuetzt, und VOR 5, weil ein Beleg mehr
+            # wiegt als eine orthografische Faustregel (E45).
+            text += zeile
+            grund = "Regel 6 (belegte linke Kompositumshaelfte)"
         elif folge[:1].isupper():                               # Regel 5 (E28)
             # Eine Silbentrennung fuehrt nie zu einem Grossbuchstaben; ein
             # Bindestrich davor ist ein Kompositum-Bindestrich. Die Regel steht
@@ -465,11 +500,13 @@ def main():
     pdf = WURZEL / QUELLE
     zeilen = lies_pdf_als_text(pdf)
     schatz = baue_wortschatz(zeilen)
+    linke_haelften = linke_kompositumshaelften(schatz)
     eintraege = sammle_eintraege(zeilen)
 
     protokoll = []
     for eintrag in eintraege:
-        roh = fuege_zusammen(eintrag["zeilen"], schatz, eintrag["zeilennr"], protokoll)
+        roh = fuege_zusammen(eintrag["zeilen"], schatz, eintrag["zeilennr"],
+                               protokoll, linke_haelften)
         # Der Bestand fuehrt weder Schlusskomma noch Schlusspunkt -- alle 120
         # Eintraege enden auf einen Buchstaben. Anders als bei Deutsch GOSt,
         # wo der Punkt stehen bleibt.
