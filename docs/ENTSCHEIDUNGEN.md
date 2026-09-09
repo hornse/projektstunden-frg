@@ -1329,7 +1329,7 @@ und gehört in einen eigenen Vorgang.
 `// keine-maskierung: <Grund>` beschrieben, also als Zeilenkommentar. Das geht
 nicht.
 
-**Befund:** Von den 27 Zeilen, die bewusst roh bleiben, stehen **15 innerhalb
+**Befund:** Von den 26 Zeilen, die bewusst roh bleiben, stehen **15 innerhalb
 einer Vorlagenzeichenkette**. Ein `//` ist dort kein Kommentar, sondern Text —
 er landete in der ausgelieferten Seite. Ein Blockkommentar **innerhalb der
 Einbettung** funktioniert dagegen in beiden Zusammenhängen und erzeugt nichts:
@@ -1355,8 +1355,8 @@ auf — geprüft, nicht angenommen —, aber er ist möglich.
 | | |
 |---|---|
 | Einbettungen mit Namensträger insgesamt | 88 auf 50 Zeilen |
-| davon maskiert | 45 auf 23 Zeilen |
-| davon begründet roh | 43 auf 27 Zeilen |
+| davon maskiert | 46 auf 24 Zeilen |
+| davon begründet roh | 42 auf 26 Zeilen |
 
 Der Auftrag ging von „rund 26 Stellen" aus. Das war eine Zeilenzahl über zwei
 der vier Feldnamen. Die Lücke lag woanders: **Die API liefert

@@ -11,8 +11,8 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 - **Namen werden bei der Ausgabe maskiert** (E41, E43). `schueler.vorname`,
   `nachname`, `klassen.bezeichnung` und `klassen.schuljahr` stehen roh in der
   Datenbank – Import und WebUntis-Selbstanlage schreiben ohne `clean()` – und
-  wurden roh in `innerHTML` eingesetzt. 45 Einbettungen laufen jetzt durch
-  `escHtml`.
+  wurden roh in `innerHTML` eingesetzt. 46 Einbettungen laufen jetzt durch
+  `escHtml` (46 auf 24 Zeilen).
 - **Zuerst die Import-Vorschau** (E42): Sie zeigte Namen direkt aus der
   hochgeladenen Datei, ohne Umweg über die Datenbank. Wer eine Datei hochlud,
   sah ihren Inhalt sofort als lebendes Markup – vor jedem Import.
@@ -21,7 +21,7 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
   Hand angelegte Personen `O&#039;Brien`. Keine Datenmigration nötig: 0 von 299
   Namen und 0 von 12 Klassenbezeichnungen enthalten ein betroffenes Zeichen –
   vor und nach dem Umbau belegt.
-- **43 Einbettungen bleiben bewusst roh** und tragen den Grund an Ort und
+- **42 Einbettungen bleiben bewusst roh** und tragen den Grund an Ort und
   Stelle: `${/* keine-maskierung: … */ …}`. Sie stammen aus `benutzer` und
   `schuljahre`, wo beim Schreiben maskiert wird, oder ihre Senke ist gar kein
   HTML.
