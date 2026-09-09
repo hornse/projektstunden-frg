@@ -934,6 +934,56 @@ else
 fi
 
 echo ""
+echo "Kaestchen"
+# ------------------------------------------------------------------
+# `input,select,textarea{width:100%}` gilt fuer `input` ohne Ansehen des Typs
+# und macht aus einem Kaestchen einen Balken -- in der Rueckmeldungsansicht
+# 348 statt 13 Pixel, gemessen. Zwei Stellen hatten das von Hand mit
+# `width:16px` im style-Attribut ausgeglichen; die Regel loest beides ab.
+#
+# Zwei Haelften, eine Pruefung: Die Regel muss es geben, UND kein Kaestchen
+# darf eine eigene Breite tragen. Die zweite Haelfte ist die tragende -- sie
+# ist es, die die Regel zur einzigen Wahrheit macht. Eine Pruefung nur auf
+# "die Regel gibt es" ginge gruen, waehrend daneben drei Einzelangaben
+# stehen.
+#
+# Gesucht wird im ganzen Verzeichnis `frontend/`, nicht in den zwei Dateien,
+# in denen die Kaestchen heute stehen (REIHENREGELN 2, v1.9.0). Das vendorte
+# Modul fuehrt keine Kaestchenregel -- nachgesehen, nicht angenommen.
+#
+# Der Ausdruck laeuft ueber das CSS OHNE Kommentare: Der Kommentar an der
+# Regel nennt `width:16px;height:16px` als Zitat der alten Einzelangaben und
+# wuerde sonst selbst als Fund gelten.
+# ------------------------------------------------------------------
+if [ ! -f "$CSS" ]; then
+    rot "$CSS fehlt – Voraussetzung der Kaestchenpruefung"
+else
+    CSS_OHNE=$(perl -0777 -pe 's{/\*.*?\*/}{}gs' "$CSS")
+    REGEL=$(printf '%s' "$CSS_OHNE" | grep -c 'input\[type=checkbox\][^{]*{[^}]*width:' || true)
+    # Ausdruecklich nach der falschen Fassung suchen, nicht nur nach der
+    # richtigen (REIHENREGELN 2): `input[type=checkbox]{width:100%}` wuerde
+    # die erste Haelfte erfuellen und den Fehler wieder einbauen.
+    FALSCH=$(printf '%s' "$CSS_OHNE" | grep -c 'input\[type=checkbox\][^{]*{[^}]*width:[[:space:]]*100%' || true)
+    # Kaestchen und Radios mit eigener Breite, im ganzen frontend/
+    EIGEN=$(find frontend -type f \( -name '*.html' -o -name '*.js' \) -print0 \
+            | xargs -0 perl -0777 -ne '
+                while (/<input[^>]*type=["\x27]?(?:checkbox|radio)[^>]*>/gs) {
+                    my $t = $&;
+                    print "$ARGV\n" if $t =~ /width\s*:/;
+                }' | sort -u)
+    ANZ_EIGEN=$(printf '%s' "$EIGEN" | grep -c . || true)
+    if [ "$REGEL" -eq 0 ]; then
+        rot "keine Regel input[type=checkbox]{…width…} in $CSS – Kaestchen erben width:100%"
+    elif [ "$FALSCH" -gt 0 ]; then
+        rot "die Kaestchenregel setzt selbst width:100% – der Fehler ist zurueck"
+    elif [ "$ANZ_EIGEN" -gt 0 ]; then
+        rot "Kaestchen mit eigener Breite in: $(printf '%s' "$EIGEN" | tr '\n' ' ')"
+    else
+        gruen "Kaestchen: eine Regel im CSS, keine Einzelangabe im Bestand"
+    fi
+fi
+
+echo ""
 GESAMT=$((GRUEN + FEHLER))
 echo "$GRUEN/$GESAMT bestanden, $FEHLER rot"
 if [ "$FEHLER" -eq 0 ]; then echo "ALLES GRÜN"; exit 0; fi

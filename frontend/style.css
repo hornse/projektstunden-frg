@@ -103,6 +103,27 @@ h2{font-size:15px;font-weight:500;margin-bottom:12px}
 label{font-size:12px;color:var(--text2);display:block;margin-bottom:4px;margin-top:12px;font-weight:500}
 label:first-child{margin-top:0}
 input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);font-size:13px;font-family:var(--ci-schrift);outline:none;transition:border .15s}
+/* Kästchen sind keine Eingabefelder.
+
+   Die Regel darüber gilt für `input` ohne Ansehen des Typs -- also auch für
+   Kästchen und Radioknöpfe. `width:100%` macht aus einem Kästchen einen
+   Balken: In der Rückmeldungsansicht wurde das Kästchen "Sofort für Schüler
+   sichtbar" 348 statt 13 Pixel breit (in Chrome gemessen, nicht geschätzt)
+   und schob seine Beschriftung an den Kartenrand.
+
+   16px ist keine neue Festlegung, sondern die, die das Projekt an zwei
+   Stellen von Hand getroffen hatte -- im Details-Modal und in der
+   Empfängerliste stand dort `width:16px;height:16px` im style-Attribut. Die
+   beiden Angaben sind mit dieser Regel entfallen; sie sagten dasselbe, nur
+   dreimal. Ohne Angabe wäre ein Kästchen 13px breit; 16 ist die Größe, die
+   im Bestand schon sichtbar war.
+
+   `padding:0` ist heute wirkungslos: Solange `appearance:auto` gilt, ignoriert
+   die Darstellung jede Polsterung -- auch mit `!important`, gemessen. Die
+   Angabe steht als Schutz für den Tag, an dem jemand `appearance:none` setzt,
+   um Kästchen selbst zu zeichnen; dann gälte `padding:8px 10px` von oben
+   plötzlich doch. */
+input[type=checkbox],input[type=radio]{width:16px;height:16px;padding:0;flex-shrink:0;cursor:pointer}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);background:var(--surface)}
 textarea{resize:vertical;min-height:66px}
 select[multiple]{height:100px}

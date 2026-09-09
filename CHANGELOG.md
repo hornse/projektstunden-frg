@@ -8,6 +8,20 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 ## [Unreleased]
 
 ### Behoben
+- **Kästchen erbten `width:100%` von der Eingabefeld-Regel** und wurden zu
+  Balken. In der Rückmeldungsansicht war „Sofort für Schüler sichtbar"
+  **348 statt 16 Pixel breit** (in Chrome gemessen) und schob seine
+  Beschriftung an den Kartenrand, wo sie umbrach. Eine Regel
+  `input[type=checkbox],input[type=radio]{width:16px;height:16px;padding:0;flex-shrink:0;cursor:pointer}`
+  steht jetzt direkt unter der Regel, die sie berichtigt.
+- **Zwei Einzelangaben in `app.js` sind entfallen** – im Details-Modal und in
+  der Empfängerliste stand `width:16px;height:16px` im `style`-Attribut, um
+  denselben Fehler von Hand auszugleichen. Beide rendern unverändert 16px.
+- **Prüfung „Kaestchen"** – die Regel muss es geben, sie darf **nicht** selbst
+  `width:100%` setzen, und kein Kästchen im ganzen `frontend/` darf eine
+  eigene Breite tragen. **68 → 69 Prüfungen.**
+
+### Behoben (vorheriger Vorgang)
 - **Das Details-Modal listete alle Schüler aller zugeordneten Klassen** (E39,
   E53). Bei Werkstatt 4 waren das 189 Namen für 12 Teilnehmer, insgesamt
   **323 Namen für 23 Teilnehmer**. Nicht-Teilnehmer sahen aus wie Teilnehmer

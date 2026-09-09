@@ -898,8 +898,7 @@ function renderWerkstattDetail(p, schueler) {
     <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
       <input type="checkbox" id="abs-${s.id}"
              ${s.abgeschlossen ? 'checked' : ''}
-             onchange="toggleAbschluss(${p.id}, ${s.id}, this.checked)"
-             style="flex-shrink:0;width:16px;height:16px;cursor:pointer">
+             onchange="toggleAbschluss(${p.id}, ${s.id}, this.checked)">
       <label for="abs-${s.id}" style="flex:1;cursor:pointer;font-size:13px;line-height:1.4">
         ${escHtml(s.nachname)}, ${escHtml(s.vorname)}
         <span style="color:var(--text3);font-size:11px">(${escHtml(s.klasse)})</span>
@@ -2397,7 +2396,7 @@ function fuelleEmpfaengerliste(schueler) {
     empfEl.innerHTML = schueler.map(s => `
       <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
         <input type="checkbox" class="bew-emp-cb" value="${s.id}"
-               id="be-${s.id}" style="flex-shrink:0;width:16px;height:16px;cursor:pointer">
+               id="be-${s.id}">
         <label for="be-${s.id}" style="flex:1;cursor:pointer;font-size:13px">
           ${escHtml(s.nachname)}, ${escHtml(s.vorname)}
         </label>
