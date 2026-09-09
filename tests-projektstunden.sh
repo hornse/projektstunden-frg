@@ -10,6 +10,56 @@ set -uo pipefail
 export LC_ALL=C
 cd "$(dirname "$0")"
 
+# ============================================================
+# Protokoll: der vollstaendige Lauf landet in einer Datei
+#
+# Anlass: Ein roter Lauf wurde durch `tail -3` geschickt; die rote Zeile stand
+# oberhalb des Fensters, und danach liess sich der Lauf nicht mehr herstellen.
+# Welche Pruefung gefallen war, blieb unbekannt (REIHENREGELN 2).
+#
+# Zwei Dateien, aus zwei verschiedenen Gruenden:
+#
+#   logs/pruefung-letzter.txt         jeder Lauf, wird ueberschrieben
+#   logs/pruefung-rot-<Zeitstempel>   NUR ein roter Lauf, wird nie ueberschrieben
+#
+# Warum nicht jeder Lauf mit Zeitstempel: Dann liegen nach einer Woche
+# hunderte gruene Protokolle da, die niemand liest, und das eine rote ist
+# schwerer zu finden, nicht leichter. Gruen ist der Normalfall und interessiert
+# nur bis zum naechsten Lauf; rot ist die Ausnahme und muss jeden spaeteren
+# Lauf ueberleben. Genau das war der Fall von heute: ein roter Lauf, dem 28
+# gruene folgten -- unter einem festen Namen waere der Beleg beim zweiten Lauf
+# weg gewesen.
+#
+# Umgesetzt ueber einen Selbstaufruf statt `exec > >(tee …)`: Bei der
+# Prozessersetzung wartet die Shell nicht auf `tee`, die letzten Zeilen koennen
+# beim Beenden fehlen. Eine gewoehnliche Pipe hat das Problem nicht, und
+# PIPESTATUS liefert den Exit-Code des Skripts.
+# ============================================================
+if [ -z "${PRUEF_INNEN:-}" ]; then
+    mkdir -p logs
+    PROTOKOLL="logs/pruefung-letzter.txt"
+    PRUEF_INNEN=1 "$0" "$@" 2>&1 | tee "$PROTOKOLL"
+    ERGEBNIS=${PIPESTATUS[0]}
+    ROTE=$(grep "✗" "$PROTOKOLL" || true)
+    if [ -n "$ROTE" ]; then
+        ROTDATEI="logs/pruefung-rot-$(date +%Y%m%d-%H%M%S).txt"
+        cp "$PROTOKOLL" "$ROTDATEI"
+        # Die roten Zeilen noch einmal ans Ende, damit sie auch in einem
+        # `tail -5` stehen. Der Pfad kommt zuletzt: Er ist die Schlusszeile,
+        # und er fuehrt zum vollstaendigen Lauf, wenn mehr rote Zeilen da
+        # sind, als in das Fenster passen.
+        {
+            echo ""
+            echo "ROT – die gefallenen Prüfungen noch einmal:"
+            printf '%s\n' "$ROTE"
+            echo "Vollständiger Lauf: $ROTDATEI"
+        } | tee -a "$PROTOKOLL" "$ROTDATEI"
+    else
+        echo "Vollständiger Lauf: $PROTOKOLL" | tee -a "$PROTOKOLL"
+    fi
+    exit "$ERGEBNIS"
+fi
+
 FEHLER=0
 GRUEN=0
 gruen() { echo "  ✓ $1"; GRUEN=$((GRUEN + 1)); }
@@ -809,6 +859,77 @@ else
     else
         rot "$NAMEN_OFFEN von $NAMEN_GESAMT Namenseinbettungen weder maskiert noch begruendet:"
         printf '%s\n' "$NAMEN_BERICHT" | grep -v '^ZAHLEN'
+    fi
+fi
+
+echo ""
+echo "Wer gehoert zur Werkstatt"
+# ------------------------------------------------------------------
+# E39: `projekt_schueler` ist die Antwort. `projekt_klassen` sagt, woher
+# Kandidaten kommen, `projekt_schueler_kompetenzen`, was zugewiesen ist --
+# keines von beiden sagt, wer dabei ist.
+#
+# Beide Pruefungen arbeiten auf dem Quelltext OHNE Kommentare: Die Regel ist
+# in denselben Dateien in Prosa erklaert, samt ihrer Stichwoerter
+# (REIHENREGELN 2).
+#
+# Sie lesen je EINE Datei, und das ist hier richtig: Den Endpunkt gibt es nur
+# in backend/api/index.php, die Bewertungsansicht nur in frontend/app.js.
+# Gesagt sei es trotzdem -- eine bestandene Pruefung verraet nicht, wo sie
+# hingesehen hat (REIHENREGELN 2).
+# ------------------------------------------------------------------
+API=backend/api/index.php
+if [ ! -f "$API" ]; then
+    rot "$API fehlt – Voraussetzung der Abschlusspruefung"
+else
+    # Nur der Einzelschueler-Zweig. Der `alle`-Zweig darueber schreibt
+    # ebenfalls in projekt_schueler und wuerde jede Reihenfolgemessung
+    # verfaelschen.
+    ABS_ZWEIG=$(awk "/if \\(\\\$method === 'PUT' && \\\$sub === 'abschluss'\\)/,/Unbekannte Werkstatt-Aktion/" "$API" \
+                | perl -0777 -pe 's{/\*.*?\*/}{}gs' | grep -v '^[[:space:]]*//')
+    P_START=$(printf '%s\n' "$ABS_ZWEIG" | grep -n "body\['schueler_id'\]" | head -1 | cut -d: -f1)
+    if [ -z "$P_START" ]; then
+        rot "Einzelschueler-Zweig von PUT /abschluss nicht gefunden"
+    else
+        P_CHK=$(printf '%s\n' "$ABS_ZWEIG" | grep -n "FROM projekt_schueler" | awk -F: -v a="$P_START" '$1>a{print $1; exit}')
+        P_ERR=$(printf '%s\n' "$ABS_ZWEIG" | grep -n "json_error" | awk -F: -v a="${P_CHK:-0}" '$1>a{print $1; exit}')
+        P_UPD=$(printf '%s\n' "$ABS_ZWEIG" | grep -n "UPDATE projekt_schueler" | awk -F: -v a="$P_START" '$1>a{print $1; exit}')
+        P_WAECHTER=$(printf '%s' "$ABS_ZWEIG" | grep -c 'if (!$chk->fetch())' || true)
+        if [ -z "$P_CHK" ] || [ -z "$P_ERR" ] || [ -z "$P_UPD" ]; then
+            rot "PUT /abschluss: Abfrage, Abbruch oder UPDATE nicht gefunden"
+        elif [ "$P_WAECHTER" -eq 0 ]; then
+            rot "PUT /abschluss: die Waechterbedingung auf \$chk fehlt"
+        elif [ "$P_CHK" -lt "$P_ERR" ] && [ "$P_ERR" -lt "$P_UPD" ]; then
+            gruen "PUT /abschluss prueft die Teilnahme vor dem Schreiben"
+        else
+            rot "PUT /abschluss prueft nicht vor dem Schreiben (Abfrage=$P_CHK, Abbruch=$P_ERR, UPDATE=$P_UPD)"
+        fi
+    fi
+fi
+
+# Die Bewertungstabelle nimmt ihre ZEILEN aus den Teilnehmern, nicht aus den
+# Bewertungszeilen. Der tragende Teil ist, dass `schuelerMap` verschwunden
+# ist: Solange die Schueler aus `bewertungen` zusammengesucht werden, fehlt
+# jeder Teilnehmer ohne zugewiesene Kompetenz -- und ist damit weder
+# bewertbar noch Empfaenger einer Rueckmeldung.
+if [ ! -f "$JS" ]; then
+    rot "$JS fehlt – Voraussetzung der Bewertungstabellenpruefung"
+else
+    BEW_FKT=$(awk '/^async function ladeBewertungTabelle\(/{an=1} an{print} an&&/^}/{exit}' "$JS" \
+              | perl -0777 -pe 's{/\*.*?\*/}{}gs' | grep -v '^[[:space:]]*//')
+    if [ -z "$BEW_FKT" ]; then
+        rot "ladeBewertungTabelle nicht gefunden"
+    else
+        B_HOLT=$(printf '%s' "$BEW_FKT" | grep -c 'werkstatt/${projekt_id}/schueler' || true)
+        B_ZEILEN=$(printf '%s' "$BEW_FKT" | grep -c 'teilnehmer || \[\]' || true)
+        B_ALT=$(printf '%s' "$BEW_FKT" | grep -c 'schuelerMap' || true)
+        if [ "$B_ALT" -gt 0 ]; then
+            rot "Bewertungstabelle sammelt die Schueler noch aus den Bewertungszeilen (schuelerMap)"
+        elif [ "$B_HOLT" -gt 0 ] && [ "$B_ZEILEN" -gt 0 ]; then
+            gruen "Bewertungstabelle nimmt ihre Zeilen aus den Teilnehmern"
+        else
+            rot "Bewertungstabelle liest die Teilnehmer nicht (holt=$B_HOLT, Zeilen=$B_ZEILEN)"
+        fi
     fi
 fi
 

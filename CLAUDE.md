@@ -126,6 +126,22 @@ und gibt am Ende die Zahl der bestandenen Prüfungen aus. Diese Zahl gehört in
 die Commit-Meldung: Bleibt sie nach einer Erweiterung gleich oder sinkt sie,
 ist etwas verlorengegangen (REIHENREGELN 2).
 
+**Der vollständige Lauf steht danach in einer Datei**, und ihr Pfad ist die
+letzte ausgegebene Zeile:
+
+| | |
+|---|---|
+| `logs/pruefung-letzter.txt` | jeder Lauf, wird vom nächsten überschrieben |
+| `logs/pruefung-rot-<Zeitstempel>.txt` | **nur** ein roter Lauf, wird nie überschrieben |
+
+Bei Rot stehen die gefallenen Prüfungen zusätzlich noch einmal am Ende, damit
+sie auch in einem `tail -5` sichtbar sind. **Eine gekürzte Ausgabe kann den
+Beleg damit nicht mehr verlieren** — genau das ist am 09.09.2026 passiert: Ein
+roter Lauf ging durch `tail -3`, die rote Zeile lag oberhalb des Fensters, und
+28 grüne Läufe später war nicht mehr feststellbar, welche Prüfung gefallen war.
+
+`logs/` steht in `.gitignore`.
+
 ## Was nicht in git gehört
 
 `backend/config.php` steht in `.gitignore` und enthält das Datenbankpasswort

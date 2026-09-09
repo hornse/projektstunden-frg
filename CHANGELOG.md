@@ -7,7 +7,41 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 
 ## [Unreleased]
 
+### Behoben
+- **Das Details-Modal listete alle Schüler aller zugeordneten Klassen** (E39,
+  E53). Bei Werkstatt 4 waren das 189 Namen für 12 Teilnehmer, insgesamt
+  **323 Namen für 23 Teilnehmer**. Nicht-Teilnehmer sahen aus wie Teilnehmer
+  ohne Abschlussvermerk. `GET /api/werkstatt/{id}/schueler` liefert jetzt die
+  Teilnehmer.
+- **Ein Haken bei einem Nicht-Teilnehmer meldete Erfolg und tat nichts.**
+  `PUT /api/werkstatt/{id}/abschluss` war ein reines `UPDATE` ohne `INSERT`.
+  Jetzt wird die Teilnahme vorher geprüft und mit Nennung der ID abgewiesen –
+  **nicht** über `rowCount()`, das „kein Teilnehmer" und „Wert unverändert"
+  nicht unterscheidet.
+- **Die Bewertungstabelle zeigte keinen Teilnehmer ohne zugewiesene
+  Kompetenz.** Ihre Zeilen kamen aus `projekt_schueler_kompetenzen`; wer dort
+  fehlte, war nicht bewertbar und bekam keine Rückmeldung. Zeilen kommen jetzt
+  aus `projekt_schueler`, Spalten weiterhin aus den zugewiesenen Kompetenzen.
+- **Die Empfängerliste für Rückmeldungen behielt die Namen der zuvor
+  gewählten Werkstatt**, wenn die neue keine Kompetenzzeilen hatte. Sie wird
+  jetzt in jedem Fall gesetzt, auch auf leer.
+- **Zwei verschiedene Hinweise** statt einem: „keine Teilnehmer" und „keine
+  Kompetenzen zugewiesen". Werkstatt 5 bekam bisher den falschen.
+
 ### Hinzugefügt
+- **`tests-projektstunden.sh` hält seinen Lauf selbst fest.** Der vollständige
+  Lauf steht in `logs/pruefung-letzter.txt`, dessen Pfad die letzte Zeile
+  nennt; ein **roter** Lauf wird zusätzlich unter
+  `logs/pruefung-rot-<Zeitstempel>.txt` abgelegt und von keinem späteren Lauf
+  überschrieben. Bei Rot stehen die gefallenen Prüfungen noch einmal am Ende,
+  damit ein `tail -5` sie zeigt. Anlass: Ein roter Lauf ging durch `tail -3`,
+  die rote Zeile lag oberhalb des Fensters, und 28 grüne Läufe später war
+  nicht mehr feststellbar, welche Prüfung gefallen war.
+- **Rubrik „Wer gehoert zur Werkstatt" in `tests-projektstunden.sh`** – zwei
+  Prüfungen: `PUT /abschluss` prüft die Teilnahme **vor** dem Schreiben
+  (Reihenfolge gemessen, nicht Vorkommen), und die Bewertungstabelle nimmt
+  ihre Zeilen aus den Teilnehmern (tragend: `schuelerMap` ist verschwunden).
+  **66 → 68 Prüfungen.**
 - **Englisch Sek I** (E46, E49) – `ENG_KLP` aus
   `docs/curricula/g9_e_klp_3417_2019_06_23.pdf`: **177 Kompetenzerwartungen an
   48 Blättern, 57 Knoten** (EP 53, S1 67, S2 57). Der Rahmen existierte bisher

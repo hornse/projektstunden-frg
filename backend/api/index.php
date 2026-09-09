@@ -2195,39 +2195,40 @@ function handle_werkstatt(string $method, ?int $id, string $sub, array $body): v
     }
 
     // ----- GET /api/werkstatt/{id}/schueler -----
-    // Alle Schüler der zugeordneten Klassen laden (für Teilnehmer-Auswahl)
+    // Die Teilnehmer der Werkstatt.
     if ($method === 'GET' && $sub === 'schueler') {
-        // Zwei Quellen, vereinigt (E38): die Schüler der zugeordneten Klassen
-        // UND die tatsächlichen Teilnehmer.
+        // `projekt_schueler` ist die Antwort auf "wer gehört zur Werkstatt"
+        // (E39). `projekt_klassen` sagt, WOHER Kandidaten kommen, und
+        // `projekt_schueler_kompetenzen`, WAS der Werkstatt zugewiesen ist --
+        // keines von beiden sagt, wer dabei ist.
         //
-        // Ohne den zweiten Zweig verschwände ein Teilnehmer aus dem
-        // Details-Modal, sobald seine Klasse nicht mehr zugeordnet ist --
-        // seine Zeile bliebe, die Stundenanrechnung liefe weiter, nur
-        // bedienen könnte ihn niemand mehr. Dasselbe gilt nach einem
-        // Klassenwechsel des Schülers.
+        // Vorher ging die Abfrage von den zugeordneten Klassen aus und
+        // vereinigte die Teilnehmer dazu. Das Details-Modal listete damit
+        // alle Schüler aller zugeordneten Klassen: bei Werkstatt 4
+        // 189 Namen für 12 Teilnehmer, insgesamt 323 Namen für 23 Teilnehmer.
+        // Nicht-Teilnehmer sahen aus wie Teilnehmer ohne Abschlussvermerk.
+        //
+        // Die Vereinigung aus E38 entfällt damit, ihre Zusicherung wird aber
+        // STÄRKER, nicht schwächer: Ein Teilnehmer, dessen Klasse nicht mehr
+        // zugeordnet ist, kann hier gar nicht mehr fehlen -- seine Klasse
+        // kommt aus `schueler.klasse_id`, nicht aus `projekt_klassen`.
+        // Die Vereinigung im Bearbeiten-Screen (loadSchuelerForWerkstattEdit)
+        // bleibt unangetastet; dort werden Kandidaten gebraucht, nicht
+        // Teilnehmer.
+        //
+        // `abgeschlossen` ist damit nie mehr NULL: aus dem LEFT JOIN wird ein
+        // JOIN, weil die Zeile in `projekt_schueler` die Voraussetzung ist.
         $stmt = $db->prepare(
-            'SELECT DISTINCT s.id, s.vorname, s.nachname,
-                    k.bezeichnung AS klasse, k.jahrgang,
-                    ps.abgeschlossen
-             FROM projekt_klassen pk
-             JOIN klassen k ON k.id = pk.klasse_id
-             JOIN schueler s ON s.klasse_id = k.id AND s.aktiv = 1
-             LEFT JOIN projekt_schueler ps ON ps.projekt_id = ? AND ps.schueler_id = s.id
-             WHERE pk.projekt_id = ?
-
-             UNION
-
-             SELECT DISTINCT s.id, s.vorname, s.nachname,
+            'SELECT s.id, s.vorname, s.nachname,
                     k.bezeichnung AS klasse, k.jahrgang,
                     ps.abgeschlossen
              FROM projekt_schueler ps
              JOIN schueler s ON s.id = ps.schueler_id
              JOIN klassen k ON k.id = s.klasse_id
              WHERE ps.projekt_id = ?
-
-             ORDER BY jahrgang, klasse, nachname, vorname'
+             ORDER BY k.jahrgang, k.bezeichnung, s.nachname, s.vorname'
         );
-        $stmt->execute([$id, $id, $id]);
+        $stmt->execute([$id]);
         json_response($stmt->fetchAll());
     }
 
@@ -2254,6 +2255,36 @@ function handle_werkstatt(string $method, ?int $id, string $sub, array $body): v
         // Einzelner Schüler
         $schueler_id = (int)($body['schueler_id'] ?? 0);
         if (!$schueler_id) json_error('schueler_id fehlt.', 400);
+
+        // ---------------------------------------------------------------
+        // Teilnahme prüfen, BEVOR geschrieben wird -- wie bei den
+        // Rückmeldungen (E36).
+        //
+        // Vorher war dies ein reines UPDATE ohne INSERT. Bei einem
+        // Nicht-Teilnehmer traf es null Zeilen, antwortete `{"ok":true}`,
+        // und der Haken in der Oberfläche verschwand erst beim Neuladen.
+        //
+        // NICHT über rowCount(): `MYSQL_ATTR_FOUND_ROWS` ist nicht gesetzt,
+        // also zählt rowCount die GEÄNDERTEN Zeilen. Am Server nachgestellt:
+        //
+        //   Teilnehmer, Wert unverändert : rowCount = 0
+        //   Nicht-Teilnehmer             : rowCount = 0
+        //   Teilnehmer, Wert geändert    : rowCount = 1
+        //
+        // rowCount() == 0 heißt also beides. Wer daraus einen Fehler
+        // ableitet, meldet "kein Teilnehmer", sobald jemand einen Haken
+        // setzt, der schon gesetzt war.
+        // ---------------------------------------------------------------
+        $chk = $db->prepare(
+            'SELECT 1 FROM projekt_schueler WHERE projekt_id = ? AND schueler_id = ?'
+        );
+        $chk->execute([$id, $schueler_id]);
+        if (!$chk->fetch()) {
+            json_error(
+                'Der Abschlussvermerk ist nur für Teilnehmer der Werkstatt möglich. '
+                . "Kein Teilnehmer: {$schueler_id}. Es wurde nichts gespeichert."
+            );
+        }
 
         $stmt = $db->prepare(
             'UPDATE projekt_schueler

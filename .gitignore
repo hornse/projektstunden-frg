@@ -24,6 +24,9 @@ backend/datenbank.sqlite
 error_log
 *.log
 
+# Protokolle der Testlaeufe (tests-projektstunden.sh)
+logs/
+
 # Node (falls je genutzt)
 node_modules/
 bundles/

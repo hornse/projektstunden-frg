@@ -1591,3 +1591,170 @@ die Interkulturelle (`EN_EP_IKK_SOW_01`). Das folgt den Beispielen aus E46 und
 ist eine Festlegung, keine Ableitung: FKK ist die Klammer über sieben
 Teilbereiche, deren Kürzel schon für sich eindeutig sind; IKK trägt drei
 Unterbereiche, deren Kürzel es ohne den Bereich nicht wären.
+
+---
+
+## E53 — E39 ist abgeschlossen: `projekt_schueler` ist die Antwort (09.09.2026)
+
+**Vorbemerkung zur Nummer:** Die Entscheidungen zu diesem Auftrag wurden im
+Chat als E50, E51 und E52 angekündigt; im Protokoll stehen sie nicht — weder in
+der Datei noch irgendwo in der Historie. Die höchste vergebene Nummer war E49.
+Dieser Eintrag nimmt deshalb **E53** und lässt E50 bis E52 frei, damit nicht
+noch einmal zwei Einträge dieselbe Nummer tragen (E30).
+
+**Welche Tabelle welche Frage beantwortet** — das ist die Auskunft, die beim
+nächsten Anbau gebraucht wird:
+
+| Tabelle | Frage |
+|---|---|
+| `projekt_schueler` | **Wer gehört zur Werkstatt.** Die Antwort. |
+| `projekt_klassen` | Woher Kandidaten kommen. |
+| `projekt_schueler_kompetenzen` | Was der Werkstatt zugewiesen ist. |
+
+**Welche Ansicht welche befragt:**
+
+| Ansicht | Quelle |
+|---|---|
+| Details-Modal (Abschlussvermerk) | `projekt_schueler` |
+| Bewertungstabelle, Zeilen | `projekt_schueler` |
+| Bewertungstabelle, Spalten | `projekt_schueler_kompetenzen` |
+| Empfängerliste für Rückmeldungen | `projekt_schueler` |
+| Teilnehmerauswahl beim Bearbeiten | `projekt_klassen` ∪ `projekt_schueler` |
+
+Die letzte Zeile ist die einzige, die zwei Quellen führt, und sie tut es aus
+gutem Grund: Dort werden **Kandidaten** gebraucht, nicht Teilnehmer, und ein
+Teilnehmer aus einer entfernten Klasse muss abwählbar bleiben (E38). Diese
+Vereinigung liegt im Frontend (`loadSchuelerForWerkstattEdit`) und bleibt.
+
+**Der Endpunkt `GET /api/werkstatt/{id}/schueler` hatte nie zwei Zwecke.** Die
+Auftragsdatei ging davon aus, er speise auch die Teilnehmerauswahl. Er hat
+genau zwei Aufrufstellen, und beide zeichnen das Details-Modal. Deshalb braucht
+er keinen Parameter, keinen Zwilling und kein Feld je Zeile — er liefert die
+Teilnehmer.
+
+**Die Vereinigung aus E38 entfällt dort, ihre Zusicherung wird stärker.** E38
+hatte sie eingebaut, damit ein Teilnehmer aus einer entfernten Klasse nicht aus
+dem Modal verschwindet. Geht die Abfrage von `projekt_schueler` aus, kann er
+nicht mehr fehlen: Seine Klasse kommt aus `schueler.klasse_id`. Die Gegenprobe
+zu E38 wurde unter der neuen Abfrage neu geführt, nicht angenommen.
+
+**`rowCount()` taugt nicht als Teilnahmeprüfung.** `MYSQL_ATTR_FOUND_ROWS` ist
+nicht gesetzt, also zählt es die **geänderten** Zeilen. Am Server nachgestellt:
+
+```
+Teilnehmer, Wert unverändert : rowCount = 0
+Nicht-Teilnehmer             : rowCount = 0
+Teilnehmer, Wert geändert    : rowCount = 1
+```
+
+Wer daraus einen Fehler ableitet, meldet „kein Teilnehmer", sobald jemand einen
+Haken setzt, der schon gesetzt war. Geprüft wird deshalb ausdrücklich vorher,
+wie bei den Rückmeldungen (E36).
+
+**Ein Fehler, den erst die Messung zeigte:** `ladeBewertungTabelle` kehrte bei
+null Bewertungszeilen zurück, **bevor** sie die Empfängerliste anfasste. Beim
+Wechsel von Werkstatt 4 auf Werkstatt 2 blieben deren zwölf Namen stehen,
+während `BEW_PROJEKT_ID` schon auf 2 zeigte. Vor E36 hätte ein Klick
+Rückmeldungen in die falsche Werkstatt geschrieben — die Bauform der beiden
+Waisen, die Migration 18 entfernt hat. Die Liste wird jetzt in jedem Fall
+gesetzt, auch auf leer.
+
+**Was das nicht heißt:** Die drei Tabellen bleiben drei Tabellen mit drei
+Aufgaben. Zusammengelegt wird nichts.
+
+---
+
+## E50 — E39 abgeschlossen: `projekt_schueler` beantwortet die Frage (09.09.2026)
+
+**Nachgetragen am 09.09.2026.** Die Entscheidung fiel im Chat, der Eintrag wurde
+nicht ausgeführt; der Lauf hat die Lücke bemerkt und seinen Abschlusseintrag auf
+E53 gelegt, statt eine Nummer doppelt zu vergeben (E30). Der Inhalt gilt seit
+der Entscheidung, nicht erst seit diesem Eintrag.
+
+**Anlass:** E39 hielt fest, dass drei Tabellen dieselbe Frage verschieden
+beantworten, und wies die Zusammenführung als fachliche Entscheidung aus.
+
+**Entscheidung:** `projekt_schueler` sagt, wer zur Werkstatt gehört.
+`projekt_klassen` sagt, woher Kandidaten kommen. `projekt_schueler_kompetenzen`
+sagt, was der Werkstatt zugewiesen wurde. Keines der beiden letzteren sagt, wer
+dabei ist.
+
+Vor E35 war das anders vertretbar: Solange Teilnehmer nach dem Anlegen
+unveränderlich waren, musste das Details-Modal die Klassenschüler zeigen, weil
+es sonst keinen Weg gab, jemanden nachzutragen. Diesen Grund gibt es nicht mehr.
+
+**Der Endpunkt liefert die Teilnehmer, ohne Parameter und ohne Kennzeichen je
+Zeile.** Der Auftrag ging von zwei Zwecken aus; der Code trägt das nicht.
+`GET /api/werkstatt/{id}/schueler` hat zwei Aufrufstellen, beide speisen das
+Details-Modal. Die Teilnehmerauswahl im Bearbeiten-Screen benutzt ihn nicht —
+sie holt die Klassenschüler über `GET /schueler?klassen=…` und vereinigt sie im
+Frontend mit den vorhandenen Teilnehmern.
+
+**Zum Verhältnis zu E38:** Die dortige Vereinigung im Endpunkt wird
+gegenstandslos, ihre Zusicherung aber stärker. E38 baute sie ein, damit ein
+Teilnehmer aus einer entfernten Klasse nicht aus dem Modal verschwindet. Geht
+die Abfrage von `projekt_schueler` aus, kann er gar nicht verschwinden — seine
+Klasse kommt aus `schueler.klasse_id`, nicht aus `projekt_klassen`. Die
+Gegenprobe zu E38 gilt weiter und ist neu zu führen. Die Vereinigung im
+Frontend bleibt unangetastet; dort hat sie ihren Grund.
+
+---
+
+## E51 — Die Bewertungsansicht geht von den Teilnehmern aus (09.09.2026)
+
+**Nachgetragen, siehe E50.**
+
+**Anlass:** Die Bewertungstabelle baute ihre Zeilen aus
+`projekt_schueler_kompetenzen`. Ein Teilnehmer ohne zugewiesene Kompetenzen
+erschien nicht und war nicht bewertbar.
+
+**Befund, schwerer als angenommen:** `ladeBewertungTabelle` kehrt bei null
+Bewertungszeilen zurück, **bevor** die Empfängerliste für Rückmeldungen gefüllt
+wird. Die Liste wird also nie geleert. Wer Werkstatt 4 ansieht und dann auf
+Werkstatt 2 wechselt, hat zwölf fremde Namen vor sich, während die
+Werkstatt-Kennung schon auf 2 steht.
+
+Vor E36 hätte ein Klick auf „speichern" Rückmeldungen für Schüler der Werkstatt
+4 in Werkstatt 2 geschrieben — die Bauform der beiden Waisen, die Migration 18
+entfernt hat. E37 hielt fest, dass ihre Entstehung unbekannt bleibt; dies ist
+ein Kandidat, der passt, aber kein Beleg.
+
+**Entscheidung, drei Teile:** Die Zeilen der Tabelle kommen aus
+`projekt_schueler`; die Spalten bleiben die zugewiesenen Kompetenzen. Sind der
+Werkstatt keine Kompetenzen zugewiesen, tritt an die Stelle der Tabelle ein
+Hinweis mit dem Weg dorthin — die Empfängerliste wird trotzdem gefüllt. Hat die
+Werkstatt keine Teilnehmer, tritt ein anderer Hinweis an die Stelle; bisher
+stand dort der Kompetenzhinweis, der den Benutzer ins Bearbeiten-Formular
+schickt, wo er Kompetenzen wählen kann, die dann an niemandem hängen.
+
+**Damit wird die Empfängerliste in jedem Fall gesetzt, auch auf leer.** Das
+schließt den Wechselfehler. Es ist der Fall aus E36 von der anderen Seite: Dort
+wies das Backend ab, was die Oberfläche anbot; hier hört die Oberfläche auf, es
+anzubieten.
+
+---
+
+## E52 — `PUT /abschluss` prüft die Teilnahme, nicht die Zahl geänderter Zeilen (09.09.2026)
+
+**Nachgetragen, siehe E50.**
+
+**Anlass:** Ein Haken bei einem Nicht-Teilnehmer im Details-Modal meldete Erfolg
+und tat nichts. Nach E50 kann die Oberfläche den Fall nicht mehr herstellen; die
+Lücke bleibt für Direktaufrufe.
+
+**Warum nicht über die Zahl geänderter Zeilen:** Am Server gemessen, nicht
+überlegt. `MYSQL_ATTR_FOUND_ROWS` ist nicht gesetzt, die Rückgabe zählt bei
+einem `UPDATE` also die **geänderten** Zeilen. Ein Teilnehmer mit unverändertem
+Wert liefert 0, ein Nicht-Teilnehmer liefert 0, ein Teilnehmer mit geändertem
+Wert liefert 1. Null heißt beides. Wer daraus einen Fehler ableitet, meldet
+„kein Teilnehmer", wenn jemand einen bereits gesetzten Haken erneut setzt.
+
+**Entscheidung:** Abfrage gegen `projekt_schueler` vor dem `UPDATE`, bei
+Fehlschlag Abweisung mit Nennung der betroffenen Kennung, nichts geschrieben —
+wie E36. Der Zweig, der alle Teilnehmer betrifft, braucht nichts: Er arbeitet
+über die Werkstatt-Kennung und trifft nur Teilnehmer.
+
+**Gemeldet, nicht behoben:** Dieser Zweig gibt eine Zahl `aktualisiert` zurück,
+und das ist nach derselben Messung die Zahl der **geänderten** Zeilen. Bei zwölf
+Teilnehmern, von denen zehn schon abgeschlossen waren, steht dort 2. Wer das als
+„zwölf markiert" liest, liest falsch.

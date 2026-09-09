@@ -90,6 +90,13 @@ Präsentationsdatum, Laufzeit, Kompetenzanzahl, Status.
 Klick auf **Details**-Button öffnet ein Modal:
 - **Status** ändern und speichern
 - **Teilnehmer** einzeln oder alle als „✓ absolviert" markieren
+
+> **Dort stehen nur die Teilnehmer der Werkstatt** — nicht alle Schüler der
+> zugeordneten Klassen. Wer hinzukommen oder wegfallen soll, wird unter
+> **✏️ Bearbeiten** in der Teilnehmerauswahl geändert, nicht hier.
+>
+> Ein Teilnehmer bleibt auch dann sichtbar, wenn seine Klasse der Werkstatt
+> nicht mehr zugeordnet ist oder er die Klasse gewechselt hat.
 - **✏️ Bearbeiten** – öffnet vollständige Bearbeiten-Seite
 - **Löschen** – nur für Admins
 

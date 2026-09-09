@@ -2312,24 +2312,49 @@ async function bewertungWerkstattGewaehlt() {
 }
 
 async function ladeBewertungTabelle(projekt_id) {
-  const bewertungen = await GET(`bewertung?projekt_id=${projekt_id}`);
+  // Zwei Quellen mit zwei Aufgaben (E39): Die ZEILEN sind die Teilnehmer,
+  // die SPALTEN die zugewiesenen Kompetenzen.
+  //
+  // Vorher kam beides aus `bewertung` -- also aus
+  // `projekt_schueler_kompetenzen`. Wer keine zugewiesene Kompetenz hatte,
+  // erschien nicht, war nicht bewertbar und bekam keine Rückmeldung.
+  // Werkstatt 2 hat zwei Teilnehmer, null Kompetenzzeilen und zwei
+  // Rückmeldungen; die Ansicht konnte diesen Fall gar nicht darstellen.
+  const [bewertungen, teilnehmer] = await Promise.all([
+    GET(`bewertung?projekt_id=${projekt_id}`),
+    GET(`werkstatt/${projekt_id}/schueler`)
+  ]);
   const el = document.getElementById('bew-tabelle');
   if (!el) return;
 
-  if (!bewertungen || !bewertungen.length) {
-    el.innerHTML = '<p style="font-size:13px;color:var(--text3)">Noch keine Kompetenzen für diese Werkstatt zugewiesen. Bitte zuerst unter „Werkstätten" → Bearbeiten Kompetenzen auswählen und speichern.</p>';
+  const schueler = (teilnehmer || []).slice()
+    .sort((a, b) => a.nachname.localeCompare(b.nachname));
+
+  // Die Empfängerliste wird IN JEDEM FALL gesetzt, auch auf leer.
+  // Vorher kehrte die Funktion bei null Bewertungszeilen zurück, bevor sie
+  // die Liste anfasste -- beim Wechsel von Werkstatt 4 auf Werkstatt 2
+  // blieben deren zwölf Namen stehen, während BEW_PROJEKT_ID schon auf 2
+  // zeigte. Vor E36 hätte ein Klick Rückmeldungen in die falsche Werkstatt
+  // geschrieben; seither weist das Backend ab, und die Oberfläche bietet
+  // etwas an, das sie nicht darf.
+  fuelleEmpfaengerliste(schueler);
+
+  if (!schueler.length) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--text3)">Diese Werkstatt hat keine Teilnehmer. Bitte zuerst unter „Werkstätten" → Bearbeiten Teilnehmer auswählen und speichern.</p>';
     return;
   }
 
-  // Eindeutige Kompetenzen und Schüler
+  if (!bewertungen || !bewertungen.length) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--text3)">Noch keine Kompetenzen für diese Werkstatt zugewiesen. Bitte zuerst unter „Werkstätten" → Bearbeiten Kompetenzen auswählen und speichern. Rückmeldungen sind trotzdem möglich.</p>';
+    return;
+  }
+
+  // Nur noch die SPALTEN kommen aus den Bewertungszeilen.
   const kompMap = {};
-  const schuelerMap = {};
   bewertungen.forEach(b => {
     kompMap[b.kompetenz_id] = { id: b.kompetenz_id, name: b.kompetenz_name, code: b.code, bereich: b.bereich_name };
-    schuelerMap[b.schueler_id] = { id: b.schueler_id, vorname: b.vorname, nachname: b.nachname };
   });
-  const komps    = Object.values(kompMap);
-  const schueler = Object.values(schuelerMap).sort((a,b) => a.nachname.localeCompare(b.nachname));
+  const komps = Object.values(kompMap);
 
   // Index
   const idx = {};
@@ -2360,8 +2385,13 @@ async function ladeBewertungTabelle(projekt_id) {
   }).join('');
 
   el.innerHTML = `<table class="bew-table"><thead>${header}</thead><tbody>${rows}</tbody></table>`;
+}
 
-  // Empfänger-Liste für Rückmeldungen befüllen
+
+// Empfängerliste für Rückmeldungen. Sie steht in einer eigenen Funktion,
+// weil sie auch dann gesetzt werden muss, wenn die Tabelle nicht gezeichnet
+// wird -- und weil "auf leer setzen" ein gültiger Fall ist.
+function fuelleEmpfaengerliste(schueler) {
   const empfEl = document.getElementById('bew-empfaenger');
   if (empfEl) {
     empfEl.innerHTML = schueler.map(s => `
