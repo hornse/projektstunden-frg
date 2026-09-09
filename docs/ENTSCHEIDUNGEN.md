@@ -1225,3 +1225,98 @@ schreiben Namen ohne `clean()`, und 26 Zeilen in `app.js` geben Namen roh aus.
 Ein Schülername aus einer feindlichen Importdatei wäre dieselbe Bauform. Das
 braucht eine eigene Entscheidung — Schreibseite nachziehen oder Ausgabeseite
 umstellen —, und die eine Hälfte ohne die andere macht es schlimmer.
+
+---
+
+## E41 — Namen werden bei der Ausgabe maskiert, `clean()` verlässt die Handanlage (08.09.2026)
+
+**Anlass:** E40 meldete als offenen Punkt, dass Namen aus dem CSV-Import und der
+WebUntis-Selbstanlage ohne `clean()` geschrieben und roh ausgegeben werden.
+
+**Warum die Ausgabeseite, belegt am Code:** Der CSV-Import vergleicht feldweise
+und zeichengenau gegen den Wert aus der Datei, der nur durch `trim()` gegangen
+ist — in der Vorschau (`index.php:1942`) und im Zähler (`index.php:2079`).
+Schriebe der Import maskiert, stünde `O&#039;Brien` in der Datenbank und
+`O'Brien` in der Datei; jeder Lauf meldete diesen Schüler dauerhaft als
+geändert. Betroffen wären Namen mit `&`, `<`, `>`, `"` oder Apostroph —
+realistisch also O'Brien, D'Angelo und `&` in Klassenbezeichnungen.
+
+Schwerer wiegt der Klassenabgleich (`index.php:2024`): Die Klasse wird über ihre
+`bezeichnung` gesucht. Eine maskiert gespeicherte Bezeichnung würde beim
+nächsten Import nicht gefunden, und es entstünde eine zweite Klasse gleichen
+Namens. Das ist kein Anzeigefehler mehr, sondern doppelte Datenhaltung.
+
+**Entscheidung, drei Teile:**
+
+`escHtml` an allen Einbettungen mit Quelle `schueler` oder `klassen`,
+einschließlich der Aliase `klasse` und `schuljahr`.
+
+**`clean()` verlässt `POST /schueler` und `POST /klassen`.** Ohne das hätten
+beide Felder zwei Schreibwege mit verschiedener Behandlung: Ein von Hand
+angelegter `O'Brien` stünde maskiert in der Datenbank und würde bei der Ausgabe
+ein zweites Mal maskiert — sichtbar als `O&#039;Brien`. E40 verbietet, `clean()`
+zu ergänzen; es zu entfernen stellt die Konvention erst her. Keine
+Datenmigration nötig: Kein Name und keine Bezeichnung im Bestand enthält ein
+Zeichen, das `clean()` verändert hätte. Diese Zahl wird vor und nach dem Umbau
+belegt.
+
+Zeilen, die bewusst roh bleiben, tragen den Vermerk
+`// keine-maskierung: <Grund>` am Ort.
+
+**Warum der Vermerk in der Quelldatei und nicht als Liste im Testskript:**
+Zeilennummern verrutschen bei jeder Änderung, und die Begründung stünde dort,
+wo niemand sie liest. Am Ort steht sie vor der Nase dessen, der die Zeile
+ändert.
+
+**Warum nicht die vom Auftrag skizzierte Prüfung:** Sie hätte verlangt, dass
+jede Einbettung eines Namensträgers durch `escHtml` läuft — und damit 40
+Einbettungen zu Unrecht angemahnt, jede davon eine Stelle, an der Maskierung
+falsch ist. Eine Prüfung, die in 45 Prozent der Fälle das Gegenteil des
+Richtigen verlangt, wird abgeschaltet.
+
+**Was die Prüfung nicht fängt — vollständig:**
+
+1. Ein neuer Alias. Die Prüfung kennt die Feldnamen, die man ihr nennt. Genau
+   daran ist die erste Zählung gescheitert: `${s.klasse}` ist
+   `klassen.bezeichnung`, und keine Suche nach „bezeichnung" findet es. Benennt
+   eine künftige API-Antwort ein Feld anders, bleibt die Stelle unsichtbar. Das
+   ist die ernsteste Lücke, und es ist kein statisches Mittel dagegen bekannt.
+2. Umweg über eine Variable. `const n = s.vorname; … ${n}` wird nicht gesehen.
+   Das Muster gibt es bereits (`app.js:1416`).
+3. Die falsche Wahl. Wer ein Feld maskiert, das bereits maskiert gespeichert
+   ist, erzeugt `&amp;amp;` und kommt grün durch. Dagegen hilft nur die
+   Handprüfung.
+
+Die Entwertung von `escHtml` selbst ist abgedeckt — die Prüfung aus E40
+verlangt alle fünf Ersetzungen und `&` als erste.
+
+**Was das nicht heißt:** Die dreizehn Felder, die beim Schreiben maskiert
+werden, bleiben unverändert. Sie stehen maskiert in der Datenbank und werden roh
+ausgegeben. Wer dort `escHtml` ergänzt, ohne `clean()` zu entfernen, erzeugt
+`&amp;amp;`.
+
+---
+
+## E42 — Zwei Befunde aus der Ausgabemaskierung, gemeldet und nicht behoben (08.09.2026)
+
+**Erstens, und dringend: Die Import-Vorschau führt hochgeladenen Inhalt aus.**
+`app.js:2206` und `2210` zeigen Namen direkt aus der hochgeladenen CSV-Datei,
+ohne Umweg über die Datenbank. Wer eine Datei hochlädt, sieht ihren Inhalt
+sofort als lebendes Markup — vor jedem Import, ohne dass etwas gespeichert
+wurde. Der Weg hinein ist eine Datei; Dateien wandern per E-Mail. Das ist die
+einzige Stelle ohne jeden Zwischenschritt und wird deshalb als erstes behoben,
+mit eigener Handprüfung.
+
+**Zweitens: `app.js:1463` ist heute schon funktionsunfähig.** Dort steht der
+Name in einer JavaScript-Zeichenkette innerhalb eines HTML-Attributs — als
+zweites Argument eines `onclick`-Aufrufs. Der Browser dekodiert Entities, bevor
+der JS-Parser den Wert sieht: Aus einer maskierten Apostroph-Entity wird wieder
+ein Apostroph, und dieser bricht aus der Zeichenkette aus.
+
+`escHtml` genügt dort **nicht**. Das muss der Vermerk an der Zeile sagen, sonst
+liest es jemand als „geprüft und in Ordnung".
+
+Ein Schüler namens O'Brien macht damit heute die Schaltfläche „entfernen"
+funktionsunfähig, ganz ohne Angriff. Die Behebung hat eine andere Bauform — den
+Namen nicht durch den Aufruf reichen, sondern beim Klick aus dem DOM lesen —
+und gehört in einen eigenen Vorgang.
