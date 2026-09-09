@@ -59,6 +59,42 @@ Zwei Remotes: `github` und `uberspace`. `deploy.sh` pusht auf beide.
   bei Sport 227 „Bereiche" mit je genau einer Kompetenz. Aufgefallen erst
   beim Abgleich mit dem PDF des Kernlehrplans, Monate später (E8).
 
+## Zwei Wege, Benutzertext zu maskieren — welcher gilt wofür
+
+Es gibt **zwei** Verfahren, und ein neues Feld muss einem davon folgen.
+**Beide zugleich erzeugen `&amp;amp;`** und zeigen dem Benutzer verstümmelten
+Text.
+
+| Weg | Felder | Wo maskiert wird |
+|---|---|---|
+| **Beim Schreiben** | `projekte.name`, `beschreibung`, `projekt_stunden.notiz`, `projekt_schueler_kompetenzen.notiz`, `benutzer.vorname/nachname/kuerzel`, `schuljahre.name` | `clean()` im Backend; die Ausgabe setzt sie **roh** in `innerHTML` |
+| **Bei der Ausgabe** | `werkstatt_rueckmeldungen.freitext` (E40), `schueler.vorname/nachname`, `klassen.bezeichnung/schuljahr` (E41) | `escHtml()` in `frontend/app.js`; die Datenbank hält sie **roh** |
+
+**Warum es zwei sind:** Wer aus mehreren Wegen beschrieben wird, kann nicht auf
+die Schreibseite bauen. Der CSV-Import und die WebUntis-Selbstanlage schreiben
+Namen ohne `clean()`, und der Import **vergleicht** die gespeicherten Namen
+zeichengenau gegen die Datei — maskiert gespeichert, meldete er jeden Namen mit
+Apostroph dauerhaft als geändert und legte Klassen doppelt an (E41).
+
+**Für ein neues Feld gilt:**
+
+- Wird es **nur** über einen Weg geschrieben, der `clean()` ruft? Dann Weg 1,
+  Ausgabe roh, kein `escHtml`.
+- Gibt es **irgendeinen** Weg ohne `clean()` — Import, WebUntis, ein Skript?
+  Dann Weg 2: roh speichern, bei jeder Ausgabe `escHtml`.
+- Ist die Senke **kein HTML** (`textContent`, `confirm()`, eine
+  Suchzeichenkette)? Dann gar nichts, und der Grund gehört als
+  `${/* keine-maskierung: … */ …}` an die Stelle (E43).
+
+`escHtml` deckt Textinhalt und **Attribute in Anführungszeichen** ab. Es genügt
+**nicht** für einen Wert, der in einer JavaScript-Zeichenkette innerhalb eines
+Attributs landet — der Browser dekodiert Entities, bevor der JS-Parser sie
+sieht (E42, `app.js` „entfernen"-Schaltfläche).
+
+Die Prüfung „Namen bei der Ausgabe" hält Weg 2 zusammen. Ihre drei Lücken
+stehen in ihrem Kopfkommentar; die wichtigste ist, dass sie einen neuen **Alias**
+nicht kennt — `${s.klasse}` ist `klassen.bezeichnung`.
+
 ## Vor jeder Auslieferung wirklich prüfen
 
 ```bash

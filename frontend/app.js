@@ -256,7 +256,7 @@ async function initDash() {
   const kEl = document.getElementById('f-kl');
   const cur  = kEl.value;
   kEl.innerHTML = '<option value="">Alle Klassen</option>' +
-    STATE.klassen.map(k => `<option value="${k.id}"${k.id==cur?' selected':''}>${k.bezeichnung} (${k.schuljahr})</option>`).join('');
+    STATE.klassen.map(k => `<option value="${k.id}"${k.id==cur?' selected':''}>${escHtml(k.bezeichnung)} (${escHtml(k.schuljahr)})</option>`).join('');
   await renderDash();
 }
 async function dashFilter() {
@@ -265,7 +265,7 @@ async function dashFilter() {
   // Schüler für Klasse laden
   const schueler = kl ? await GET(`schueler?klasse_id=${kl}`) : [];
   sEl.innerHTML = '<option value="">Alle Schüler</option>' +
-    (schueler || []).map(s => `<option value="${s.id}">${s.vorname} ${s.nachname} (${s.klasse})</option>`).join('');
+    (schueler || []).map(s => `<option value="${s.id}">${escHtml(s.vorname)} ${escHtml(s.nachname)} (${escHtml(s.klasse)})</option>`).join('');
   renderDash();
 }
 async function renderDash() {
@@ -323,9 +323,9 @@ async function renderDash() {
 
     return `<div class="s-card">
       <div class="s-hdr" id="h${uid}" onclick="toggleCard('${uid}')">
-        <div class="avatar">${s.vorname[0]}${s.nachname[0]}</div>
-        <div><div class="s-name">${s.vorname} ${s.nachname}</div>
-          <div class="s-meta">Klasse ${s.klasse} · ${Math.round(totalIst*10)/10}/${totalSoll} Projektstd. · ${komps.length} Kompetenzen</div>
+        <div class="avatar">${escHtml(s.vorname[0])}${escHtml(s.nachname[0])}</div>
+        <div><div class="s-name">${escHtml(s.vorname)} ${escHtml(s.nachname)}</div>
+          <div class="s-meta">Klasse ${escHtml(s.klasse)} · ${Math.round(totalIst*10)/10}/${totalSoll} Projektstd. · ${komps.length} Kompetenzen</div>
         </div>
         <span class="chevron" id="ch${uid}">&#8964;</span>
       </div>
@@ -374,13 +374,13 @@ async function initProjekt() {
   // Klassen Multi-Select
   const kEl = document.getElementById('p-kl');
   kEl.innerHTML = STATE.klassen.map(k =>
-    `<option value="${k.id}">${k.bezeichnung} (${k.schuljahr})</option>`
+    `<option value="${k.id}">${escHtml(k.bezeichnung)} (${escHtml(k.schuljahr)})</option>`
   ).join('');
 
   // Lernbegleiter Multi-Select (eigene ID vorausgewählt)
   const lEl = document.getElementById('p-lehrer');
   lEl.innerHTML = STATE.lehrer.map(l =>
-    `<option value="${l.id}" ${l.id === STATE.user?.id ? 'selected' : ''}>${l.vorname} ${l.nachname}${l.kuerzel ? ' (' + l.kuerzel + ')' : ''}</option>`
+    `<option value="${l.id}" ${l.id === STATE.user?.id ? 'selected' : ''}>${/* keine-maskierung: benutzer, beim Schreiben maskiert */ l.vorname} ${l.nachname}${l.kuerzel ? ' (' + l.kuerzel + ')' : ''}</option>`
   ).join('');
 
   // Fach-Grid aufbauen
@@ -710,7 +710,7 @@ function renderTeilnehmer(pfx) {
         `${TEILN[pfx].ids.has(Number(s.id)) ? ' checked' : ''}` +
         ` onchange="teilnUmschalten('${pfx}', ${Number(s.id)}, this.checked)">` +
         `<span class="pill-label"${erfasst ? ` title="${teilnWasErfasst(b)}"` : ''}>` +
-        `${s.nachname}, ${s.vorname}` +
+        `${escHtml(s.nachname)}, ${escHtml(s.vorname)}` +
         `${erfasst ? '<span class="warn-punkt">!</span>' : ''}</span></label>`;
     }).join('');
     return `<div class="teiln-gruppe"><div class="teiln-gruppe-titel">${g} (${ks.length})</div>` +
@@ -829,11 +829,11 @@ async function renderProjektListe() {
           <div class="proj-meta">
             ${p.datum_von}${p.datum_bis ? ' – ' + p.datum_bis : ''}
             ${p.klassen ? ' · ' + p.klassen : ''}
-            ${p.schuljahr_name ? ' · ' + p.schuljahr_name : ''}
+            ${/* keine-maskierung: schuljahre.name, beim Schreiben maskiert */ p.schuljahr_name ? ' · ' + p.schuljahr_name : ''}
             · ${p.schueler_anzahl} Schüler/innen
           </div>
           <div class="proj-meta" style="margin-top:2px">
-            👤 ${p.lernbegleiter || '–'}
+            👤 ${/* keine-maskierung: benutzer (GROUP_CONCAT), beim Schreiben maskiert */ p.lernbegleiter || '–'}
             ${p.praesentation_datum ? ' · 🎤 ' + p.praesentation_datum : ''}
             ${p.max_schueler ? ' · max. ' + p.max_schueler + ' TN' : ''}
           </div>
@@ -888,7 +888,7 @@ function renderWerkstattDetail(p, schueler) {
   const modal = document.getElementById('ws-modal');
 
   const lb = (p.lernbegleiter || []).map(l =>
-    `<span class="tag-k">${l.vorname} ${l.nachname} (${l.rolle})</span>`
+    `<span class="tag-k">${/* keine-maskierung: benutzer, beim Schreiben maskiert */ l.vorname} ${l.nachname} (${l.rolle})</span>`
   ).join(' ');
 
   const statusOptionen = ['geplant','aktiv','abgeschlossen','abgesagt']
@@ -901,8 +901,8 @@ function renderWerkstattDetail(p, schueler) {
              onchange="toggleAbschluss(${p.id}, ${s.id}, this.checked)"
              style="flex-shrink:0;width:16px;height:16px;cursor:pointer">
       <label for="abs-${s.id}" style="flex:1;cursor:pointer;font-size:13px;line-height:1.4">
-        ${s.nachname}, ${s.vorname}
-        <span style="color:var(--text3);font-size:11px">(${s.klasse})</span>
+        ${escHtml(s.nachname)}, ${escHtml(s.vorname)}
+        <span style="color:var(--text3);font-size:11px">(${escHtml(s.klasse)})</span>
         ${s.abgeschlossen ? '<span style="color:var(--ok);font-size:11px;margin-left:4px">✓</span>' : ''}
       </label>
     </div>`
@@ -916,7 +916,7 @@ function renderWerkstattDetail(p, schueler) {
       <h2>${p.name}</h2>
       <p class="modal-sub">
         ${p.datum_von}${p.datum_bis ? ' – ' + p.datum_bis : ''}
-        ${p.schuljahr_name ? ' · ' + p.schuljahr_name : ''}
+        ${/* keine-maskierung: schuljahre.name, beim Schreiben maskiert */ p.schuljahr_name ? ' · ' + p.schuljahr_name : ''}
       </p>
       <div style="margin-bottom:14px">${lb}</div>
 
@@ -994,7 +994,7 @@ async function openWerkstattBearbeiten(id) {
   const sjEl = document.getElementById('we-schuljahr');
   sjEl.innerHTML = '<option value="">– kein –</option>' +
     (sjData || []).map(s =>
-      `<option value="${s.id}" ${s.id == proj.schuljahr_id ? 'selected' : ''}>${s.name}</option>`
+      `<option value="${s.id}" ${/* keine-maskierung: s ist hier ein Schuljahr, beim Schreiben maskiert */ s.id == proj.schuljahr_id ? 'selected' : ''}>${s.name}</option>`
     ).join('');
 
   // Felder befüllen
@@ -1011,7 +1011,7 @@ async function openWerkstattBearbeiten(id) {
   const lbIds = (proj.lernbegleiter || []).map(l => l.id);
   const lEl = document.getElementById('we-lehrer');
   lEl.innerHTML = STATE.lehrer.map(l =>
-    `<option value="${l.id}" ${lbIds.includes(l.id) ? 'selected' : ''}>${l.vorname} ${l.nachname}${l.kuerzel ? ' (' + l.kuerzel + ')' : ''}</option>`
+    `<option value="${l.id}" ${lbIds.includes(l.id) ? 'selected' : ''}>${/* keine-maskierung: benutzer, beim Schreiben maskiert */ l.vorname} ${l.nachname}${l.kuerzel ? ' (' + l.kuerzel + ')' : ''}</option>`
   ).join('');
 
   // Klassen (E38). Vorbelegt mit den zugeordneten; das Feld gab es vorher
@@ -1019,7 +1019,7 @@ async function openWerkstattBearbeiten(id) {
   const wsKl = (proj.klasse_ids || []).map(Number);
   WS_EDIT_KLASSEN = wsKl.slice();   // Ausgangsstand für die Rückfrage beim Speichern
   document.getElementById('we-kl').innerHTML = STATE.klassen.map(k =>
-    `<option value="${k.id}" ${wsKl.includes(Number(k.id)) ? 'selected' : ''}>${k.bezeichnung} (${k.schuljahr})</option>`
+    `<option value="${k.id}" ${wsKl.includes(Number(k.id)) ? 'selected' : ''}>${escHtml(k.bezeichnung)} (${escHtml(k.schuljahr)})</option>`
   ).join('');
 
   // Teilnehmer (E34, E35)
@@ -1256,7 +1256,7 @@ async function werkstattEditSpeichern() {
     let text;
     if (wegMitInhalt.length) {
       const zeilen = wegMitInhalt
-        .map(b => `\u2022 ${b.nachname}, ${b.vorname}: ${teilnWasErfasst(b)}`).join('\n');
+        .map(b => `\u2022 ${/* keine-maskierung: Text einer confirm-Rueckfrage, kein HTML */ b.nachname}, ${b.vorname}: ${teilnWasErfasst(b)}`).join('\n');
       text = `${wegMitInhalt.length === 1 ? 'Ein Teilnehmer wird' : wegMitInhalt.length + ' Teilnehmer werden'} `
            + `entfernt. Das Erfasste geht dabei unwiderruflich verloren:\n\n${zeilen}\n\n`;
       if (leertAlle) text += `Die Werkstatt hat danach keine Teilnehmer mehr.\n\n`;
@@ -1384,14 +1384,14 @@ async function initSchueler() {
   const klSel = document.getElementById('s-kl');
   if (klSel) {
     klSel.innerHTML = '<option value="">– wählen –</option>' +
-      STATE.klassen.map(k => `<option value="${k.id}">${k.bezeichnung} (${k.schuljahr})</option>`).join('');
+      STATE.klassen.map(k => `<option value="${k.id}">${escHtml(k.bezeichnung)} (${escHtml(k.schuljahr)})</option>`).join('');
   }
 
   // Klassen-Filter befüllen
   const ksEl = document.getElementById('sch-klasse');
   if (ksEl) {
     ksEl.innerHTML = '<option value="">Alle Klassen</option>' +
-      STATE.klassen.map(k => `<option value="${k.bezeichnung}">${k.bezeichnung}</option>`).join('');
+      STATE.klassen.map(k => `<option value="${escHtml(k.bezeichnung)}">${escHtml(k.bezeichnung)}</option>`).join('');
   }
 
   // Schuljahr-Feld vorausfüllen
@@ -1413,7 +1413,7 @@ function schuelerRendern() {
   const isAdmin = STATE.user?.rolle === 'admin';
 
   let liste = SCHUELER_ALLE.filter(s => {
-    const volname = `${s.vorname} ${s.nachname} ${s.klasse}`.toLowerCase();
+    const volname = `${/* keine-maskierung: Suchzeichenkette, wird nie ausgegeben */ s.vorname} ${s.nachname} ${s.klasse}`.toLowerCase();
     const klasseOk = !klass || s.klasse === klass;
     return klasseOk && (!suche || volname.includes(suche));
   });
@@ -1450,17 +1450,17 @@ function schuelerRendern() {
         <div>
           <strong>Klasse ${kl}</strong>
           <span style="font-size:11px;color:var(--text3);margin-left:8px">
-            ${klInfo?.schuljahr ? klInfo.schuljahr + ' · ' : ''}${gruppen[kl].length} Schüler/innen
+            ${klInfo?.schuljahr ? escHtml(klInfo.schuljahr) + ' · ' : ''}${gruppen[kl].length} Schüler/innen
           </span>
         </div>
       </div>
       ${gruppen[kl].map(s => `
         <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
-          <div class="avatar">${s.vorname[0]}${s.nachname[0]}</div>
+          <div class="avatar">${escHtml(s.vorname[0])}${escHtml(s.nachname[0])}</div>
           <div style="flex:1">
-            <span style="font-size:13px">${s.nachname}, ${s.vorname}</span>
+            <span style="font-size:13px">${escHtml(s.nachname)}, ${escHtml(s.vorname)}</span>
           </div>
-          ${isAdmin ? `<button class="btn btn-sm btn-d" onclick="delSchueler(${s.id}, '${s.vorname} ${s.nachname}')">entfernen</button>` : ''}
+          ${/* keine-maskierung: escHtml genuegt hier NICHT: Name in einer JS-Zeichenkette im Attribut, siehe E42 */ isAdmin ? `<button class="btn btn-sm btn-d" onclick="delSchueler(${s.id}, '${s.vorname} ${s.nachname}')">entfernen</button>` : ''}
         </div>`
       ).join('')}
     </div>`;
@@ -1509,12 +1509,12 @@ async function klasseSpeichern() {
     const klSel = document.getElementById('s-kl');
     if (klSel) {
       klSel.innerHTML = '<option value="">– wählen –</option>' +
-        STATE.klassen.map(k => `<option value="${k.id}">${k.bezeichnung} (${k.schuljahr})</option>`).join('');
+        STATE.klassen.map(k => `<option value="${k.id}">${escHtml(k.bezeichnung)} (${escHtml(k.schuljahr)})</option>`).join('');
     }
     const ksEl = document.getElementById('sch-klasse');
     if (ksEl) {
       ksEl.innerHTML = '<option value="">Alle Klassen</option>' +
-        STATE.klassen.map(k => `<option value="${k.bezeichnung}">${k.bezeichnung}</option>`).join('');
+        STATE.klassen.map(k => `<option value="${escHtml(k.bezeichnung)}">${escHtml(k.bezeichnung)}</option>`).join('');
     }
   } catch(e) { showMsg('kl-msg', e.message, 'err'); }
 }
@@ -1694,7 +1694,7 @@ function renderKatalog() {
 function initExport() {
   const el = document.getElementById('ex-kl');
   el.innerHTML = '<option value="">Alle Klassen</option>' +
-    STATE.klassen.map(k => `<option value="${k.id}">${k.bezeichnung} (${k.schuljahr})</option>`).join('');
+    STATE.klassen.map(k => `<option value="${k.id}">${escHtml(k.bezeichnung)} (${escHtml(k.schuljahr)})</option>`).join('');
 }
 async function exportCsv(typ) {
   const kl  = document.getElementById('ex-kl').value;
@@ -1748,16 +1748,16 @@ async function initBenutzer() {
     const rolleCls = !b.aktiv ? 'rolle-inaktiv' : b.rolle === 'admin' ? 'rolle-admin' : 'rolle-lehrer';
     const rolleLabel = !b.aktiv ? 'inaktiv' : b.rolle;
     return `<tr>
-      <td><strong>${b.vorname} ${b.nachname}</strong></td>
+      <td><strong>${/* keine-maskierung: benutzer, beim Schreiben maskiert */ b.vorname} ${b.nachname}</strong></td>
       <td style="color:var(--text2)">${b.email}</td>
       <td><code style="font-size:12px;background:var(--surface2);padding:2px 6px;border-radius:4px">${b.kuerzel || '–'}</code></td>
       <td><span class="rolle-badge ${rolleCls}">${rolleLabel}</span></td>
       <td style="font-size:12px;color:var(--text3)">${b.aktiv ? 'Aktiv' : 'Deaktiviert'}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-sm" onclick="buBearbeiten(${b.id})" style="margin-right:4px">Bearbeiten</button>
-        <button class="btn btn-sm" onclick="buPasswort(${b.id},'${b.vorname} ${b.nachname}')">Passwort</button>
+        <button class="btn btn-sm" onclick="buPasswort(${b.id},'${/* keine-maskierung: benutzer, beim Schreiben maskiert */ b.vorname} ${b.nachname}')">Passwort</button>
         ${b.aktiv
-          ? `<button class="btn btn-sm btn-d" onclick="buDeaktivieren(${b.id},'${b.vorname} ${b.nachname}')" style="margin-left:4px">Deaktivieren</button>`
+          ? `<button class="btn btn-sm btn-d" onclick="buDeaktivieren(${b.id},'${/* keine-maskierung: benutzer, beim Schreiben maskiert */ b.vorname} ${b.nachname}')" style="margin-left:4px">Deaktivieren</button>`
           : `<button class="btn btn-sm" onclick="buAktivieren(${b.id})" style="margin-left:4px">Reaktivieren</button>`}
       </td>
     </tr>`;
@@ -1831,7 +1831,7 @@ async function buSpeichern() {
   try {
     await POST('benutzer', { vorname, nachname, email, rolle, kuerzel, passwort: pass });
     closeModal();
-    showMsg('bu-msg', `${vorname} ${nachname} wurde angelegt.`, 'ok');
+    showMsg('bu-msg', `${/* keine-maskierung: showMsg schreibt textContent, kein HTML */ vorname} ${nachname} wurde angelegt.`, 'ok');
     initBenutzer();
   } catch(e) {
     msgEl.className = 'msg msg-err'; msgEl.textContent = e.message;
@@ -1846,10 +1846,10 @@ async function buBearbeiten(id) {
     <div class="modal">
       <button class="modal-close" onclick="closeModal()">&#x2715;</button>
       <h2>Benutzer bearbeiten</h2>
-      <p class="modal-sub">${b.vorname} ${b.nachname}</p>
+      <p class="modal-sub">${/* keine-maskierung: benutzer, beim Schreiben maskiert */ b.vorname} ${b.nachname}</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><label>Vorname *</label><input id="m-vor" value="${b.vorname}"></div>
-        <div><label>Nachname *</label><input id="m-nach" value="${b.nachname}"></div>
+        <div><label>Vorname *</label><input id="m-vor" value="${/* keine-maskierung: benutzer, beim Schreiben maskiert */ b.vorname}"></div>
+        <div><label>Nachname *</label><input id="m-nach" value="${/* keine-maskierung: benutzer, beim Schreiben maskiert */ b.nachname}"></div>
       </div>
       <label>E-Mail *</label>
       <input id="m-email" type="email" value="${b.email}">
@@ -1888,7 +1888,7 @@ async function buUpdate(id) {
   try {
     await api('PUT', 'benutzer/' + id, { vorname, nachname, email, rolle, kuerzel, aktiv });
     closeModal();
-    showMsg('bu-msg', `${vorname} ${nachname} aktualisiert.`, 'ok');
+    showMsg('bu-msg', `${/* keine-maskierung: showMsg schreibt textContent, kein HTML */ vorname} ${nachname} aktualisiert.`, 'ok');
     // STATE.user aktualisieren wenn eigener Account
     if (STATE.user && STATE.user.id === id) STATE.user.rolle = rolle;
     initBenutzer();
@@ -2146,8 +2146,8 @@ async function impLogLaden() {
           <div style="font-weight:600">${e.dateiname}</div>
           <div style="color:var(--text3);font-size:12px;margin-top:2px">
             ${new Date(e.erstellt_am).toLocaleString('de-DE')} &nbsp;·&nbsp;
-            ${e.schuljahr_name ?? ''} &nbsp;·&nbsp;
-            ${e.vorname ?? ''} ${e.nachname ?? ''}
+            ${/* keine-maskierung: schuljahre.name, beim Schreiben maskiert */ e.schuljahr_name ?? ''} &nbsp;·&nbsp;
+            ${/* keine-maskierung: benutzer, beim Schreiben maskiert */ e.vorname ?? ''} ${e.nachname ?? ''}
           </div>
           <div style="margin-top:4px">
             <span style="color:var(--ok)">+${e.neu} neu</span> &nbsp;·&nbsp;
@@ -2200,14 +2200,19 @@ async function impVorschau() {
       <div class="stat"><div class="stat-val">${v.unveraendert?.length ?? 0}</div><div class="stat-lbl">Unverändert</div></div>
       <div class="stat"><div class="stat-val" style="color:var(--err)">${v.fehler?.length ?? 0}</div><div class="stat-lbl">Fehler</div></div>`;
 
+    // Achtung: `v` kommt aus der hochgeladenen Datei, nicht aus der
+    // Datenbank. Was hier gezeigt wird, hat noch keinen Schreibweg passiert --
+    // dies ist die einzige Stelle, an der Fremdinhalt ohne jeden
+    // Zwischenschritt in die Anzeige gelangt (E42). Jede Einbettung eines
+    // Namens läuft deshalb durch escHtml.
     let detail = '';
     if (v.neu?.length)
       detail += `<div class="sec" style="margin-top:12px">Neue Schüler (${v.neu.length})</div>` +
-        v.neu.slice(0, 10).map(s => `<div style="font-size:13px;padding:3px 0">${s.vorname} ${s.nachname} – Klasse ${s.klasse}</div>`).join('') +
+        v.neu.slice(0, 10).map(s => `<div style="font-size:13px;padding:3px 0">${escHtml(s.vorname)} ${escHtml(s.nachname)} – Klasse ${escHtml(s.klasse)}</div>`).join('') +
         (v.neu.length > 10 ? `<div style="font-size:12px;color:var(--text3)">… und ${v.neu.length - 10} weitere</div>` : '');
     if (v.aktualisiert?.length)
       detail += `<div class="sec" style="margin-top:12px">Aktualisiert (${v.aktualisiert.length})</div>` +
-        v.aktualisiert.slice(0, 5).map(s => `<div style="font-size:13px;padding:3px 0">${s.vorname} ${s.nachname}</div>`).join('') +
+        v.aktualisiert.slice(0, 5).map(s => `<div style="font-size:13px;padding:3px 0">${escHtml(s.vorname)} ${escHtml(s.nachname)}</div>`).join('') +
         (v.aktualisiert.length > 5 ? `<div style="font-size:12px;color:var(--text3)">… und ${v.aktualisiert.length - 5} weitere</div>` : '');
     if (v.fehler?.length)
       detail += `<div class="sec" style="margin-top:12px;color:var(--err)">Fehler (${v.fehler.length})</div>` +
@@ -2289,7 +2294,7 @@ async function initBewertung() {
   const sel  = document.getElementById('bew-werkstatt');
   sel.innerHTML = '<option value="">– Werkstatt auswählen –</option>' +
     (data || []).map(p =>
-      `<option value="${p.id}">${p.name}${p.schuljahr_name ? ' · ' + p.schuljahr_name : ''} (${p.status})</option>`
+      `<option value="${p.id}">${p.name}${/* keine-maskierung: schuljahre.name, beim Schreiben maskiert */ p.schuljahr_name ? ' · ' + p.schuljahr_name : ''} (${p.status})</option>`
     ).join('');
   document.getElementById('bew-inhalt').style.display = 'none';
   BEW_PROJEKT_ID = null;
@@ -2349,7 +2354,7 @@ async function ladeBewertungTabelle(projekt_id) {
       return `<td><div class="bew-cell">${chips}</div></td>`;
     }).join('');
     return `<tr>
-      <td class="name-col">${s.nachname}, ${s.vorname}</td>
+      <td class="name-col">${escHtml(s.nachname)}, ${escHtml(s.vorname)}</td>
       ${zellen}
     </tr>`;
   }).join('');
@@ -2364,7 +2369,7 @@ async function ladeBewertungTabelle(projekt_id) {
         <input type="checkbox" class="bew-emp-cb" value="${s.id}"
                id="be-${s.id}" style="flex-shrink:0;width:16px;height:16px;cursor:pointer">
         <label for="be-${s.id}" style="flex:1;cursor:pointer;font-size:13px">
-          ${s.nachname}, ${s.vorname}
+          ${escHtml(s.nachname)}, ${escHtml(s.vorname)}
         </label>
       </div>`
     ).join('');
@@ -2402,7 +2407,7 @@ async function ladeBewRueckmeldungen(projekt_id) {
     <div class="rueck-row">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
         <div>
-          <strong style="font-size:13px">${r.nachname}, ${r.vorname}</strong>
+          <strong style="font-size:13px">${escHtml(r.nachname)}, ${escHtml(r.vorname)}</strong>
           ${r.bewertung_stufe ? `<span class="bew-chip bew-${r.bewertung_stufe}" style="margin-left:6px">${STUFEN[r.bewertung_stufe]}</span>` : ''}
         </div>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0">
@@ -2413,7 +2418,7 @@ async function ladeBewRueckmeldungen(projekt_id) {
       </div>
       ${r.freitext ? `<p style="font-size:13px;color:var(--text2);margin:6px 0 0">${escHtml(r.freitext)}</p>` : ''}
       <p style="font-size:11px;color:var(--text3);margin:4px 0 0">
-        ${r.lb_vorname} ${r.lb_nachname} · ${(r.geaendert_am || r.erstellt_am || '').substring(0,10)}
+        ${/* keine-maskierung: benutzer, beim Schreiben maskiert */ r.lb_vorname} ${r.lb_nachname} · ${(r.geaendert_am || r.erstellt_am || '').substring(0,10)}
       </p>
     </div>`
   ).join('');
@@ -2722,7 +2727,7 @@ async function showSchuelerPortal(me) {
   // Nur Schüler-Screen sichtbar – Navigation ausblenden
   document.querySelector('aside').style.display = 'none';
   document.getElementById('schueler-portal-sub').textContent =
-    `Hallo, ${me.vorname} ${me.nachname}!`;
+    `Hallo, ${/* keine-maskierung: textContent, kein HTML */ me.vorname} ${me.nachname}!`;
   await ladeSchuelerPortal(me.id);
 }
 
@@ -2743,10 +2748,10 @@ async function ladeSchuelerPortal(schueler_id) {
           <div class="proj-name">${w.name}</div>
           <div class="proj-meta">
             ${w.datum_von}${w.datum_bis ? ' – ' + w.datum_bis : ''}
-            ${w.schuljahr_name ? ' · ' + w.schuljahr_name : ''}
+            ${/* keine-maskierung: schuljahre.name, beim Schreiben maskiert */ w.schuljahr_name ? ' · ' + w.schuljahr_name : ''}
           </div>
           <div class="proj-meta" style="margin-top:2px">
-            👤 ${w.lernbegleiter || '–'}
+            👤 ${/* keine-maskierung: benutzer (GROUP_CONCAT), beim Schreiben maskiert */ w.lernbegleiter || '–'}
           </div>
           <div class="tags">
             <span class="tag-f">${w.status}</span>
@@ -2813,7 +2818,7 @@ async function schuelerWerkstattDetail(werkstatt_id) {
            ${r.bewertung_stufe} – ${STUFEN[r.bewertung_stufe]}</span>` : ''}
       ${r.freitext ? `<p style="font-size:13px;margin:0 0 4px">${escHtml(r.freitext)}</p>` : ''}
       <p style="font-size:11px;color:var(--text3);margin:0">
-        ${r.lb_vorname} ${r.lb_nachname} · ${(r.geaendert_am || r.erstellt_am || '').substring(0,10)}
+        ${/* keine-maskierung: benutzer, beim Schreiben maskiert */ r.lb_vorname} ${r.lb_nachname} · ${(r.geaendert_am || r.erstellt_am || '').substring(0,10)}
       </p>
     </div>`
   ).join('');
@@ -2823,7 +2828,7 @@ async function schuelerWerkstattDetail(werkstatt_id) {
     <h2>${data.name}</h2>
     <p style="font-size:13px;color:var(--text3);margin-bottom:16px">
       ${data.datum_von}${data.datum_bis ? ' – ' + data.datum_bis : ''}
-      ${data.schuljahr_name ? ' · ' + data.schuljahr_name : ''}
+      ${/* keine-maskierung: schuljahre.name, beim Schreiben maskiert */ data.schuljahr_name ? ' · ' + data.schuljahr_name : ''}
     </p>
 
     ${kompRows ? `

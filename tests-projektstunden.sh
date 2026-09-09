@@ -752,6 +752,67 @@ else
 fi
 
 echo ""
+echo "Namen bei der Ausgabe"
+# ------------------------------------------------------------------
+# E41: Namen und Klassenbezeichnungen stehen roh in der Datenbank -- Import
+# und WebUntis-Selbstanlage schreiben sie ohne clean(), und seit E41 tut es
+# auch die Handanlage nicht mehr. Maskiert wird bei der Ausgabe.
+#
+# Die Pruefung lehnt ab, was sie nicht kennt: Jede Einbettung eines
+# Namenstraegers muss entweder durch escHtml() laufen oder die Zeile traegt
+# den Vermerk `${/* keine-maskierung: <Grund> */ ...}`. Eine neu
+# hinzugefuegte rohe Einbettung faellt also durch, ohne dass jemand die
+# Pruefung anfassen muss.
+#
+# WAS SIE NICHT FAENGT -- drei Luecken, benannt statt verschwiegen (E41):
+#
+#   1. Einen neuen ALIAS. Die Pruefung kennt die Feldnamen, die hier stehen.
+#      Genau daran ist die erste Zaehlung gescheitert: ${s.klasse} ist
+#      `klassen.bezeichnung`, und keine Suche nach "bezeichnung" findet es.
+#      Benennt eine kuenftige API-Antwort ein Feld anders, bleibt die Stelle
+#      unsichtbar. Das ist die ernsteste Luecke; ein statisches Mittel
+#      dagegen ist nicht bekannt.
+#   2. Den UMWEG UEBER EINE VARIABLE. `const n = s.vorname; ... ${n}` wird
+#      nicht gesehen. Das Muster gibt es bereits (app.js, Suchzeichenkette).
+#   3. Die FALSCHE WAHL. Wer ein Feld maskiert, das bereits maskiert
+#      gespeichert ist, erzeugt &amp;amp; und kommt hier gruen durch.
+#      Dagegen hilft nur die Handpruefung.
+#
+# Die Entwertung von escHtml selbst ist abgedeckt -- die Pruefung in der
+# Rubrik "Maskierung" verlangt alle fuenf Ersetzungen und & als erste.
+# ------------------------------------------------------------------
+if [ ! -f "$JS" ]; then
+    rot "$JS fehlt – Voraussetzung der Namenspruefung"
+else
+    NAMEN_BERICHT=$(perl -ne '
+        BEGIN { $traeger = qr/(?:vorname|nachname|bezeichnung|klassenlehrer|\.klasse\b|schuljahr|lernbegleiter)/;
+                $gesamt = 0; $offen = 0; }
+        my $zeile = $_;
+        my $vermerkt = ($zeile =~ /\$\{\/\* keine-maskierung:/);
+        while ($zeile =~ /\$\{((?:[^{}]|\{[^{}]*\})*)\}/g) {
+            my $a = $1;
+            next unless $a =~ $traeger;
+            $gesamt++;
+            next if $a =~ /escHtml/ or $vermerkt;
+            $offen++;
+            print "    Zeile $.: $a\n";
+        }
+        END { print "ZAHLEN $gesamt $offen\n"; }
+    ' "$JS")
+    NAMEN_GESAMT=$(printf '%s\n' "$NAMEN_BERICHT" | awk '/^ZAHLEN/{print $2}')
+    NAMEN_OFFEN=$(printf '%s\n' "$NAMEN_BERICHT" | awk '/^ZAHLEN/{print $3}')
+    if [ "${NAMEN_GESAMT:-0}" -eq 0 ]; then
+        # Null Funde sind ein Fehler, kein Ergebnis (REIHENREGELN 2).
+        rot "keine einzige Namenseinbettung in $JS gefunden – die Pruefung prueft nichts"
+    elif [ "${NAMEN_OFFEN:-1}" -eq 0 ]; then
+        gruen "alle $NAMEN_GESAMT Namenseinbettungen maskiert oder begruendet"
+    else
+        rot "$NAMEN_OFFEN von $NAMEN_GESAMT Namenseinbettungen weder maskiert noch begruendet:"
+        printf '%s\n' "$NAMEN_BERICHT" | grep -v '^ZAHLEN'
+    fi
+fi
+
+echo ""
 GESAMT=$((GRUEN + FEHLER))
 echo "$GRUEN/$GESAMT bestanden, $FEHLER rot"
 if [ "$FEHLER" -eq 0 ]; then echo "ALLES GRÜN"; exit 0; fi

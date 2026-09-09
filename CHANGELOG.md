@@ -8,6 +8,29 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 ## [Unreleased]
 
 ### Sicherheit
+- **Namen werden bei der Ausgabe maskiert** (E41, E43). `schueler.vorname`,
+  `nachname`, `klassen.bezeichnung` und `klassen.schuljahr` stehen roh in der
+  Datenbank – Import und WebUntis-Selbstanlage schreiben ohne `clean()` – und
+  wurden roh in `innerHTML` eingesetzt. 45 Einbettungen laufen jetzt durch
+  `escHtml`.
+- **Zuerst die Import-Vorschau** (E42): Sie zeigte Namen direkt aus der
+  hochgeladenen Datei, ohne Umweg über die Datenbank. Wer eine Datei hochlud,
+  sah ihren Inhalt sofort als lebendes Markup – vor jedem Import.
+- **`clean()` verlässt `POST /schueler` und `POST /klassen`**, damit beide
+  Felder eine Konvention haben. Ohne das zeigte die Ausgabemaskierung für von
+  Hand angelegte Personen `O&#039;Brien`. Keine Datenmigration nötig: 0 von 299
+  Namen und 0 von 12 Klassenbezeichnungen enthalten ein betroffenes Zeichen –
+  vor und nach dem Umbau belegt.
+- **43 Einbettungen bleiben bewusst roh** und tragen den Grund an Ort und
+  Stelle: `${/* keine-maskierung: … */ …}`. Sie stammen aus `benutzer` und
+  `schuljahre`, wo beim Schreiben maskiert wird, oder ihre Senke ist gar kein
+  HTML.
+- **Prüfung „Namen bei der Ausgabe"** – lehnt ab, was sie nicht kennt: Jede
+  Einbettung eines Namensträgers muss maskiert oder begründet sein. Eine neu
+  hinzugefügte rohe Stelle fällt durch, ohne dass die Prüfung angefasst wird.
+  Ihre drei Lücken stehen im Kopfkommentar. **65 → 66 Prüfungen.**
+
+### Sicherheit (vorheriger Auftrag)
 - **Gespeichertes XSS im Rückmeldungs-Freitext behoben** (E40).
   `werkstatt_rueckmeldungen.freitext` war das einzige Textfeld ohne
   `clean()` beim Schreiben und wurde an zwei Stellen roh in `innerHTML`

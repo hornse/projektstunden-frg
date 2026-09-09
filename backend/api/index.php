@@ -398,8 +398,22 @@ function handle_schueler(string $method, ?int $id, array $body): void {
     }
 
     if ($method === 'POST') {
-        $vorname   = clean($body['vorname']   ?? '');
-        $nachname  = clean($body['nachname']  ?? '');
+        // KEIN clean() (E41). Namen und Klassenbezeichnungen werden roh
+        // gespeichert und erst bei der Ausgabe maskiert, in `escHtml()`
+        // (frontend/app.js). Zwei Gründe:
+        //
+        // Der CSV-Import vergleicht feldweise und zeichengenau gegen den Wert
+        // aus der Datei (Zeilen 1942 und 2079) und sucht die Klasse über ihre
+        // Bezeichnung (Zeile 2024). Stünde hier ein maskierter Wert, meldete
+        // jeder Importlauf denselben Schüler als geändert -- und für eine
+        // Klasse entstünde eine zweite gleichen Namens.
+        //
+        // Und: Import und WebUntis-Selbstanlage schreiben ohnehin roh. Bliebe
+        // clean() hier stehen, hätte dasselbe Feld zwei Konventionen, und die
+        // Ausgabemaskierung zeigte für von Hand angelegte Personen
+        // `O&#039;Brien`.
+        $vorname   = trim($body['vorname']   ?? '');
+        $nachname  = trim($body['nachname']  ?? '');
         $klasse_id = (int)($body['klasse_id'] ?? 0);
         if (!$vorname || !$nachname || !$klasse_id) json_error('Pflichtfelder fehlen.');
 
@@ -451,9 +465,23 @@ function handle_klassen(string $method, ?int $id, array $body): void {
 
     if ($method === 'POST') {
         require_admin(); // Klassen anlegen = Admin-Aktion
-        $bez      = clean($body['bezeichnung'] ?? '');
+        // KEIN clean() (E41). Namen und Klassenbezeichnungen werden roh
+        // gespeichert und erst bei der Ausgabe maskiert, in `escHtml()`
+        // (frontend/app.js). Zwei Gründe:
+        //
+        // Der CSV-Import vergleicht feldweise und zeichengenau gegen den Wert
+        // aus der Datei (Zeilen 1942 und 2079) und sucht die Klasse über ihre
+        // Bezeichnung (Zeile 2024). Stünde hier ein maskierter Wert, meldete
+        // jeder Importlauf denselben Schüler als geändert -- und für eine
+        // Klasse entstünde eine zweite gleichen Namens.
+        //
+        // Und: Import und WebUntis-Selbstanlage schreiben ohnehin roh. Bliebe
+        // clean() hier stehen, hätte dasselbe Feld zwei Konventionen, und die
+        // Ausgabemaskierung zeigte für von Hand angelegte Personen
+        // `O&#039;Brien`.
+        $bez      = trim($body['bezeichnung'] ?? '');
         $jg       = (int)($body['jahrgang']    ?? 0);
-        $sj       = clean($body['schuljahr']   ?? '');
+        $sj       = trim($body['schuljahr']   ?? '');   // wie oben (E41)
         if (!$bez || !$jg || !$sj) json_error('Pflichtfelder fehlen.');
         if ($jg < 5 || $jg > 10)  json_error('Jahrgang muss zwischen 5 und 10 liegen.');
 

@@ -1320,3 +1320,56 @@ Ein Schüler namens O'Brien macht damit heute die Schaltfläche „entfernen"
 funktionsunfähig, ganz ohne Angriff. Die Behebung hat eine andere Bauform — den
 Namen nicht durch den Aufruf reichen, sondern beim Klick aus dem DOM lesen —
 und gehört in einen eigenen Vorgang.
+
+---
+
+## E43 — Der Vermerk steht in der Einbettung, nicht am Zeilenende (09.09.2026)
+
+**Anlass:** Umsetzung von E41. Dort ist der Vermerk als
+`// keine-maskierung: <Grund>` beschrieben, also als Zeilenkommentar. Das geht
+nicht.
+
+**Befund:** Von den 27 Zeilen, die bewusst roh bleiben, stehen **15 innerhalb
+einer Vorlagenzeichenkette**. Ein `//` ist dort kein Kommentar, sondern Text —
+er landete in der ausgelieferten Seite. Ein Blockkommentar **innerhalb der
+Einbettung** funktioniert dagegen in beiden Zusammenhängen und erzeugt nichts:
+
+```js
+${/* keine-maskierung: benutzer, beim Schreiben maskiert */ b.vorname}
+```
+
+**Entscheidung:** Das ist die Form. Der Grund steht damit an der Einbettung
+selbst, nicht an der Zeile — noch dichter am Gegenstand, als E41 vorsah.
+
+Die Prüfung sucht nach der Zeichenfolge `${/* keine-maskierung:`. Diese Form
+kann in Prosa nicht versehentlich entstehen; ein Ausdruck auf das blosse Wort
+hätte auf jede Erklärung der Regel angeschlagen (REIHENREGELN 2).
+
+**Eine Ungenauigkeit, die bleibt:** Der Vermerk befreit die **ganze Zeile**,
+nicht nur die Einbettung, an der er steht. Eine Zeile mit zwei Trägern, von
+denen nur einer begründet ist, kommt durch. Beim Bestand tritt der Fall nicht
+auf — geprüft, nicht angenommen —, aber er ist möglich.
+
+**Zahlen zur Umsetzung, gemessen statt geschätzt:**
+
+| | |
+|---|---|
+| Einbettungen mit Namensträger insgesamt | 88 auf 50 Zeilen |
+| davon maskiert | 45 auf 23 Zeilen |
+| davon begründet roh | 43 auf 27 Zeilen |
+
+Der Auftrag ging von „rund 26 Stellen" aus. Das war eine Zeilenzahl über zwei
+der vier Feldnamen. Die Lücke lag woanders: **Die API liefert
+`klassen.bezeichnung` als `klasse` aus** — `${s.klasse}` ist eine Einbettung
+genau dieses Feldes, und keine Suche nach dem Spaltennamen findet sie. Dasselbe
+gilt für `klassen.schuljahr`.
+
+**`klassenlehrer` war nie betroffen:** Die Spalte heisst `klassenlehrer_name`,
+wird ausschliesslich vom Import geschrieben und **nie gelesen** — kein `SELECT`,
+keine Ausgabe.
+
+**Belege zum Entfernen von `clean()` aus der Handanlage:** Vor dem Umbau 299
+Schüler, davon 0 von Hand angelegt (alle mit `schild_id`), 0 mit einem Zeichen,
+das `clean()` verändert hätte, 0 mit einer bereits gespeicherten Entity; 12
+Klassen ebenso. Nach dem Umbau dieselben Zahlen. Eine Datenmigration war damit
+nicht nötig, und das ist nachgerechnet, nicht angenommen.
