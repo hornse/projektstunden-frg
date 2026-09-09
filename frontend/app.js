@@ -2214,8 +2214,29 @@ async function impVorschau() {
         v.aktualisiert.slice(0, 5).map(s => `<div style="font-size:13px;padding:3px 0">${escHtml(s.vorname)} ${escHtml(s.nachname)}</div>`).join('') +
         (v.aktualisiert.length > 5 ? `<div style="font-size:12px;color:var(--text3)">… und ${v.aktualisiert.length - 5} weitere</div>` : '');
     if (v.fehler?.length)
+      // Das Backend liefert `zeile`, `grund` und `daten` (index.php, analyse_import).
+      // Gelesen wurde bisher `meldung` -- ein Feld, das es nicht gibt. Der
+      // Rueckfall `?? f` gab dann das ganze Objekt aus, und der Benutzer las
+      // "12: [object Object]" statt einer Fehlerbeschreibung (E44).
+      //
+      // `daten` ist Inhalt der hochgeladenen Datei -- heute `vorname nachname`
+      // der fehlerhaften Zeile. Es laeuft durch escHtml. `grund` ist eine
+      // Zeichenkette aus dem Programm und heute unbedenklich; es laeuft
+      // trotzdem durch escHtml, denn nichts maskiert es beim Schreiben, eine
+      // doppelte Maskierung kann also nicht entstehen -- und die Zusicherung
+      // "grund ist immer eine Konstante" muesste sonst jeder pruefen, der
+      // eine zweite Fehlerart ergaenzt. Genau diese Falle beschreibt E44.
+      //
+      // Die Werte werden vor der Vorlage maskiert und nicht in ihr: So steht
+      // in der Vorlage kein `${f.…}`, und die Pruefung kann verlangen, dass
+      // jedes Vorkommen von `f.daten` und `f.grund` in escHtml liegt.
       detail += `<div class="sec" style="margin-top:12px;color:var(--err)">Fehler (${v.fehler.length})</div>` +
-        v.fehler.map(f => `<div style="font-size:12px;color:var(--err);padding:2px 0">${f.zeile ?? ''}: ${f.meldung ?? f}</div>`).join('');
+        v.fehler.map(f => {
+          const wo  = escHtml(f.zeile ?? '?');
+          const was = escHtml(f.grund ?? 'Unbekannter Fehler');
+          const wer = escHtml(f.daten ?? '');
+          return `<div style="font-size:12px;color:var(--err);padding:2px 0">Zeile ${wo}: ${was}${wer ? ' – ' + wer : ''}</div>`;
+        }).join('');
 
     document.getElementById('imp-vorschau-detail').innerHTML = detail;
     vorschauWrap.style.display = 'block';

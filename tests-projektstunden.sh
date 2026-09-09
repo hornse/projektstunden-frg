@@ -984,6 +984,53 @@ else
 fi
 
 echo ""
+echo "Fehlerliste der Import-Vorschau"
+# ------------------------------------------------------------------
+# E44: Das Frontend las ein Feld `meldung`, das es nicht gibt; das Backend
+# liefert `zeile`, `grund` und `daten`. Der Rueckfall gab das ganze Objekt
+# aus -- "12: [object Object]".
+#
+# Die naheliegende Behebung ist die Falle: `daten` ist Inhalt der
+# hochgeladenen Datei und darf nicht roh eingebettet werden. Die Pruefung aus
+# E41 fasst den Fall nicht, weil `daten` kein Namenstraeger ist.
+#
+# Gemessen wird deshalb feldweise: JEDES Vorkommen von `f.daten` und
+# `f.grund` in impVorschau muss unmittelbar in escHtml stehen. Das faengt
+# auch den Umweg ueber eine Zwischenvariable -- anders als ein Ausdruck, der
+# nur nach `${f.` in der Vorlage sucht.
+#
+# WAS SIE NICHT FAENGT: eine Umbenennung des Feldes. Traegt das Backend den
+# Rohtext kuenftig als `rohzeile` aus, kennt die Pruefung den Namen nicht.
+# Das ist dieselbe Luecke wie bei E41 und mit einem statischen Mittel nicht
+# zu schliessen.
+# ------------------------------------------------------------------
+if [ ! -f "$JS" ]; then
+    rot "$JS fehlt – Voraussetzung der Fehlerlistenpruefung"
+else
+    VOR_FKT=$(awk '/^async function impVorschau\(/{an=1} an{print} an&&/^}/{exit}' "$JS" \
+              | perl -0777 -pe 's{/\*.*?\*/}{}gs' | grep -v '^[[:space:]]*//')
+    if [ -z "$VOR_FKT" ]; then
+        rot "impVorschau nicht gefunden"
+    else
+        ALT=$(printf '%s' "$VOR_FKT" | grep -c 'f\.meldung' || true)
+        OFFEN=""
+        for FELD in daten grund; do
+            GES=$(printf '%s' "$VOR_FKT" | grep -o "f\.$FELD" | grep -c . || true)
+            ESC=$(printf '%s' "$VOR_FKT" | grep -o "escHtml(f\.$FELD" | grep -c . || true)
+            [ "$GES" -eq 0 ] && OFFEN="$OFFEN $FELD:fehlt"
+            [ "$GES" -ne "$ESC" ] && OFFEN="$OFFEN $FELD:$ESC/$GES"
+        done
+        if [ "$ALT" -gt 0 ]; then
+            rot "Fehlerliste liest wieder f.meldung – das Feld gibt es nicht (E44)"
+        elif [ -n "$OFFEN" ]; then
+            rot "Fehlerliste: nicht jedes Vorkommen liegt in escHtml –$OFFEN"
+        else
+            gruen "Fehlerliste liest grund und daten, beide vollstaendig maskiert"
+        fi
+    fi
+fi
+
+echo ""
 GESAMT=$((GRUEN + FEHLER))
 echo "$GRUEN/$GESAMT bestanden, $FEHLER rot"
 if [ "$FEHLER" -eq 0 ]; then echo "ALLES GRÜN"; exit 0; fi

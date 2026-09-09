@@ -8,6 +8,20 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 ## [Unreleased]
 
 ### Behoben
+- **Die Fehlerliste der Import-Vorschau zeigte „12: [object Object]"** (E44).
+  Das Frontend las ein Feld `meldung`; das Backend liefert `zeile`, `grund`
+  und `daten`. Jetzt steht dort „Zeile 4: Pflichtfelder fehlen (ID, Name,
+  Klasse oder Jahrgang) – Max Mustermann".
+- **`daten` und `grund` laufen durch `escHtml`.** `daten` ist Inhalt der
+  hochgeladenen Datei; die naheliegende Behebung — nur den Feldnamen
+  richtigstellen — hätte den Zustand wiederhergestellt, den E41 und E42
+  beseitigt haben.
+- **Prüfung „Fehlerliste der Import-Vorschau"** – misst feldweise: jedes
+  Vorkommen von `f.daten` und `f.grund` muss in `escHtml` liegen, und
+  `f.meldung` darf nicht zurückkehren. Fängt auch den Umweg über eine
+  Zwischenvariable. **69 → 70 Prüfungen.**
+
+### Behoben (vorheriger Vorgang)
 - **Kästchen erbten `width:100%` von der Eingabefeld-Regel** und wurden zu
   Balken. In der Rückmeldungsansicht war „Sofort für Schüler sichtbar"
   **348 statt 16 Pixel breit** (in Chrome gemessen) und schob seine
