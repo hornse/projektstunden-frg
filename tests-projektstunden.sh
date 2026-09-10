@@ -73,6 +73,27 @@ GRUEN=0
 gruen() { echo "  ✓ $1"; GRUEN=$((GRUEN + 1)); }
 rot()   { echo "  ✗ $1"; FEHLER=$((FEHLER + 1)); }
 
+# Kommentarentferner fuer /* */, // und <!-- -->. Er erhaelt die Zeilenzahl:
+# Jede Eingabezeile erzeugt genau eine Ausgabezeile, damit eine Fundstelle
+# ihre Zeilennummer behaelt. Zwei Rubriken benutzen ihn -- Rohfarben und
+# CSS-Variablen --, und beide brauchen dasselbe: Was in einer Erklaerung
+# steht, ist keine Sache, sondern ihre Beschreibung (REIHENREGELN 2).
+STRIP_AWK='
+BEGIN { blk = 0; htm = 0 }
+{
+  zeile = $0; aus = ""; i = 1; n = length(zeile)
+  while (i <= n) {
+    z2 = substr(zeile, i, 2); z3 = substr(zeile, i, 3); z4 = substr(zeile, i, 4)
+    if (blk) { if (z2 == "*/") { blk = 0; i += 2 } else i++; continue }
+    if (htm) { if (z3 == "-->") { htm = 0; i += 3 } else i++; continue }
+    if (z2 == "/*")   { blk = 1; i += 2; continue }
+    if (z4 == "<!--") { htm = 1; i += 4; continue }
+    if (z2 == "//")   { break }
+    aus = aus substr(zeile, i, 1); i++
+  }
+  print aus
+}'
+
 CSS=frontend/style.css
 JS=frontend/app.js
 HTML=frontend/index.html
@@ -132,11 +153,110 @@ grep -q "session_name('proj_session')" "$RT" \
 
 echo ""
 echo "Keine Rohfarben außerhalb des :root-Blocks"
-REST=$(perl -0777 -pe 's{/\*.*?\*/}{}gs' "$CSS" | perl -0777 -pe 's{^.*?\n\}\n}{}s')
-TREFFER=$(printf '%s' "$REST" | grep -oE '#[0-9a-fA-F]{3,8}\b' | sort -u || true)
-[ -z "$TREFFER" ] && gruen "keine Hexfarben" || rot "Hexfarben: $(echo "$TREFFER" | tr '\n' ' ')"
-TREFFER=$(printf '%s' "$REST" | grep -oE 'rgba?\([^)]*\)' | sort -u || true)
-[ -z "$TREFFER" ] && gruen "keine rgb/rgba-Angaben" || rot "rgba: $(echo "$TREFFER" | tr '\n' ' ')"
+# ------------------------------------------------------------------
+# GELTUNGSBEREICH: das ganze `frontend/` ohne `vendor/`, nicht eine
+# einzelne Datei.
+#
+# ANLASS: Diese Pruefung las bis zum 10.09.2026 nur `style.css`. Sie hat
+# deshalb sieben Hexwerte in `app.js` nie gesehen -- und zwar zweimal
+# nicht: Beim Kompetenzauswahl-Auftrag waren es sechs, danach kam eine
+# siebte dazu, ohne dass etwas ansprang. Gruen war eine Aussage ueber die
+# Pruefstelle, nicht ueber den Bestand (REIHENREGELN 2).
+#
+# WAS ZULAESSIG BLEIBT, und warum:
+#
+#   * Der `:root`-Block einer eigenen Stilvorlage. Dort gehoert eine
+#     Kategorienpalette hin (REIHENREGELN 7). Geprueft wird alles
+#     DANACH -- der Block wird zeilenerhaltend geleert, damit
+#     Fundstellen ihre Zeilennummer behalten.
+#   * `frontend/vendor/` gar nicht. Diese Dateien gehoeren dem
+#     Quell-Repo; wir duerfen sie nicht aendern (REIHENREGELN 6). Eine
+#     rote Zeile, die niemand beheben darf, blockiert den Deploy fuer
+#     etwas Fremdes und wird dann abgeschaltet. Ein Fund dort ist eine
+#     Meldung an `koordination`, kein Mangel dieses Projekts. Heute
+#     fuehren `ci-shell.css` und `ci-komponenten.css` null Rohfarben;
+#     `ci-tokens.css` ist der vorgesehene Ort fuer alle 56.
+#   * Eine Zeile mit dem Vermerk `rohfarbe-erlaubt: <Grund>`, in der
+#     Syntax ihrer Datei. Form aus E43.
+#
+# EIN RUECKFALL IST KEINE AUSNAHME: `var(--x,#wert)` faellt durch. Der
+# Wert ist ungeprueft -- `#f59e0b` erreichte auf Weiss 2.15 --, und wo
+# die Variable fehlt, verdeckt der Rueckfall genau den Fehler, den die
+# Variablenpruefung sichtbar machen soll.
+#
+# KOMMENTARE WERDEN VORHER ENTFERNT, der Vermerk aber in der
+# UNVERAENDERTEN Zeile gesucht. Anders ginge beides nicht zugleich: Der
+# Vermerk steht in einem Kommentar, und eine Farbe in einer Erklaerung
+# ist keine Farbe an einem Element.
+#
+# GRENZEN:
+#   1. Der Vermerk befreit die ZEILE, nicht die einzelne Angabe -- eine
+#      Zeile mit zwei Werten, von denen nur einer begruendet ist, kommt
+#      durch. Dieselbe Ungenauigkeit hat E43 fuer die Maskierung
+#      benannt; im Bestand tritt der Fall nicht auf, nachgesehen.
+#   2. Ein zur Laufzeit zusammengesetzter Wert ('#' + wert) wird nicht
+#      gesehen.
+#   3. Sie sagt nichts ueber Farbnamen (`red`, `steelblue`). Im Bestand
+#      kommen keine vor.
+# ------------------------------------------------------------------
+ROHF_DATEIEN=$(find frontend -type f \( -name '*.css' -o -name '*.js' -o -name '*.html' \) \
+               ! -path 'frontend/vendor/*' | sort)
+ROHF_D_ZAHL=$(printf '%s\n' "$ROHF_DATEIEN" | grep -c . || true)
+
+# Sucht ein Muster in allen Dateien und gibt je Fundstelle eine Zeile aus:
+#   ROT <datei>:<zeile> <werte>    -- unbegruendet
+#   OK  <datei>:<zeile> <werte>    -- Zeile traegt den Vermerk
+rohfarben_suchen() {
+    local muster="$1" f text nr rest orig werte
+    for f in $ROHF_DATEIEN; do
+        text=$(awk "$STRIP_AWK" "$f")
+        if [ "${f##*.}" = "css" ]; then
+            # Den ersten :root-Block leeren, Zeilenzahl erhalten.
+            text=$(printf '%s\n' "$text" | awk 'BEGIN{drin=1}
+                { if (drin) { if ($0 ~ /^\}/) drin=0; print ""; next } print }')
+        fi
+        printf '%s\n' "$text" | grep -nE "$muster" | while IFS=: read -r nr rest; do
+            orig=$(sed -n "${nr}p" "$f")
+            werte=$(printf '%s' "$rest" \
+                    | grep -oE '#[0-9a-fA-F]{3,8}|rgba?\([^)]*\)|hsla?\([^)]*\)' \
+                    | tr '\n' ' ')
+            case "$orig" in
+                *rohfarbe-erlaubt:*) printf 'OK %s:%s %s\n'  "$f" "$nr" "$werte" ;;
+                *)                   printf 'ROT %s:%s %s\n' "$f" "$nr" "$werte" ;;
+            esac
+        done
+    done
+}
+
+# `&#8964;` ist eine HTML-Entitaet und keine Farbe: Vor dem `#` darf
+# deshalb kein `&` und kein Namenszeichen stehen.
+ROHF_HEX='(^|[^&A-Za-z0-9_])#([0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})([^0-9a-fA-F]|$)'
+ROHF_FUNK='rgba?\([^)]*\)|hsla?\([^)]*\)'
+
+if [ "$ROHF_D_ZAHL" -eq 0 ]; then
+    rot "keine eigene Frontend-Datei gefunden – Voraussetzung der Rohfarbenpruefung fehlt"
+    rot "keine eigene Frontend-Datei gefunden – Voraussetzung der Rohfarbenpruefung fehlt"
+else
+    ROHF_H=$(rohfarben_suchen "$ROHF_HEX")
+    ROHF_H_ROT=$(printf '%s\n' "$ROHF_H" | grep -c '^ROT' || true)
+    ROHF_H_OK=$(printf '%s\n' "$ROHF_H" | grep -c '^OK' || true)
+    if [ "$ROHF_H_ROT" -gt 0 ]; then
+        rot "$ROHF_H_ROT Hexfarben ausserhalb des :root-Blocks, unbegruendet ($ROHF_H_OK begruendet):"
+        printf '%s\n' "$ROHF_H" | grep '^ROT' | sed 's/^ROT /    /'
+    else
+        gruen "keine Hexfarben ausserhalb des :root-Blocks in $ROHF_D_ZAHL Dateien ($ROHF_H_OK begruendet)"
+    fi
+
+    ROHF_F=$(rohfarben_suchen "$ROHF_FUNK")
+    ROHF_F_ROT=$(printf '%s\n' "$ROHF_F" | grep -c '^ROT' || true)
+    ROHF_F_OK=$(printf '%s\n' "$ROHF_F" | grep -c '^OK' || true)
+    if [ "$ROHF_F_ROT" -gt 0 ]; then
+        rot "$ROHF_F_ROT rgb/hsl-Angaben ausserhalb des :root-Blocks, unbegruendet ($ROHF_F_OK begruendet):"
+        printf '%s\n' "$ROHF_F" | grep '^ROT' | sed 's/^ROT /    /'
+    else
+        gruen "keine rgb/hsl-Angaben ausserhalb des :root-Blocks ($ROHF_F_OK begruendet)"
+    fi
+fi
 
 echo ""
 echo "Tokens vollständig"
@@ -1156,21 +1276,7 @@ echo "CSS-Variablen"
 #      ist. Dass `--imp-neu` als Text auf Weiss nur 4.19 erreicht,
 #      faellt ihr nicht auf.
 # ------------------------------------------------------------------
-VAR_STRIP='
-BEGIN { blk = 0; htm = 0 }
-{
-  zeile = $0; aus = ""; i = 1; n = length(zeile)
-  while (i <= n) {
-    z2 = substr(zeile, i, 2); z3 = substr(zeile, i, 3); z4 = substr(zeile, i, 4)
-    if (blk) { if (z2 == "*/") { blk = 0; i += 2 } else i++; continue }
-    if (htm) { if (z3 == "-->") { htm = 0; i += 3 } else i++; continue }
-    if (z2 == "/*")   { blk = 1; i += 2; continue }
-    if (z4 == "<!--") { htm = 1; i += 4; continue }
-    if (z2 == "//")   { break }
-    aus = aus substr(zeile, i, 1); i++
-  }
-  print aus
-}'
+# Derselbe Entferner wie oben (STRIP_AWK).
 
 VAR_DATEIEN=$(find frontend -type f \( -name '*.css' -o -name '*.js' -o -name '*.html' \) | sort)
 VAR_STILE=$(printf '%s\n' "$VAR_DATEIEN" | grep -c '\.css$' || true)
@@ -1180,7 +1286,7 @@ if [ "$VAR_STILE" -eq 0 ]; then
     # Das ist kein bestandener Lauf, sondern eine fehlende Voraussetzung.
     rot "keine Stilvorlage unter frontend/ gefunden – Voraussetzung der Variablenpruefung fehlt"
 else
-    VAR_TEXT=$(printf '%s\n' "$VAR_DATEIEN" | while read -r f; do awk "$VAR_STRIP" "$f"; done)
+    VAR_TEXT=$(printf '%s\n' "$VAR_DATEIEN" | while read -r f; do awk "$STRIP_AWK" "$f"; done)
     VAR_BENUTZT=$(printf '%s\n' "$VAR_TEXT" \
         | grep -oE 'var\([[:space:]]*--[A-Za-z0-9_-]+' \
         | sed -E 's/^var\([[:space:]]*//' | sort -u)

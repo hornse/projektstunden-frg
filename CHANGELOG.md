@@ -7,6 +7,29 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 
 ## [Unreleased]
 
+### Geändert
+- **Die Phasenpalette des Kompetenzkatalogs steht jetzt im `:root`-Block**
+  (E59). Sieben Hexwerte lagen in `app.js`, wo die Rohfarbenprüfung sie nie
+  gesehen hat. Je Phase zwei Variablen: `--phase-<x>` für Punkt und Kante,
+  `--phase-<x>-bg` für die Fläche des Etiketts – letztere entstand bisher durch
+  Anhängen von `33` an den Hexwert, was mit einer Variablen **still**
+  fehlgeschlagen wäre (`var(--x)33` ist keine gültige Angabe).
+- **Die Namen stehen ausgeschrieben in `KAT_PHASEN`**, nicht aus dem Schlüssel
+  zusammengesetzt: So sieht die Variablenprüfung aus E58 sie. Belegt – ein
+  Vertipper bei `sek1_uebergreifend` macht den Lauf rot.
+- **Vier Werte, die vorhandene Tokens wortgleich wiederholten**, nennen jetzt
+  `var(--bew-1/2/3)` und `var(--bew-3-bg)`. Im Browser gemessen: unverändert.
+- **Die zwei toten Rückfälle `var(--warn,#f59e0b)` sind entfallen.** Ein
+  Rückfall mit Rohfarbe ist künftig verboten – ist die Variable definiert, ist
+  er totes Gewicht mit einem ungeprüften Wert (2.15 Kontrast); fehlt sie,
+  verdeckt er genau den Fehler, den E58 sichtbar machen soll.
+- **Die Rohfarbenprüfung liest `frontend/` statt `frontend/style.css`** –
+  ohne `vendor/`, mit der `:root`-Ausnahme und mit einem Vermerk
+  `rohfarbe-erlaubt: <Grund>` auf der Zeile (Form aus E43). Die grüne Zeile
+  nennt geprüfte Dateien und begründete Ausnahmen. **Prüfungszahl bleibt 73** –
+  es kommt keine Prüfung hinzu, die vorhandenen lesen mehr. Der Beleg ist der
+  erste Lauf: **72/73 mit 19 Fundstellen**.
+
 ### Behoben
 - **Neun Stellen im Frontend nannten CSS-Variablen, die es nicht gibt** (E58):
   `var(--err)` fünfmal, `var(--ok)` viermal. Eine undefinierte Variable bricht

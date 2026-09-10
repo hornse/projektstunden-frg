@@ -79,6 +79,31 @@
   --bew-4:#1e40af; --bew-4-bg:#dbeafe;
   --imp-neu:#3d8b50; --imp-upd:#d48c00; --imp-err:#c94040;
 
+  /* Phasen des Kompetenzkatalogs. Eine Kategorienpalette, die nur dieses
+     Projekt braucht -- die Schulphasen des G9-Kernlehrplans gibt es in
+     keinem anderen. Deshalb hier und nicht in ci-tokens.css: Das ist
+     vendored und wird nach REIHENREGELN 6 nur in der Quelle geaendert.
+     REIHENREGELN 7 sieht diesen Fall ausdruecklich vor.
+
+     Bis zum 10.09.2026 standen diese sieben Werte in app.js, wo die
+     Rohfarbenpruefung sie nie gesehen hat.
+
+     Je Phase ZWEI Werte: der Ton fuer Punkt und Kante, die Flaeche fuer
+     das Etikett. Die Flaeche ist derselbe Ton mit 20 % Deckung (33 = 51
+     von 255). Frueher entstand sie durch Anhaengen von "33" an den
+     Hexwert -- mit einer Variablen ginge das still schief, denn
+     var(--x)33 ist keine gueltige Angabe.
+
+     Die Reihenfolge folgt der Schullaufbahn und ist die Reihenfolge der
+     Tabs; sie steht aber in KAT_PHASEN (app.js), nicht hier. */
+  --phase-erprobungsstufe:#93c5fd;          --phase-erprobungsstufe-bg:#93c5fd33;
+  --phase-sek1-uebergreifend:#5eead4;       --phase-sek1-uebergreifend-bg:#5eead433;
+  --phase-erste-stufe:#86efac;              --phase-erste-stufe-bg:#86efac33;
+  --phase-zweite-stufe:#fde047;             --phase-zweite-stufe-bg:#fde04733;
+  --phase-einfuehrungsphase:#fdba74;        --phase-einfuehrungsphase-bg:#fdba7433;
+  --phase-qualifikationsphase-gk:#fca5a5;   --phase-qualifikationsphase-gk-bg:#fca5a533;
+  --phase-qualifikationsphase-lk:#c4b5fd;   --phase-qualifikationsphase-lk-bg:#c4b5fd33;
+
   --schleier:rgba(0,0,0,.35);
 }
 

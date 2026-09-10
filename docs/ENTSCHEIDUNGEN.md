@@ -1982,3 +1982,139 @@ Rückfall `#f59e0b`. Die Prüfung „Keine Rohfarben außerhalb des
 `:root`-Blocks" liest nur die Stilvorlage; sie sieht davon nichts. Das ist
 derselbe Fall, den REIHENREGELN 2 unter „eine Prüfung, die eine bestimmte
 Datei liest, prüft diese Datei" beschreibt.
+
+---
+
+## E59 — Die Phasenpalette zieht um, und die Rohfarbenprüfung liest das ganze `frontend/` (10.09.2026)
+
+**Anlass:** E58 hat sieben Hexwerte in `app.js` gemeldet — die Farben der
+Schulphasen im Kompetenzkatalog. Die Prüfung „Keine Rohfarben außerhalb des
+`:root`-Blocks" hat sie nie gesehen, weil sie nur `frontend/style.css` las.
+
+**Das ist der zweite Fall derselben Sorte an derselben Stelle.** Beim
+Kompetenzauswahl-Auftrag waren es sechs Farben, danach kam eine siebte dazu —
+ohne dass etwas ansprang. Grün war eine Aussage über die Prüfstelle, nicht über
+den Bestand (REIHENREGELN 2). Ohne die Ausweitung wäre der Umzug folgenlos: Die
+nächste Rohfarbe in `app.js` bliebe wieder unsichtbar.
+
+**Gemessen wurde vor der Entscheidung, und der Bestand war größer als
+angenommen:** 17 Zeilen in `app.js`, nicht neun, dazu zwei in `index.html`.
+Vier Werte wiederholten vorhandene Tokens wortgleich (`--bew-1/2/3`,
+`--bew-3-bg`), vier weitere waren die Standardfarben der Schule.
+
+---
+
+**Erstens: Die Palette steht im `:root`-Block, mit zwei Werten je Phase.**
+
+`--phase-<schlüssel>` färbt Punkt und Kante, `--phase-<schlüssel>-bg` die Fläche
+des Etiketts. Vierzehn Variablen, benannt nach dem Schlüssel aus `KAT_PHASEN`;
+die Liste selbst bleibt in `app.js`, weil sie außer der Farbe auch Schlüssel,
+Beschriftung und die Reihenfolge der Tabs trägt.
+
+**Warum zwei und nicht eine:** Die Fläche entstand bisher durch
+`background:${pMeta.color}33` — zwei Zeichen an den Hexwert gehängt, 20 %
+Deckung. Mit einer Variablen ergäbe das `var(--phase-…)33`: keine gültige
+Angabe, kein Hintergrund, keine Meldung. **Das ist die Stelle, an der die
+Umstellung still fehlgeschlagen wäre**, und sie war vorher zu finden, nicht
+hinterher.
+
+`color-mix()` wurde verworfen: eine CSS-Funktion, die dieses Projekt sonst
+nirgends benutzt, und die Fläche entstünde rechnerisch statt als geprüfter
+Wert. Zwei Variablen folgen zudem dem Muster, das `style.css` schon führt
+(`--bew-1` / `--bew-1-bg`).
+
+**Warum die Namen ausgeschrieben sind und nicht aus dem Schlüssel
+zusammengesetzt** (`'var(--phase-' + key.replace(/_/g,'-') + ')'`): Weil die
+Prüfung aus E58 ausgeschriebene Namen sieht und zusammengesetzte nicht — das
+ist dort als erste Grenze benannt. Ein Vertipper wird damit **rot**, statt eine
+farblose Kachel zu erzeugen. Belegt: `--phase-sek1-uebergreifende` statt
+`--phase-sek1-uebergreifend` lässt die Variablenprüfung fallen. Genau dieser
+Wert ist der zuletzt hinzugekommene und die Stelle, an der ein
+Übertragungsfehler am ehesten unbemerkt bliebe.
+
+---
+
+**Zweitens: Der Geltungsbereich ist `frontend/` ohne `frontend/vendor/`.**
+
+Was zulässig bleibt — das ist die Auskunft, die beim nächsten Farbwert gebraucht
+wird:
+
+| | |
+|---|---|
+| `:root`-Block einer eigenen Stilvorlage | zulässig, dort gehört die Kategorienpalette hin (REIHENREGELN 7) |
+| `frontend/vendor/` | wird nicht gelesen |
+| Zeile mit `rohfarbe-erlaubt: <Grund>` | zulässig, Form aus E43 |
+| Rückfall `var(--x,#wert)` | **nicht** zulässig |
+| Farbe in einem Kommentar | keine Farbe — Kommentare werden vorher entfernt |
+
+**Warum vendored gar nicht gelesen wird:** Diese Dateien gehören dem Quell-Repo;
+nach REIHENREGELN 6 dürfen wir sie nicht ändern. Eine rote Zeile, die niemand
+beheben darf, blockiert den Deploy für etwas Fremdes — und wird dann
+abgeschaltet, und fehlt danach auch dort, wo sie recht hätte. Ein Fund dort wäre
+eine Meldung an `koordination`, kein Mangel dieses Projekts. Sachlich kostet der
+Ausschluss nichts: `ci-shell.css` und `ci-komponenten.css` führen **null**
+Rohfarben, und `ci-tokens.css` ist der vorgesehene Ort für alle 56.
+
+**Kommentare werden entfernt, der Vermerk aber in der unveränderten Zeile
+gesucht.** Anders ginge beides nicht zugleich — der Vermerk steht in einem
+Kommentar, und eine Farbe in einer Erklärung ist keine Farbe an einem Element.
+
+**Der Vermerk muss auf derselben Zeile stehen wie der Wert.** Er befreit die
+Zeile, nicht die Datei und nicht den Absatz. Beim Bau ist die Prüfung zweimal
+rot geblieben, weil der Vermerk eine Zeile darüber stand — das ist kein Mangel,
+sondern die Grenze, die E43 für die Maskierung schon benannt hat, von der
+anderen Seite. Wo sie hier weniger sicher ist als dort: E43 setzt den Vermerk
+**in** die Einbettung, er kann also nicht verrutschen; hier trägt ihn die Zeile.
+
+**Was der Vermerk heute begründet — vier Stellen, alle keine Darstellung:**
+die beiden Standardfarben der Schule (`STANDARD_AKZENT`, `STANDARD_SEKUNDAER`)
+und die beiden Platzhalter der Farbfelder in `index.html`. Ein Token käme dort
+nicht in Frage: `applyEinstellungen` schreibt den Wert **in** `--accent` hinein;
+das Token zu lesen, um dasselbe Token zu setzen, wäre ein Kreis, und beim
+Zurücksetzen ist ausdrücklich der Vorgabewert gemeint.
+
+**Die grüne Zeile nennt beide Zahlen** — geprüfte Dateien und begründete
+Ausnahmen —, damit ein Wachsen der Ausnahmen sichtbar ist, ohne dass jemand
+nachzählt.
+
+---
+
+**Drittens: Ein Rückfall mit Rohfarbe ist verboten, gleich ob die Variable
+definiert ist.**
+
+Die beiden `var(--warn,#f59e0b)` sind entfallen. Ist die Variable definiert, ist
+der Rückfall totes Gewicht mit einem ungeprüften Wert — `#f59e0b` erreicht auf
+Weiß 2.15. Ist sie es **nicht**, verdeckt er genau den Fehler, den die Prüfung
+aus E58 sichtbar machen soll: Statt eines auffällig ungefärbten Textes erschiene
+eine Farbe, die nie jemand beschlossen hat. Wer wirklich einen Rückfall braucht,
+nennt eine zweite Variable: `var(--a, var(--b))`.
+
+---
+
+**Was die Prüfungszahl angeht:** Sie bleibt bei **73**. Es kommt keine Prüfung
+hinzu; die beiden vorhandenen lesen drei Dateien statt einer. Dass die
+Ausweitung wirksam ist, belegt nicht die Zahl, sondern der erste Lauf: **72/73
+mit 19 Fundstellen**, bevor eine einzige Farbe umgezogen war.
+
+---
+
+**Drei Befunde, ungetan und hiermit im Protokoll:**
+
+**Der Hilfetext beschreibt die Balkenfarben falsch.** Er sagt „grün ≥ 100 % ·
+gelb ≥ 40 % · rot < 40 %". Der Code sagt: `r >= 1` → `dover`/`pover` mit
+`--imp-err` (**rot**), `r >= 0.4` → `dok` mit `--imp-neu` (grün), darunter
+`dwarn` mit `--imp-upd` (orange). Bei 100 % ist der Punkt also rot, unter 40 %
+orange. Ob die Farbgebung so gemeint ist („über Soll") oder der Text, ist eine
+fachliche Frage und keine Farbfrage; dieser Vorgang hat nur die Werte auf ihre
+Tokens umgestellt und den Text nicht angefasst.
+
+**`--accent-dark` wird geschrieben und nie gelesen.** `app.js` setzt es bei
+jeder Einstellungsänderung; im ganzen `frontend/` gibt es kein
+`var(--accent-dark)`. Die Prüfung aus E58 fängt das nicht — sie prüft die
+Richtung „benutzt, aber nicht definiert", nicht die umgekehrte.
+
+**`#3d6b4f` steht an vier Orten:** zweimal im Backend (Vorgaben der
+Einstellungen), einmal als Konstante in `app.js`, einmal als Platzhalter in
+`index.html`. Die Wahrheit gehört ins Backend; dass das Frontend sie mitführt,
+ist eine zweite Wahrheit, die auseinanderlaufen kann. Der Weg dahin — Vorgaben
+über die API holen — ist ein eigener Vorgang.

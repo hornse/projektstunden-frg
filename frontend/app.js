@@ -1571,14 +1571,33 @@ function renderKatRahmenAuswahl() {
 // Schlüssel müssen den ENUM-Werten von kompetenzbereiche.phase entsprechen.
 // Das prüft tests-projektstunden.sh gegen sql/14_… — ein Wert, der hier
 // fehlt, fiel früher still weg (Befund 1).
+//
+// Die FARBEN stehen in style.css im :root-Block (REIHENREGELN 7); hier
+// stehen nur ihre Namen. Zwei je Phase: `color` faerbt Punkt und Kante,
+// `flaeche` das Etikett -- frueher entstand die Flaeche durch Anhaengen
+// von "33" an den Hexwert, und genau das ginge mit einer Variablen still
+// schief.
+//
+// Die Namen sind AUSGESCHRIEBEN und nicht aus `key` zusammengesetzt. Das
+// ist Absicht: Die Pruefung "CSS-Variablen" (E58) sieht ausgeschriebene
+// Namen und meldet einen, den es nicht gibt. Ein Vertipper bei
+// `sek1_uebergreifend` -- dem zuletzt hinzugekommenen Wert -- wird damit
+// rot, statt eine farblose Kachel zu erzeugen.
 const KAT_PHASEN = [
-  { key: 'erprobungsstufe',        label: 'Erprobungsstufe',       color: '#93c5fd' }, // hellblau
-  { key: 'sek1_uebergreifend',     label: 'Sek I übergreifend',    color: '#5eead4' }, // helltürkis
-  { key: 'erste_stufe',            label: 'Erste Stufe',           color: '#86efac' }, // hellgrün
-  { key: 'zweite_stufe',           label: 'Zweite Stufe',          color: '#fde047' }, // hellgelb
-  { key: 'einfuehrungsphase',      label: 'Einführungsphase',      color: '#fdba74' }, // hellorange
-  { key: 'qualifikationsphase_gk', label: 'Q-Phase Grundkurs',     color: '#fca5a5' }, // hellrot
-  { key: 'qualifikationsphase_lk', label: 'Q-Phase Leistungskurs', color: '#c4b5fd' }, // helllila
+  { key: 'erprobungsstufe',        label: 'Erprobungsstufe',       // hellblau
+    color: 'var(--phase-erprobungsstufe)',          flaeche: 'var(--phase-erprobungsstufe-bg)' },
+  { key: 'sek1_uebergreifend',     label: 'Sek I übergreifend',    // helltürkis
+    color: 'var(--phase-sek1-uebergreifend)',       flaeche: 'var(--phase-sek1-uebergreifend-bg)' },
+  { key: 'erste_stufe',            label: 'Erste Stufe',           // hellgrün
+    color: 'var(--phase-erste-stufe)',              flaeche: 'var(--phase-erste-stufe-bg)' },
+  { key: 'zweite_stufe',           label: 'Zweite Stufe',          // hellgelb
+    color: 'var(--phase-zweite-stufe)',             flaeche: 'var(--phase-zweite-stufe-bg)' },
+  { key: 'einfuehrungsphase',      label: 'Einführungsphase',      // hellorange
+    color: 'var(--phase-einfuehrungsphase)',        flaeche: 'var(--phase-einfuehrungsphase-bg)' },
+  { key: 'qualifikationsphase_gk', label: 'Q-Phase Grundkurs',     // hellrot
+    color: 'var(--phase-qualifikationsphase-gk)',   flaeche: 'var(--phase-qualifikationsphase-gk-bg)' },
+  { key: 'qualifikationsphase_lk', label: 'Q-Phase Leistungskurs', // helllila
+    color: 'var(--phase-qualifikationsphase-lk)',   flaeche: 'var(--phase-qualifikationsphase-lk-bg)' },
 ];
 let AKT_KAT_PHASE = 'alle';
 
@@ -1600,7 +1619,7 @@ function phasenAusKompetenzen(komps) {
     if (!k.phase) return;                                   // NULL ist zulässig (MKR)
     if (KAT_PHASEN.some(p => p.key === k.phase)) return;
     if (fremd.some(f => f.key === k.phase)) return;
-    fremd.push({ key: k.phase, label: k.phase, color: null });
+    fremd.push({ key: k.phase, label: k.phase, color: null, flaeche: null });
     if (!PHASEN_UNBEKANNT.has(k.phase)) {
       PHASEN_UNBEKANNT.add(k.phase);
       console.warn('[Kompetenzkatalog] Unbekannter Phasenwert "' + k.phase +
@@ -1662,7 +1681,7 @@ function renderKatalog() {
     const pMeta = KAT_PHASEN.find(p => p.key === ks[0].phase);
     const cardStyle = pMeta ? ` style="border-left:4px solid ${pMeta.color}"` : '';
     const phaseBadge = pMeta
-      ? `<span style="font-size:10px;font-weight:600;color:var(--text2);background:${pMeta.color}33;padding:2px 8px;border-radius:99px;margin-left:8px">${pMeta.label}</span>`
+      ? `<span style="font-size:10px;font-weight:600;color:var(--text2);background:${pMeta.flaeche};padding:2px 8px;border-radius:99px;margin-left:8px">${pMeta.label}</span>`
       : '';
     const items = ks.map(k => {
       const kinder = erwByEltern[k.id] || [];
@@ -2171,7 +2190,7 @@ async function impLogLaden() {
           </div>
           <div style="margin-top:4px">
             <span style="color:var(--ok)">+${e.neu} neu</span> &nbsp;·&nbsp;
-            <span style="color:var(--warn,#f59e0b)">${e.aktualisiert} aktualisiert</span> &nbsp;·&nbsp;
+            <span style="color:var(--warn)">${e.aktualisiert} aktualisiert</span> &nbsp;·&nbsp;
             ${e.unveraendert} unverändert
             ${e.inaktiviert ? `&nbsp;·&nbsp;<span style="color:var(--text3)">${e.inaktiviert} inaktiviert</span>` : ''}
             ${e.fehler ? `&nbsp;·&nbsp;<span style="color:var(--danger)">${e.fehler} Fehler</span>` : ''}
@@ -2217,7 +2236,7 @@ async function impVorschau() {
 
     document.getElementById('imp-stats').innerHTML = `
       <div class="stat"><div class="stat-val" style="color:var(--ok)">${v.neu?.length ?? 0}</div><div class="stat-lbl">Neu</div></div>
-      <div class="stat"><div class="stat-val" style="color:var(--warn,#f59e0b)">${v.aktualisiert?.length ?? 0}</div><div class="stat-lbl">Aktualisiert</div></div>
+      <div class="stat"><div class="stat-val" style="color:var(--warn)">${v.aktualisiert?.length ?? 0}</div><div class="stat-lbl">Aktualisiert</div></div>
       <div class="stat"><div class="stat-val">${v.unveraendert?.length ?? 0}</div><div class="stat-lbl">Unverändert</div></div>
       <div class="stat"><div class="stat-val" style="color:var(--danger)">${v.fehler?.length ?? 0}</div><div class="stat-lbl">Fehler</div></div>`;
 
@@ -2661,9 +2680,9 @@ function hilfeHandbuch() {
       <p>Das Dashboard zeigt für jeden Schüler das Stundenkontingent je Fach sowie erworbene Kompetenzen.</p>
       <h4>Stundenkontingent</h4>
       <p>Jede Fachzeile zeigt Ist-Stunden / Soll-Stunden mit Fortschrittsbalken und Prozentzahl.
-      Farben: <span style="color:#065f46">grün ≥ 100%</span> ·
-      <span style="color:#b45309">gelb ≥ 40%</span> ·
-      <span style="color:#b91c1c">rot &lt; 40%</span>.</p>
+      Farben: <span style="color:var(--bew-3)">grün ≥ 100%</span> ·
+      <span style="color:var(--bew-2)">gelb ≥ 40%</span> ·
+      <span style="color:var(--bew-1)">rot &lt; 40%</span>.</p>
       <h4>Erworbene Kompetenzen</h4>
       <p>Farbige Pillen zeigen MKR- und KLP-Kompetenzen. Nur Kompetenzen aus
       abgeschlossenen Werkstätten oder individuell absolvierten Teilnahmen erscheinen hier.</p>
@@ -2829,7 +2848,7 @@ async function ladeSchuelerPortal(schueler_id) {
           <div class="tags">
             <span class="tag-f">${w.status}</span>
             <span class="tag-k">${w.kompetenzen_anzahl || 0} Kompetenzen</span>
-            ${w.abgeschlossen ? '<span class="tag-f" style="background:#d1fae5;color:#065f46">✓ Absolviert</span>' : ''}
+            ${w.abgeschlossen ? '<span class="tag-f" style="background:var(--bew-3-bg);color:var(--bew-3)">✓ Absolviert</span>' : ''}
           </div>
         </div>
         <div style="font-size:18px;color:var(--text3);align-self:center">›</div>
@@ -2947,6 +2966,18 @@ async function selbstEinschaetzung(werkstatt_id, kompetenz_id, stufe, chipEl) {
 // ============================================================
 // EINSTELLUNGEN
 // ============================================================
+// Vorgabefarben der Schule. KEINE Anzeigefarbe, sondern ein Datenwert:
+// `applyEinstellungen` schreibt ihn IN `--accent` hinein. Ein Token zu
+// lesen, um dasselbe Token zu setzen, waere ein Kreis -- und beim
+// Zuruecksetzen ist ausdruecklich der Vorgabewert gemeint, nicht der
+// gerade eingestellte.
+//
+// Die Wahrheit liegt im Backend (`index.php`, Vorgaben der Einstellungen).
+// Dass sie hier noch einmal steht, ist eine zweite Wahrheit und als
+// Befund gemeldet.
+const STANDARD_AKZENT    = '#3d6b4f'; /* rohfarbe-erlaubt: Vorgabewert der Einstellungen, keine Darstellung */
+const STANDARD_SEKUNDAER = '#2c4f3a'; /* rohfarbe-erlaubt: Vorgabewert der Einstellungen, keine Darstellung */
+
 async function initEinstellungen() {
   const data = await GET('einstellungen');
   if (!data) return;
@@ -2955,8 +2986,8 @@ async function initEinstellungen() {
   document.getElementById('ein-titel').value        = data.app_titel       || '';
   document.getElementById('ein-untertitel').value   = data.app_untertitel  || '';
 
-  const akzent = data.farbe_akzent   || '#3d6b4f';
-  const sek    = data.farbe_sekundaer|| '#2c4f3a';
+  const akzent = data.farbe_akzent    || STANDARD_AKZENT;
+  const sek    = data.farbe_sekundaer || STANDARD_SEKUNDAER;
   document.getElementById('ein-farbe-akzent').value     = akzent;
   document.getElementById('ein-farbe-akzent-hex').value = akzent;
   document.getElementById('ein-farbe-sek').value         = sek;
@@ -3043,8 +3074,8 @@ async function einstellungenZuruecksetzen() {
       schulname: 'Friedrich-Rückert-Gymnasium Düsseldorf',
       app_titel: 'Projektstunden NRW',
       app_untertitel: 'Gymnasium G9 – Kompetenz- und Stunden-Tracking',
-      farbe_akzent: '#3d6b4f',
-      farbe_sekundaer: '#2c4f3a',
+      farbe_akzent: STANDARD_AKZENT,
+      farbe_sekundaer: STANDARD_SEKUNDAER,
     });
   } catch(e) { showMsg('ein-farb-msg', e.message, 'err'); }
 }
