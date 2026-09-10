@@ -1233,6 +1233,75 @@ else
 fi
 
 echo ""
+echo "Stundenkontingent"
+# ------------------------------------------------------------------
+# Zwei Eigenschaften der Fachzeile im Dashboard (E60).
+#
+# ERSTENS: Die Prozentzahl ist NICHT gedeckelt, der Balken schon.
+# `Math.min(100, …)` machte aus 150 % eine 100, waehrend die Zeile
+# daneben "3 / 2 Std." zeigte -- zwei Angaben ueber dieselbe Sache, die
+# sich widersprachen. Der Balken braucht den Deckel, sonst schiebt er
+# sich aus seinem Rahmen.
+#
+# Geprueft wird ueber die NAMEN, nicht ueber die Nachbarschaft zweier
+# Zeilen: `pct` ist die Zahl, `breite` der Balken. Eine Pruefung auf
+# Textnaehe waere gruen geblieben, sobald jemand die Zeilen umstellt
+# (REIHENREGELN 2).
+#
+# ZWEITENS: Die vier Klassen der alten Dreiteilung kommen nirgends mehr
+# vor -- weder gesetzt noch als Regel. Das ist die Suche nach der
+# bekannten falschen Fassung: Dass `.dok` da ist, schliesst nicht aus,
+# dass `.dover` danebensteht (REIHENREGELN 2, E55).
+#
+# GRENZE: Beide Pruefungen haengen an den Namen `pct` und `breite`. Wer
+# umbenennt, bekommt Rot und muss die Pruefung nachziehen. Das ist der
+# Preis dafuer, die Rollen zu pruefen statt der Reihenfolge.
+# ------------------------------------------------------------------
+if [ ! -f "$JS" ]; then
+    rot "$JS fehlt – Voraussetzung der Kontingentpruefung fehlt"
+    rot "$JS fehlt – Voraussetzung der Kontingentpruefung fehlt"
+else
+    KONT_TEXT=$(awk "$STRIP_AWK" "$JS")
+    KONT_PCT=$(printf '%s\n' "$KONT_TEXT" | grep -cE 'const[[:space:]]+pct[[:space:]]*=' || true)
+    KONT_PCT_MIN=$(printf '%s\n' "$KONT_TEXT" | grep -E 'const[[:space:]]+pct[[:space:]]*=' \
+                   | grep -c 'Math\.min' || true)
+    KONT_BREITE=$(printf '%s\n' "$KONT_TEXT" \
+                  | grep -cE 'const[[:space:]]+breite[[:space:]]*=[[:space:]]*Math\.min\(100,[[:space:]]*pct\)' || true)
+    KONT_BALKEN=$(printf '%s\n' "$KONT_TEXT" | grep -c 'width:${breite}%' || true)
+    KONT_ZAHL=$(printf '%s\n' "$KONT_TEXT" | grep -c '${pct}%<' || true)
+
+    if [ "$KONT_PCT" -ne 1 ]; then
+        rot "die Zuweisung von pct steht $KONT_PCT-mal in $JS – erwartet genau einmal"
+    elif [ "$KONT_PCT_MIN" -gt 0 ]; then
+        rot "die Prozentzahl wird gedeckelt (Math.min in der Zuweisung von pct) – 150 % erschienen als 100 %"
+    elif [ "$KONT_BREITE" -ne 1 ]; then
+        rot "der Balken wird nicht gedeckelt: kein 'const breite = Math.min(100, pct)' gefunden"
+    elif [ "$KONT_BALKEN" -ne 1 ] || [ "$KONT_ZAHL" -ne 1 ]; then
+        rot "Zahl und Balken verwechselt oder nicht gefunden (width:\${breite}=$KONT_BALKEN, \${pct}%=$KONT_ZAHL)"
+    else
+        gruen "Prozentzahl ungedeckelt, Balkenbreite gedeckelt"
+    fi
+
+    # Kommentare vorher entfernen. Ohne das schlaegt die Pruefung auf den
+    # Kommentar an, der die Entfernung ERKLAERT -- beim Bau genau passiert:
+    # Der Vermerk in style.css nennt `.pwarn` und `.pover` beim Namen.
+    # Gegenprobe dazu: den Code loeschen, den Kommentar stehen lassen (gruen);
+    # den Code wieder einsetzen (rot).
+    KONT_DATEIEN=$(find frontend -type f \
+                   \( -name '*.css' -o -name '*.js' -o -name '*.html' \) \
+                   ! -path 'frontend/vendor/*' | sort)
+    KONT_FUND=$(for f in $KONT_DATEIEN; do
+                    awk "$STRIP_AWK" "$f" | grep -nE 'dwarn|dover|pwarn|pover' | sed "s|^|$f:|"
+                done)
+    if [ -n "$KONT_FUND" ]; then
+        rot "die Klassen der alten Dreiteilung kommen noch vor:"
+        printf '%s\n' "$KONT_FUND" | sed 's/^/    /'
+    else
+        gruen "keine Spur der alten Dreiteilung (dwarn, dover, pwarn, pover)"
+    fi
+fi
+
+echo ""
 echo "CSS-Variablen"
 # ------------------------------------------------------------------
 # Jede in frontend/ verwendete CSS-Variable muss definiert sein.

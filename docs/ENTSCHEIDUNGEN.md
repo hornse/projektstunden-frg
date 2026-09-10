@@ -2118,3 +2118,78 @@ Einstellungen), einmal als Konstante in `app.js`, einmal als Platzhalter in
 `index.html`. Die Wahrheit gehört ins Backend; dass das Frontend sie mitführt,
 ist eine zweite Wahrheit, die auseinanderlaufen kann. Der Weg dahin — Vorgaben
 über die API holen — ist ein eigener Vorgang.
+
+---
+
+## E60 — Zwei Zustände im Stundenkontingent, und die Prozentzahl sagt die Wahrheit (10.09.2026)
+
+**Anlass:** E59 hielt fest, dass der Hilfetext die Balkenfarben falsch
+beschreibt — „grün ≥ 100 % · gelb ≥ 40 % · rot < 40 %", während der Code bei
+≥ 100 % rot färbte und unter 40 % orange. Ob der Text falsch war oder die
+Farbe, war eine fachliche Frage.
+
+**Entschieden ist: die Farbe war falsch, nicht der Text.**
+
+**Über Soll ist kein Fehler.** Rot heißt in dieser Anwendung „Fehler" — die
+Fehlerzahl der Import-Vorschau, der Löschen-Knopf, die Bewertungsstufe 1.
+Übererfüllung darf nicht dieselbe Farbe tragen wie eine fehlerhafte CSV-Zeile.
+
+**Zwei Zustände statt drei: Soll erreicht (grün) oder nicht (neutral).** Die
+40-Prozent-Grenze entfällt **ersatzlos**. Sie ist nicht zu begründen: Das Soll
+ist ein Jahreswert (`faecher.soll_jg5` bis `soll_jg10`), und dieselbe Zahl
+bedeutet im November etwas anderes als im Juni. Die Farbe weiß nichts vom
+Datum. Eine Bewertung auszusprechen, für die es keine Regel gibt, ist schlechter
+als keine.
+
+**Der Deckel auf der Prozentzahl fällt.** `Math.min(100, …)` machte aus 150 %
+eine 100, während die Zeile daneben „3 / 2 Std." zeigte — zwei Angaben über
+dieselbe Sache, die sich widersprachen. Künftig steht dort 150 %. **Beim Balken
+bleibt der Deckel**, sonst schiebt er sich aus seinem Rahmen. Ein voller Balken
+bedeutet damit 100 % und 300 % gleichermaßen; die Zahl daneben unterscheidet.
+Kein zweiter Grünton, kein zusätzlicher Hinweistext — die Zahl ist der Hinweis.
+
+**Die Farbe folgt der angezeigten Zahl, nicht dem ungerundeten Verhältnis.**
+`pct >= 100`, nicht `stunden >= soll`. Sonst könnte dort „100%" stehen und der
+Punkt trotzdem grau sein — bei `stunden` als `DECIMAL(5,1)` und einem
+hinreichend großen Soll ist das möglich. Die beiden Angaben dürfen einander
+nie widersprechen; das ist derselbe Grund, aus dem der Deckel fällt.
+
+**Der Hilfetext beschreibt jetzt, was geschieht**, statt dessen, was einmal
+gedacht war.
+
+**Was dabei tot wurde, ist weg (E55):** `.dwarn`, `.dover`, `.pwarn` und
+`.pover` werden nirgends mehr gesetzt; ihre vier Regeln sind aus `style.css`
+entfernt. Vor dem Entfernen geprüft, ob die Tokens dahinter noch gebraucht
+werden — `--imp-neu` ja (`.pok`, `.dok`), `--imp-upd` und `--imp-err` nur noch
+von `.imp-upd` und `.imp-err`, siehe den Befund unten.
+
+**Die Rechnung gibt es nur einmal.** Gesucht, nicht vermutet: `projekt_stunden`
+kommt in `app.js` an fünf Stellen vor, das Verhältnis wird an genau einer
+gebildet, und `Math.min(` steht im ganzen Frontend genau einmal. Es gibt keine
+zweite Ansicht mit derselben Schwelle.
+
+**Zwei Prüfungen, 73 → 75:**
+
+*„Prozentzahl ungedeckelt, Balkenbreite gedeckelt"* — geprüft über die **Namen**
+(`pct` ist die Zahl, `breite` der Balken), nicht über die Nachbarschaft zweier
+Zeilen. Eine Prüfung auf Textnähe wäre grün geblieben, sobald jemand die Zeilen
+umstellt. Ihr Preis: Wer umbenennt, bekommt Rot und muss die Prüfung nachziehen.
+
+*„Keine Spur der alten Dreiteilung"* — die vier Klassennamen dürfen in keiner
+eigenen Frontend-Datei mehr vorkommen, weder gesetzt noch als Regel. Das ist die
+Suche nach der bekannten falschen Fassung (REIHENREGELN 2): Dass `.dok` da ist,
+schließt nicht aus, dass `.dover` danebensteht.
+
+**Diese zweite Prüfung ist beim Bau prompt in die eigene Falle gelaufen:** Sie
+schlug auf den Kommentar an, der die Entfernung erklärt — er nennt `.pwarn` und
+`.pover` beim Namen. Behoben, indem sie Kommentare entfernt, bevor sie sucht.
+Die Gegenprobe dazu ist genau die aus REIHENREGELN 2: den Code löschen, den
+Kommentar stehen lassen — grün; den Code wieder einsetzen — rot. Beides geführt.
+
+**Gemeldet, nicht behoben:** `.imp-row`, `.imp-icon`, `.imp-neu`, `.imp-upd`,
+`.imp-ok` und `.imp-err` in `style.css` werden von niemandem gesetzt — sechs
+Regeln aus einer früheren Fassung der Import-Vorschau, die heute mit `.stat`
+und `.sec` arbeitet. Sie waren schon vor diesem Vorgang tot; nach E55 ist das
+ein eigener Handgriff. Zu beachten: Mit ihnen verlieren `--imp-upd` und
+`--imp-err` ihre letzten Verwendungen — wer sie entfernt, entfernt auch die
+beiden Tokens, oder er lässt zwei Definitionen stehen, die niemand liest.

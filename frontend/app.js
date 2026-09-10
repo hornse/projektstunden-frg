@@ -293,18 +293,37 @@ async function renderDash() {
     const uid = 'sc' + s.id;
     // Fachzeilen
     const fRows = s.faecher.filter(f => f.soll > 0).map(f => {
-      const pct = f.soll > 0 ? Math.min(100, Math.round(f.projekt_stunden / f.soll * 100)) : 0;
-      let dc = 'dnone', fc = '';
-      if (f.soll > 0 && f.projekt_stunden > 0) {
-        const r = f.projekt_stunden / f.soll;
-        dc = r >= 1 ? 'dover' : r >= 0.4 ? 'dok' : 'dwarn';
-        fc = r >= 1 ? 'pover' : r >= 0.4 ? 'pok'  : 'pwarn';
-      }
+      // ZWEI ZUSTAENDE, NICHT DREI (E60).
+      //
+      // Vorher: rot ab 100 %, gelb ab 40 %, sonst orange. Beides war falsch.
+      // Rot heisst in dieser Anwendung "Fehler" -- die Fehlerzahl der
+      // Import-Vorschau, der Loeschen-Knopf, die Bewertungsstufe 1.
+      // Uebererfuellung ist kein Fehler und darf nicht dieselbe Farbe tragen.
+      //
+      // Die 40-Prozent-Grenze ist ersatzlos entfallen. Das Soll ist ein
+      // Jahreswert (soll_jg5 bis soll_jg10); dieselbe Zahl bedeutet im
+      // November etwas anderes als im Juni, und die Farbe weiss nichts vom
+      // Datum. Eine Bewertung auszusprechen, fuer die es keine Regel gibt,
+      // ist schlechter als keine.
+      //
+      // KEIN DECKEL AUF DER ZAHL, WOHL ABER AUF DEM BALKEN: `Math.min(100, …)`
+      // machte aus 150 % eine 100, waehrend die Zeile daneben "3 / 2 Std."
+      // zeigte -- zwei Angaben ueber dieselbe Sache, die sich widersprachen.
+      // Der Balken bleibt gedeckelt, sonst schiebt er sich aus seinem Rahmen.
+      //
+      // Die Farbe folgt der ANGEZEIGTEN Zahl, nicht dem ungerundeten
+      // Verhaeltnis: Sonst koennte dort "100%" stehen und der Punkt trotzdem
+      // grau sein. Beide Angaben duerfen einander nie widersprechen.
+      const pct    = f.soll > 0 ? Math.round(f.projekt_stunden / f.soll * 100) : 0;
+      const breite = Math.min(100, pct);
+      const voll   = pct >= 100;
+      const dc = voll ? 'dok' : 'dnone';
+      const fc = voll ? 'pok' : 'pnone';
       return `<div class="f-row">
         <span class="dot ${dc}"></span>
         <span class="f-lbl">${f.fach_name}</span>
         <span class="f-nums">${f.projekt_stunden} / ${f.soll} Std.</span>
-        <div class="pbar"><div class="pfill ${fc}" style="width:${pct}%"></div></div>
+        <div class="pbar"><div class="pfill ${fc}" style="width:${breite}%"></div></div>
         <span style="font-size:11px;color:var(--text3);min-width:30px;text-align:right;font-family:'DM Mono',monospace">${pct}%</span>
       </div>`;
     }).join('');
@@ -2680,9 +2699,10 @@ function hilfeHandbuch() {
       <p>Das Dashboard zeigt für jeden Schüler das Stundenkontingent je Fach sowie erworbene Kompetenzen.</p>
       <h4>Stundenkontingent</h4>
       <p>Jede Fachzeile zeigt Ist-Stunden / Soll-Stunden mit Fortschrittsbalken und Prozentzahl.
-      Farben: <span style="color:var(--bew-3)">grün ≥ 100%</span> ·
-      <span style="color:var(--bew-2)">gelb ≥ 40%</span> ·
-      <span style="color:var(--bew-1)">rot &lt; 40%</span>.</p>
+      Ist das Soll erreicht, sind Punkt und Balken
+      <span style="color:var(--imp-neu)">grün</span>; darunter bleiben sie neutral.
+      Über 100 % nennt die Prozentzahl den tatsächlichen Wert – der Balken bleibt
+      dabei voll, weil er nicht weiter kann.</p>
       <h4>Erworbene Kompetenzen</h4>
       <p>Farbige Pillen zeigen MKR- und KLP-Kompetenzen. Nur Kompetenzen aus
       abgeschlossenen Werkstätten oder individuell absolvierten Teilnahmen erscheinen hier.</p>

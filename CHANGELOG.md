@@ -8,6 +8,28 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 ## [Unreleased]
 
 ### Geändert
+- **Das Stundenkontingent kennt zwei Zustände statt drei** (E60): Soll erreicht
+  = grün, darunter neutral. Vorher färbte der Balken bei **≥ 100 % rot** und
+  unter 40 % orange – Rot heißt in dieser Anwendung „Fehler", und
+  Übererfüllung ist keiner. Die 40-Prozent-Grenze entfällt ersatzlos: Das Soll
+  ist ein Jahreswert, und dieselbe Zahl bedeutet im November etwas anderes als
+  im Juni.
+- **Die Prozentzahl wird nicht mehr gedeckelt.** `Math.min(100, …)` machte aus
+  150 % eine 100, während daneben „3 / 2 Std." stand. Jetzt steht dort 150 %.
+  Der **Balken** bleibt gedeckelt, sonst schiebt er sich aus seinem Rahmen.
+  Im Browser gemessen: `3 / 2 Std.` zeigt vorher `100%`/rot, nachher
+  `150%`/grün bei unveränderter Balkenbreite (624 px von 624 px).
+- **Der Hilfetext beschreibt jetzt, was geschieht**, statt dessen, was einmal
+  gedacht war.
+- **Vier tote CSS-Regeln entfernt** – `.dwarn`, `.dover`, `.pwarn`, `.pover`
+  werden nirgends mehr gesetzt (E55). Vorher geprüft, ob die Tokens dahinter
+  noch gebraucht werden.
+- **Zwei Prüfungen dazu** – die Prozentzahl darf nicht gedeckelt sein und die
+  Balkenbreite muss es, geprüft über die Namen `pct` und `breite` statt über
+  Textnähe; und keine der vier alten Klassen darf noch vorkommen.
+  **73 → 75 Prüfungen.**
+
+### Geändert (vorheriger Vorgang)
 - **Die Phasenpalette des Kompetenzkatalogs steht jetzt im `:root`-Block**
   (E59). Sieben Hexwerte lagen in `app.js`, wo die Rohfarbenprüfung sie nie
   gesehen hat. Je Phase zwei Variablen: `--phase-<x>` für Punkt und Kante,

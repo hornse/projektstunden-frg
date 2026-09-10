@@ -192,9 +192,13 @@ select[multiple]{height:100px}
 .f-nums{font-size:12px;font-family:var(--ci-schrift-mono);min-width:68px;flex-shrink:0;color:var(--text2)}
 .pbar{height:5px;border-radius:3px;background:var(--border);overflow:hidden;flex:1}
 .pfill{height:100%;border-radius:3px;transition:width .4s}
-.pok{background:var(--imp-neu)}.pwarn{background:var(--imp-upd)}.pover{background:var(--imp-err)}.pnone{background:var(--border2)}
+/* Zwei Zustaende, nicht vier (E60): Soll erreicht oder nicht. `.pwarn` und
+   `.pover` sind mit der 40-Prozent-Grenze und der Rotfaerbung ueber Soll
+   entfallen -- sie wurden danach nirgends mehr gesetzt, und eine Regel, die
+   niemand trifft, ist eine falsche Auskunft ueber den Bestand (E55). */
+.pok{background:var(--imp-neu)}.pnone{background:var(--border2)}
 .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;display:inline-block}
-.dok{background:var(--imp-neu)}.dwarn{background:var(--imp-upd)}.dover{background:var(--imp-err)}.dnone{background:var(--border2)}
+.dok{background:var(--imp-neu)}.dnone{background:var(--border2)}
 .k-sum{margin-top:12px;padding-top:10px;border-top:1px solid var(--border)}
 .k-pills{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
 .pill{font-size:11px;padding:3px 10px;border-radius:99px;background:var(--accent-bg);color:var(--accent-text);font-weight:500}
