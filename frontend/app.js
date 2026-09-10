@@ -2140,9 +2140,15 @@ async function impLogLaden() {
   try {
     const data = await GET('import/log');
     if (data && data.length) {
+      // `dateiname` kommt ungefiltert aus $_FILES in die Datenbank und von
+      // dort hierher -- dieselbe Bauform wie E42, nur ueber die Datenbank
+      // und damit dauerhaft. Nach E40 wird bei der AUSGABE maskiert, nicht
+      // beim Schreiben: Das schuetzt auch die Zeilen, die vor dieser
+      // Behebung entstanden sind, und der CSV-Import vergleicht ohnehin
+      // zeichengenau gegen die Datei.
       logEl.innerHTML = data.map(e => `
         <div class="card" style="margin-bottom:8px;font-size:13px">
-          <div style="font-weight:600">${e.dateiname}</div>
+          <div style="font-weight:600">${escHtml(e.dateiname ?? '')}</div>
           <div style="color:var(--text3);font-size:12px;margin-top:2px">
             ${new Date(e.erstellt_am).toLocaleString('de-DE')} &nbsp;·&nbsp;
             ${/* keine-maskierung: schuljahre.name, beim Schreiben maskiert */ e.schuljahr_name ?? ''} &nbsp;·&nbsp;

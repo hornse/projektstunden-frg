@@ -802,11 +802,24 @@ else
 fi
 
 echo ""
-echo "Namen bei der Ausgabe"
+echo "Roh gespeicherte Felder bei der Ausgabe"
 # ------------------------------------------------------------------
 # E41: Namen und Klassenbezeichnungen stehen roh in der Datenbank -- Import
 # und WebUntis-Selbstanlage schreiben sie ohne clean(), und seit E41 tut es
 # auch die Handanlage nicht mehr. Maskiert wird bei der Ausgabe.
+#
+# Die Liste unten fuehrt nicht "Namen", sondern ROH GESPEICHERTE FELDER. Dazu
+# gehoert seit dem Befund aus 1b7a7a7 auch `dateiname`: Der Name der
+# hochgeladenen Datei geht ungefiltert aus $_FILES in `import_log` und von
+# dort in die Anzeige -- dieselbe Bauform wie E42, nur ueber die Datenbank
+# und damit dauerhaft.
+#
+# Erweitert wurde die Liste, nicht die Zahl der Pruefungen: Es ist dieselbe
+# Regel (einmal maskieren, bei der Ausgabe) und derselbe Mechanismus
+# (Ablehnung als Standard, Vermerk als Ausnahme). Eine zweite Pruefung mit
+# eigener Feldliste haette dieselbe Sache an zwei Orten entschieden -- und
+# das naechste roh gespeicherte Feld haette die Frage ein drittes Mal
+# gestellt.
 #
 # Die Pruefung lehnt ab, was sie nicht kennt: Jede Einbettung eines
 # Namenstraegers muss entweder durch escHtml() laufen oder die Zeile traegt
@@ -835,7 +848,7 @@ if [ ! -f "$JS" ]; then
     rot "$JS fehlt – Voraussetzung der Namenspruefung"
 else
     NAMEN_BERICHT=$(perl -ne '
-        BEGIN { $traeger = qr/(?:vorname|nachname|bezeichnung|klassenlehrer|\.klasse\b|schuljahr|lernbegleiter)/;
+        BEGIN { $traeger = qr/(?:vorname|nachname|bezeichnung|klassenlehrer|\.klasse\b|schuljahr|lernbegleiter|dateiname)/;
                 $gesamt = 0; $offen = 0; }
         my $zeile = $_;
         my $vermerkt = ($zeile =~ /\$\{\/\* keine-maskierung:/);
@@ -853,11 +866,11 @@ else
     NAMEN_OFFEN=$(printf '%s\n' "$NAMEN_BERICHT" | awk '/^ZAHLEN/{print $3}')
     if [ "${NAMEN_GESAMT:-0}" -eq 0 ]; then
         # Null Funde sind ein Fehler, kein Ergebnis (REIHENREGELN 2).
-        rot "keine einzige Namenseinbettung in $JS gefunden – die Pruefung prueft nichts"
+        rot "keine einzige Einbettung eines roh gespeicherten Feldes in $JS gefunden – die Pruefung prueft nichts"
     elif [ "${NAMEN_OFFEN:-1}" -eq 0 ]; then
-        gruen "alle $NAMEN_GESAMT Namenseinbettungen maskiert oder begruendet"
+        gruen "alle $NAMEN_GESAMT Einbettungen roh gespeicherter Felder maskiert oder begruendet"
     else
-        rot "$NAMEN_OFFEN von $NAMEN_GESAMT Namenseinbettungen weder maskiert noch begruendet:"
+        rot "$NAMEN_OFFEN von $NAMEN_GESAMT Einbettungen roh gespeicherter Felder weder maskiert noch begruendet:"
         printf '%s\n' "$NAMEN_BERICHT" | grep -v '^ZAHLEN'
     fi
 fi

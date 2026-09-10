@@ -8,6 +8,17 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 ## [Unreleased]
 
 ### Behoben
+- **`import_log.dateiname` wurde roh ausgegeben.** Der Name der hochgeladenen
+  Datei geht ungefiltert aus `$_FILES` in die Datenbank und stand von dort
+  roh im Import-Protokoll – dieselbe Bauform wie E42, nur **über die
+  Datenbank und damit dauerhaft**. Maskiert wird jetzt bei der Ausgabe (E40),
+  nicht beim Schreiben; das schützt auch die drei vorhandenen Zeilen.
+- **Die Feldliste der Prüfung „Roh gespeicherte Felder bei der Ausgabe"**
+  (vormals „Namen bei der Ausgabe") führt jetzt auch `dateiname`. Die
+  Prüfungszahl bleibt bei **70** – es ist dieselbe Regel und derselbe
+  Mechanismus, erweitert wurde die Liste, nicht die Zahl.
+
+### Behoben (vorheriger Vorgang)
 - **Die Fehlerliste der Import-Vorschau zeigte „12: [object Object]"** (E44).
   Das Frontend las ein Feld `meldung`; das Backend liefert `zeile`, `grund`
   und `daten`. Jetzt steht dort „Zeile 4: Pflichtfelder fehlen (ID, Name,
