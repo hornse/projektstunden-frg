@@ -3156,7 +3156,11 @@ async function logoLoeschen() {
 function applyEinstellungen(data) {
   if (data.farbe_akzent) {
     document.documentElement.style.setProperty('--accent', data.farbe_akzent);
-    document.documentElement.style.setProperty('--accent-dark', data.farbe_akzent);
+    // `--accent-dark` wurde hier ebenfalls gesetzt und im ganzen frontend/
+    // nirgends gelesen -- weder in einer Stilvorlage noch im JavaScript.
+    // Weder die Pruefung "benutzt, aber nicht definiert" (E58) noch ihre
+    // Gegenrichtung haetten das gefunden: Der Name kam ueberhaupt nur an
+    // dieser einen Stelle vor.
   }
   if (data.farbe_sekundaer) {
     document.documentElement.style.setProperty('--nav-bg', data.farbe_sekundaer);

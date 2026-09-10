@@ -2193,3 +2193,73 @@ und `.sec` arbeitet. Sie waren schon vor diesem Vorgang tot; nach E55 ist das
 ein eigener Handgriff. Zu beachten: Mit ihnen verlieren `--imp-upd` und
 `--imp-err` ihre letzten Verwendungen — wer sie entfernt, entfernt auch die
 beiden Tokens, oder er lässt zwei Definitionen stehen, die niemand liest.
+
+---
+
+## E61 — Drei tote Reste entfernt; die Gegenrichtung der Variablenprüfung wird nicht gebaut, und warum (10.09.2026)
+
+**Anlass:** Drei Befunde aus E59 und E60. Alle drei wurden für diesen Vorgang
+**neu gemessen**, nicht übernommen — sie stammten aus Berichten, nicht aus einer
+Messung.
+
+| Feststellung | nachgeprüft |
+|---|---|
+| Der `.imp-*`-Block ist tot | sieben Regeln, keine der sechs Klassen wird gesetzt — in `app.js`, `index.html` **und** im Backend gesucht, auch auf zusammengesetzte Namen (`class="…${…}"`: null Vorkommen im ganzen Frontend) |
+| `--imp-upd`, `--imp-err` hängen nur daran | ja; `--imp-neu` dagegen lebt weiter in `.pok`, `.dok` und im Hilfetext |
+| `--accent-dark` wird geschrieben, nie gelesen | ja; genau **ein** Vorkommen im ganzen Repo, ein `setProperty` |
+
+Alle drei sind entfernt.
+
+**Ein Nebenbefund zur Benennung:** `--imp-neu` heißt „Importzustand neu" und
+färbt heute den erreichten Sollstand im Stundenkontingent (E60) und das Wort
+„grün" in der Hilfe. Der Name sagt nicht mehr, wofür der Wert steht. Umbenennen
+wäre ein eigener Handgriff; der Kommentar an der Definition hält den Zustand
+fest.
+
+---
+
+**Die Gegenrichtung zu E58 — „jede Definition wird auch verwendet" — wird
+nicht gebaut. Nicht, weil sie nicht ginge, sondern weil sie heute nicht grün
+werden kann, ohne eine fachliche Frage zu übergehen.**
+
+Sie wurde als Entwurf gebaut und gelaufen. Zuschnitt: Definitionen aus
+`frontend/style.css` (nicht aus `ci-tokens.css` — 56 Farben, die der Reihe
+gehören und die dieses Projekt nicht alle liest), Verwendungen aus dem ganzen
+`frontend/`. Nach den drei Entfernungen meldet sie **genau einen** Namen:
+
+```
+Definitionen (style.css + setProperty): 45
+== davon nirgends per var() gelesen: ==
+--nav-bg
+```
+
+**`--nav-bg` ist kein toter Rest, sondern eine Zusage ohne Deckung.** Die
+Einstellungen führen ein Feld „Sekundärfarbe (Nav)", und darüber steht
+„Sekundärfarbe für die Navigation." `applyEinstellungen` schreibt den Wert nach
+`--nav-bg` — und **niemand liest ihn**: eine Definition in `style.css`, ein
+`setProperty` in `app.js`, kein einziges `var(--nav-bg)`. Die Navigationsleiste
+kommt aus der vendorten Hülle und färbt sich aus `--ci-*`.
+
+Das ist die Bauform aus E56/E57: eine Fähigkeit, die die Oberfläche ausdrücklich
+zusagt und die es nie gab. Was daraus folgt — die Leiste tatsächlich einfärben
+(eine sichtbare Gestaltungsänderung, die niemand angefordert hat), das Feld zur
+Anzeige machen oder es entfernen —, ist eine fachliche Entscheidung und gehört
+in einen eigenen Vorgang. **Bis dahin wäre die Prüfung rot**, und sie mit einem
+Vermerk grün zu stellen hieße, einen lebenden Mangel am ersten Tag hinter einer
+Ausnahme zu verstecken.
+
+**Was die Prüfung, wenn sie kommt, mitbringen muss** — hier festgehalten, damit
+es nicht neu ermittelt werden muss:
+
+**`setProperty('--x', …)` zählt als Definition.** Sonst sieht sie nur die
+Stilvorlage, und gerade die zur Laufzeit gesetzten Namen sind die
+gefährdeten — sie stehen nirgends im CSS und fallen niemandem auf. Heute gibt es
+zwei: `--accent` (wird gelesen) und `--nav-bg` (wird nicht gelesen).
+
+**Und sie hätte `--accent-dark` trotzdem nicht gefunden.** Der Name kam
+überhaupt nur an einer Stelle vor, dem `setProperty`. „Benutzt, aber nicht
+definiert" (E58) sieht ihn nicht, weil kein `var()` darauf zeigt; „definiert,
+aber unbenutzt" hätte ihn nur gesehen, wenn das Schreiben als Definition zählt —
+und dann meldet sie ihn. Beides zusammen gedacht: **Die Gegenrichtung mit
+`setProperty` als Definition hätte ihn gefangen.** Ohne diese Erweiterung fällt
+er durch beide Netze. Das war die Frage, und das ist die Antwort.

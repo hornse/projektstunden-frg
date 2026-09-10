@@ -7,6 +7,19 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 
 ## [Unreleased]
 
+### Entfernt
+- **Sieben tote CSS-Regeln** (`.imp-row`, `.imp-row:last-child`, `.imp-icon`,
+  `.imp-neu`, `.imp-upd`, `.imp-ok`, `.imp-err`) aus einer früheren Fassung der
+  Import-Vorschau, die heute mit `.stat` und `.sec` arbeitet (E61). Keine der
+  Klassen wurde gesetzt – in `app.js`, `index.html` und im Backend gesucht,
+  auch auf zusammengesetzte Namen.
+- **Die Tokens `--imp-upd` und `--imp-err`**, deren letzte Verwendung diese
+  Regeln waren. `--imp-neu` bleibt: `.pok`, `.dok` und der Hilfetext lesen es.
+- **`setProperty('--accent-dark', …)`** in `applyEinstellungen` – die Variable
+  wurde bei jeder Einstellungsänderung geschrieben und im ganzen `frontend/`
+  nirgends gelesen. Im Browser belegt: Farbe ändern und zurücksetzen verhält
+  sich unverändert, nur eine Variable weniger steht am `:root`.
+
 ### Geändert
 - **Das Stundenkontingent kennt zwei Zustände statt drei** (E60): Soll erreicht
   = grün, darunter neutral. Vorher färbte der Balken bei **≥ 100 % rot** und

@@ -77,7 +77,11 @@
   --bew-2:#b45309; --bew-2-bg:#fef3c7;
   --bew-3:#065f46; --bew-3-bg:#d1fae5;
   --bew-4:#1e40af; --bew-4-bg:#dbeafe;
-  --imp-neu:#3d8b50; --imp-upd:#d48c00; --imp-err:#c94040;
+  /* --imp-neu faerbt heute den erreichten Sollstand im Stundenkontingent
+     (.pok, .dok) und das Wort "gruen" in der Hilfe. --imp-upd und
+     --imp-err sind mit dem toten .imp-*-Block entfallen; ihre letzte
+     Verwendung stand dort. */
+  --imp-neu:#3d8b50;
 
   /* Phasen des Kompetenzkatalogs. Eine Kategorienpalette, die nur dieses
      Projekt braucht -- die Schulphasen des G9-Kernlehrplans gibt es in
@@ -367,11 +371,10 @@ select[multiple]{height:100px}
 .sj-aktiv{background:var(--accent-bg);color:var(--accent-text)}
 .sj-zukuenftig{background:var(--info-bg);color:var(--info)}
 .sj-abgeschlossen{background:var(--surface2);color:var(--text3)}
-/* Import */
-.imp-row{display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
-.imp-row:last-child{border-bottom:none}
-.imp-icon{flex-shrink:0;width:16px;height:16px;border-radius:50%;margin-top:1px}
-.imp-neu{background:var(--imp-neu)}
-.imp-upd{background:var(--imp-upd)}
-.imp-ok{background:var(--border2)}
-.imp-err{background:var(--imp-err)}
+/* Hier standen sieben Regeln fuer eine Zeilenliste der Import-Vorschau
+   (.imp-row, .imp-icon und vier Zustandsfarben). Die Vorschau zeichnet
+   seit laengerem mit .stat und .sec; keine der Klassen wurde noch
+   gesetzt -- nachgesehen in app.js, index.html und im Backend, auch auf
+   zusammengesetzte Namen. Eine tote Regel ist eine falsche Auskunft
+   ueber den Bestand (E55). Mit ihnen sind --imp-upd und --imp-err
+   entfallen, deren letzte Verwendung sie waren. */
