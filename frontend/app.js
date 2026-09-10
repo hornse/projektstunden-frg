@@ -2140,7 +2140,11 @@ async function initImport() {
     anzeige.style.color = '';
   } else {
     anzeige.textContent = 'Kein aktives Schuljahr gefunden. Bitte zuerst ein Schuljahr aktivieren.';
-    anzeige.style.color = 'var(--err)';
+    // `--danger`, nicht `--err`: Ein Token dieses Namens gibt es nicht. Wo es
+    // steht, erbt der Text seine Farbe und der Hinweis sieht aus wie eine
+    // gewoehnliche Zeile. Fuenf weitere Stellen in der Import-Vorschau haben
+    // denselben Tippfehler -- gemeldet, nicht hier mitbehoben.
+    anzeige.style.color = 'var(--danger)';
   }
   // Import-Log laden
   await impLogLaden();

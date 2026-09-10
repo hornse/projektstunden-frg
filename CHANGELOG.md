@@ -30,6 +30,12 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 - **Ein roter Testlauf wiederholt jetzt auch die Detailzeilen** unter einer
   gefallenen Prüfung. Bisher stand am Ende nur „✗ …"; welche Zeile gemeint
   war, stand allein im Protokoll – und ein `tail -3` verlor sie.
+- **Der Hinweis „Kein aktives Schuljahr gefunden" war schwarz statt rot.**
+  Er stand auf `var(--err)` – ein Token dieses Namens gibt es nicht, das
+  Projekt führt `--danger`. In Chrome nachgesehen, dann berichtigt. **Fünf
+  weitere Stellen in der Import-Vorschau tragen denselben Tippfehler**
+  (`app.js` 1985, 2173, 2218, 2251, 2256) – gemeldet, nicht in diesem
+  Commit mitbehoben.
 - **`.komp-cb{display:none}` in `style.css` entfernt** (E55) – tote Regel;
   die Kästchen sind bereits über `.komp-pill input[type=checkbox]` verborgen.
   Vorher in Chrome belegt: mit und ohne die Regel `display=none, breite=0px`.
