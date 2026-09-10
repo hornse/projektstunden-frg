@@ -1816,3 +1816,35 @@ ist ein eigener Handgriff.
 **Warum sie trotzdem hier steht:** Eine tote Regel ist eine falsche Auskunft
 über den Bestand. Wer sie liest, nimmt an, es gebe Kästchen, die nur über diese
 Klasse verborgen werden — und richtet sich beim nächsten Anbau danach.
+
+---
+
+## E56 — Die Schuljahr-Auswahl beim Import hat keine Wirkung (10.09.2026)
+
+**Anlass:** Beim Maskieren des Import-Dateinamens gefunden, nicht gesucht — der
+Lauf musste für die Handprüfung wissen, gegen welches Schuljahr importiert wird.
+
+**Befund:** Das Frontend hängt `schuljahr_id` an das Formular (`app.js:2190`
+und `2264`). Der Handler liest sie aus `$body`, und `$body` entsteht aus
+`json_decode(file_get_contents('php://input'))`. Bei `multipart/form-data` ist
+`php://input` in PHP leer; der Wert landet in `$_POST` und wird nie gelesen.
+
+Der Import läuft also immer gegen das aktive Schuljahr, gleich was im Feld
+steht. Die Oberfläche meldet Erfolg.
+
+**Warum das gefährlich ist:** Der Import inaktiviert Schüler, die nicht in der
+Datei stehen. Wer beim Schuljahreswechsel die neue Datei hochlädt und dabei das
+neue Schuljahr auswählt, importiert in Wahrheit ins alte — und inaktiviert dort
+jeden, der in der neuen Datei fehlt. Bei einem Jahrgangswechsel ist das der
+gesamte abgehende Jahrgang, und die Meldung sagt „unverändert" oder
+„aktualisiert", nicht was tatsächlich geschah.
+
+**Entscheidung:** Festgehalten, nicht behoben. Die Behebung ist nicht nur das
+Lesen aus `$_POST` — dahinter steht eine fachliche Frage: **Soll überhaupt in
+ein nicht aktives Schuljahr importiert werden dürfen?** Davon hängt ab, ob das
+Feld eine Auswahl bleibt, eine Anzeige wird oder verschwindet, und wie sich die
+Inaktivierung dazu verhält.
+
+**Was das nicht heißt:** Es ist kein Anzeigefehler. Solange das Feld eine
+Auswahl anbietet, die nichts bewirkt, ist jede Nutzung davon eine falsche
+Zusicherung an den Benutzer.
