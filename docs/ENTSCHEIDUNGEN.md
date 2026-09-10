@@ -1912,3 +1912,73 @@ deshalb fiel niemandem auf, dass eine Stelle es nicht tut.
 **Was das nicht heißt:** Die Inaktivierungslogik bleibt unangetastet. Sie
 bezieht sich weiter auf den Bestand des aktiven Jahres; das war nie falsch,
 sondern nur unsichtbar, solange ein anderes Jahr wählbar schien.
+
+---
+
+## E58 — Jede verwendete CSS-Variable muss definiert sein (10.09.2026)
+
+**Anlass:** `var(--err)` an fünf Stellen und `var(--ok)` an vier — beide Namen
+hat es nie gegeben. Gefunden wurde der erste beim Bau der Schuljahr-Anzeige
+(E57), und zwar daran, dass ein Hinweis im Browser **schwarz** war, wo er rot
+sein sollte. Der zweite fiel erst der Prüfung auf, nicht dem Auge.
+
+**Warum das eine eigene Sorte Fehler ist:** Eine undefinierte CSS-Variable
+bricht nichts. `color:var(--err)` ohne Definition ist gültiges CSS; der Text
+erbt seine Farbe und sieht aus wie gewöhnlicher Text. Es gibt keine
+Fehlermeldung, keinen Eintrag in der Konsole und keinen Unterschied zu „hier
+war keine Farbe vorgesehen". Betroffen waren ausgerechnet die
+Fehlerausgaben der Import-Vorschau — die Stelle, an der ein Benutzer auf die
+Farbe angewiesen ist.
+
+**Entscheidung, zwei Teile:**
+
+`--err` entfällt ersatzlos; die fünf Stellen nennen `--danger`, das es gibt.
+Ein zweiter Name für dieselbe Sache wäre eine zweite Wahrheit.
+
+`--ok` bekommt eine Definition (`--ok:var(--ci-erfolg)`), weil es kein
+Gegenstück gab. `--danger`, `--warn` und `--info` sind da, ein Erfolgston
+fehlte.
+
+**Nicht die Importpalette — gerechnet, nicht geschätzt.** Naheliegend wäre
+gewesen, im Importbildschirm `--imp-neu` und `--imp-err` zu nehmen: Sie stehen
+zwei Zeilen weiter an den Balken. Als **Text auf der weißen Karte** erreicht
+`--imp-neu` aber nur 4.19 und `--imp-upd` 2.78 — beide unter AA.
+`--ci-erfolg` erreicht 5.17, `--ci-fehler` 6.65. Die Palette ist für Flächen
+gemacht, und der Kommentar in `style.css` sagt genau das („auf ihrer
+jeweiligen Fläche").
+
+**Die Prüfung:** Jede in `frontend/` verwendete Variable muss definiert sein —
+in `style.css`, in den vendorten Stilvorlagen oder inline. Sie zielt
+ausdrücklich **nicht** auf `--err`: Ein Ausdruck gegen einen bekannten falschen
+Namen fängt den nächsten nicht.
+
+**Kommentare werden auf beiden Seiten entfernt**, bevor gezählt wird. Sonst
+entstünde eine Scheindefinition, sobald eine Erklärung `--x:` schreibt — und
+die Prüfung ginge gerade dort grün, wo jemand die Regel sorgfältig
+aufgeschrieben hat (REIHENREGELN 2). Die Gegenprobe dazu ist geführt: Ein
+Kommentar mit `--phantom3:` und eine echte Verwendung daneben ergeben **rot**,
+nicht grün.
+
+**Ein Modifikatorname ist keine Definition.** `.ci-knopf--gefahr:hover` sieht
+wie `--gefahr:` aus. Vor den zwei Bindestrichen muss deshalb ein Zeichen
+stehen, das kein Namenszeichen ist, oder der Zeilenanfang. Ohne diese
+Bedingung hätte die Prüfung zwei Klassennamen der vendorten Stilvorlage für
+Variablen gehalten.
+
+**Ein Rückfall ist keine Definition.** `var(--warn,#f59e0b)` zählt als
+Verwendung von `--warn`. Wer einen Rückfall angibt, hat einen Zweitwert
+genannt, keine Variable definiert — und der stille Rückfall ist genau das, was
+die Prüfung sichtbar machen soll.
+
+**Was sie nicht kann:** einen zur Laufzeit zusammengesetzten Namen
+(`'var(--bew-' + n + ')'` — im Bestand nicht vorhanden, nachgesehen); den
+Geltungsbereich einer Definition; und ob die gewählte Farbe die richtige ist.
+Dass `--imp-neu` als Text zu blass ist, fällt ihr nicht auf — das musste
+gerechnet werden.
+
+**Gemeldet, nicht behoben:** In `app.js` stehen weiterhin Rohfarben —
+sieben Hexwerte in `KAT_PHASEN` (Zeilen 1575–1581) und zweimal der tote
+Rückfall `#f59e0b`. Die Prüfung „Keine Rohfarben außerhalb des
+`:root`-Blocks" liest nur die Stilvorlage; sie sieht davon nichts. Das ist
+derselbe Fall, den REIHENREGELN 2 unter „eine Prüfung, die eine bestimmte
+Datei liest, prüft diese Datei" beschreibt.

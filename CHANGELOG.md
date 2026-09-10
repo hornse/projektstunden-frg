@@ -8,6 +8,26 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 ## [Unreleased]
 
 ### Behoben
+- **Neun Stellen im Frontend nannten CSS-Variablen, die es nicht gibt** (E58):
+  `var(--err)` fünfmal, `var(--ok)` viermal. Eine undefinierte Variable bricht
+  nichts – der Text erbt seine Farbe. Betroffen waren die Fehlerausgaben der
+  Import-Vorschau: „n Fehler", die Überschrift und jede einzelne Fehlerzeile
+  standen in gewöhnlichem Schwarz. Im Browser gemessen: vorher
+  `rgb(28,39,51)`, nachher `rgb(168,50,45)` für Fehler und `rgb(30,125,62)`
+  für „neu".
+- **`--err` entfällt, `--ok` wird definiert.** Für Rot gibt es `--danger`; ein
+  zweiter Name dafür wäre eine zweite Wahrheit. Für Grün gab es gar nichts –
+  `--ok:var(--ci-erfolg)` steht jetzt neben `--danger`. **Nicht** die
+  Importpalette: `--imp-neu` erreicht als Text auf der weißen Karte nur 4.19,
+  `--ci-erfolg` 5.17.
+- **Prüfung „CSS-Variablen"** – jede in `frontend/` verwendete Variable muss
+  definiert sein, in `style.css`, in den vendorten Stilvorlagen oder inline.
+  Zielt ausdrücklich nicht auf `--err`. Kommentare werden auf beiden Seiten
+  entfernt, ein Modifikatorname (`.ci-knopf--gefahr:hover`) gilt nicht als
+  Definition und ein Rückfall (`var(--warn,#f59e0b)`) auch nicht.
+  **72 → 73 Prüfungen.**
+
+### Behoben (vorheriger Vorgang)
 - **Die Schuljahr-Auswahl beim CSV-Import war wirkungslos** (E56, E57). Das
   Frontend hängte `schuljahr_id` an ein `FormData`; der Handler las `$body`,
   das aus `php://input` stammt – und das ist bei `multipart/form-data` **leer**.

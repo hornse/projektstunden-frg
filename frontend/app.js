@@ -1982,7 +1982,7 @@ async function initSchuljahre() {
             <button class="btn btn-p" style="padding:4px 10px;font-size:12px"
               onclick="sjAktivieren(${sj.id}, '${sj.name.replace(/'/g, "\\'")}')">Aktivieren</button>` : ''}
           ${sj.status !== 'aktiv' ? `
-            <button class="btn" style="padding:4px 10px;font-size:12px;color:var(--err)"
+            <button class="btn" style="padding:4px 10px;font-size:12px;color:var(--danger)"
               onclick="sjLoeschen(${sj.id}, '${sj.name.replace(/'/g, "\\'")}')">Löschen</button>` : ''}
           ${sj.status !== 'abgeschlossen' ? `
             <button class="btn" style="padding:4px 10px;font-size:12px"
@@ -2174,7 +2174,7 @@ async function impLogLaden() {
             <span style="color:var(--warn,#f59e0b)">${e.aktualisiert} aktualisiert</span> &nbsp;·&nbsp;
             ${e.unveraendert} unverändert
             ${e.inaktiviert ? `&nbsp;·&nbsp;<span style="color:var(--text3)">${e.inaktiviert} inaktiviert</span>` : ''}
-            ${e.fehler ? `&nbsp;·&nbsp;<span style="color:var(--err)">${e.fehler} Fehler</span>` : ''}
+            ${e.fehler ? `&nbsp;·&nbsp;<span style="color:var(--danger)">${e.fehler} Fehler</span>` : ''}
           </div>
         </div>`).join('');
       return data[0]; // neuesten Eintrag zurückgeben für Erfolgsmeldung
@@ -2219,7 +2219,7 @@ async function impVorschau() {
       <div class="stat"><div class="stat-val" style="color:var(--ok)">${v.neu?.length ?? 0}</div><div class="stat-lbl">Neu</div></div>
       <div class="stat"><div class="stat-val" style="color:var(--warn,#f59e0b)">${v.aktualisiert?.length ?? 0}</div><div class="stat-lbl">Aktualisiert</div></div>
       <div class="stat"><div class="stat-val">${v.unveraendert?.length ?? 0}</div><div class="stat-lbl">Unverändert</div></div>
-      <div class="stat"><div class="stat-val" style="color:var(--err)">${v.fehler?.length ?? 0}</div><div class="stat-lbl">Fehler</div></div>`;
+      <div class="stat"><div class="stat-val" style="color:var(--danger)">${v.fehler?.length ?? 0}</div><div class="stat-lbl">Fehler</div></div>`;
 
     // Achtung: `v` kommt aus der hochgeladenen Datei, nicht aus der
     // Datenbank. Was hier gezeigt wird, hat noch keinen Schreibweg passiert --
@@ -2252,12 +2252,12 @@ async function impVorschau() {
       // Die Werte werden vor der Vorlage maskiert und nicht in ihr: So steht
       // in der Vorlage kein `${f.…}`, und die Pruefung kann verlangen, dass
       // jedes Vorkommen von `f.daten` und `f.grund` in escHtml liegt.
-      detail += `<div class="sec" style="margin-top:12px;color:var(--err)">Fehler (${v.fehler.length})</div>` +
+      detail += `<div class="sec" style="margin-top:12px;color:var(--danger)">Fehler (${v.fehler.length})</div>` +
         v.fehler.map(f => {
           const wo  = escHtml(f.zeile ?? '?');
           const was = escHtml(f.grund ?? 'Unbekannter Fehler');
           const wer = escHtml(f.daten ?? '');
-          return `<div style="font-size:12px;color:var(--err);padding:2px 0">Zeile ${wo}: ${was}${wer ? ' – ' + wer : ''}</div>`;
+          return `<div style="font-size:12px;color:var(--danger);padding:2px 0">Zeile ${wo}: ${was}${wer ? ' – ' + wer : ''}</div>`;
         }).join('');
 
     document.getElementById('imp-vorschau-detail').innerHTML = detail;

@@ -1113,6 +1113,105 @@ else
 fi
 
 echo ""
+echo "CSS-Variablen"
+# ------------------------------------------------------------------
+# Jede in frontend/ verwendete CSS-Variable muss definiert sein.
+#
+# ANLASS: `var(--err)` an fuenf Stellen und `var(--ok)` an vier -- beide
+# Namen gab es nie. Eine undefinierte Variable faellt still zurueck: Der
+# Text erbt seine Farbe, statt rot oder gruen zu sein. Nichts bricht,
+# nichts meldet sich; aufgefallen ist es nur, weil ein Hinweis im
+# Browser schwarz war, wo er rot sein sollte.
+#
+# WAS SIE MISST: die Namen, nicht die Werte. Verwendungen (`var(--x`)
+# gegen Definitionen (`--x:`), ueber alle .css, .js und .html unter
+# frontend/ -- eine Definition darf also auch inline stehen.
+#
+# KOMMENTARE WERDEN VORHER ENTFERNT, auf beiden Seiten. Ohne das
+# entstuende eine Scheindefinition, sobald eine Erklaerung `--x:`
+# schreibt -- und die Pruefung ginge gerade dort gruen, wo jemand die
+# Regel sorgfaeltig aufgeschrieben hat (REIHENREGELN 2). Gegenprobe
+# dazu: Der Vergleich beider Mengen mit und ohne Entfernen ergab
+# dieselbe Verwendungsliste, aber zwei Scheindefinitionen weniger.
+#
+# WARUM DIE DEFINITION NICHT PER `grep -- '--x:'` ALLEIN: Ein
+# Modifikator-Klassenname mit Pseudoklasse sieht genauso aus.
+# `.ci-knopf--gefahr:hover` ist keine Variablendefinition. Deshalb muss
+# vor den zwei Bindestrichen ein Zeichen stehen, das kein Namenszeichen
+# ist -- oder der Zeilenanfang.
+#
+# EIN RUECKFALL IST KEINE DEFINITION: `var(--warn,#f59e0b)` gilt hier
+# als Verwendung von `--warn`. Wer einen Rueckfall angibt, hat einen
+# Zweitwert genannt, aber keine Variable definiert -- und ein Rueckfall
+# ist genau das, was diese Pruefung sichtbar machen soll.
+#
+# GRENZEN, benannt statt verschwiegen:
+#   1. Ein Name, der zur Laufzeit zusammengesetzt wird
+#      (`'var(--bew-' + n + ')'`), wird nicht gesehen. Im Bestand kommt
+#      das nicht vor -- nachgesehen, nicht angenommen.
+#   2. Sie prueft die Existenz des Namens, nicht seinen Wert und nicht,
+#      ob die Definition im richtigen Geltungsbereich steht. Eine
+#      Definition in einer Medienabfrage zaehlt mit.
+#   3. Sie sagt nichts darueber, ob die gewaehlte Farbe die richtige
+#      ist. Dass `--imp-neu` als Text auf Weiss nur 4.19 erreicht,
+#      faellt ihr nicht auf.
+# ------------------------------------------------------------------
+VAR_STRIP='
+BEGIN { blk = 0; htm = 0 }
+{
+  zeile = $0; aus = ""; i = 1; n = length(zeile)
+  while (i <= n) {
+    z2 = substr(zeile, i, 2); z3 = substr(zeile, i, 3); z4 = substr(zeile, i, 4)
+    if (blk) { if (z2 == "*/") { blk = 0; i += 2 } else i++; continue }
+    if (htm) { if (z3 == "-->") { htm = 0; i += 3 } else i++; continue }
+    if (z2 == "/*")   { blk = 1; i += 2; continue }
+    if (z4 == "<!--") { htm = 1; i += 4; continue }
+    if (z2 == "//")   { break }
+    aus = aus substr(zeile, i, 1); i++
+  }
+  print aus
+}'
+
+VAR_DATEIEN=$(find frontend -type f \( -name '*.css' -o -name '*.js' -o -name '*.html' \) | sort)
+VAR_STILE=$(printf '%s\n' "$VAR_DATEIEN" | grep -c '\.css$' || true)
+
+if [ "$VAR_STILE" -eq 0 ]; then
+    # Entwertung: ohne Stilvorlage gibt es nichts, wogegen geprueft wuerde.
+    # Das ist kein bestandener Lauf, sondern eine fehlende Voraussetzung.
+    rot "keine Stilvorlage unter frontend/ gefunden – Voraussetzung der Variablenpruefung fehlt"
+else
+    VAR_TEXT=$(printf '%s\n' "$VAR_DATEIEN" | while read -r f; do awk "$VAR_STRIP" "$f"; done)
+    VAR_BENUTZT=$(printf '%s\n' "$VAR_TEXT" \
+        | grep -oE 'var\([[:space:]]*--[A-Za-z0-9_-]+' \
+        | sed -E 's/^var\([[:space:]]*//' | sort -u)
+    VAR_DEF=$(printf '%s\n' "$VAR_TEXT" \
+        | grep -oE '(^|[^A-Za-z0-9_-])--[A-Za-z0-9_-]+[[:space:]]*:' \
+        | grep -oE -- '--[A-Za-z0-9_-]+' | sort -u)
+    VAR_B_ZAHL=$(printf '%s\n' "$VAR_BENUTZT" | grep -c '^--' || true)
+    VAR_D_ZAHL=$(printf '%s\n' "$VAR_DEF"     | grep -c '^--' || true)
+
+    if [ "$VAR_B_ZAHL" -eq 0 ]; then
+        rot "keine einzige var(--…)-Verwendung in frontend/ gefunden – die Pruefung misst nichts"
+    elif [ "$VAR_D_ZAHL" -eq 0 ]; then
+        rot "keine einzige Variablendefinition in frontend/ gefunden – Voraussetzung der Variablenpruefung fehlt"
+    else
+        VAR_FEHLT=$(comm -23 <(printf '%s\n' "$VAR_BENUTZT") <(printf '%s\n' "$VAR_DEF"))
+        VAR_F_ZAHL=$(printf '%s\n' "$VAR_FEHLT" | grep -c '^--' || true)
+        if [ "$VAR_F_ZAHL" -eq 0 ]; then
+            gruen "alle $VAR_B_ZAHL verwendeten CSS-Variablen sind definiert ($VAR_D_ZAHL Definitionen)"
+        else
+            rot "$VAR_F_ZAHL von $VAR_B_ZAHL verwendeten CSS-Variablen sind nirgends definiert:"
+            printf '%s\n' "$VAR_FEHLT" | grep '^--' | while read -r v; do
+                ORT=$(printf '%s\n' "$VAR_DATEIEN" | while read -r f; do
+                          grep -n "var($v)" "$f" | head -1 | sed "s|^|$f:|"
+                      done | head -1)
+                printf '    %s (z. B. %s)\n' "$v" "${ORT:-Fundstelle nicht ermittelbar}"
+            done
+        fi
+    fi
+fi
+
+echo ""
 GESAMT=$((GRUEN + FEHLER))
 echo "$GRUEN/$GESAMT bestanden, $FEHLER rot"
 if [ "$FEHLER" -eq 0 ]; then echo "ALLES GRÜN"; exit 0; fi

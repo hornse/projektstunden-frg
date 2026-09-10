@@ -55,6 +55,14 @@
   --warn:var(--ci-warnung);
   --danger-bg:var(--ci-fehler-flaeche);
   --danger:var(--ci-fehler);
+  /* --ok ist das Gegenstueck zu --danger und fehlte: Neun Stellen im
+     Frontend verwendeten var(--ok) und var(--err), ohne dass es eine
+     Definition gab -- der Text erbte dann seine Farbe, statt gruen oder
+     rot zu sein. --err ist ersatzlos entfallen (--danger sagt dasselbe);
+     --ok bekommt hier seine Definition, weil es kein Gegenstueck gab.
+     Nicht die Importpalette: --imp-neu erreicht als Text auf der weissen
+     Karte nur 4.19, --ci-erfolg 5.17. Die Palette ist fuer Balken. */
+  --ok:var(--ci-erfolg);
   --info-bg:#e8f0fb;
   --info:#1a3d6e;
 
