@@ -204,10 +204,14 @@ Vorname, Nachname, Klasse ausfüllen → **Hinzufügen**.
 ### CSV-Import (nur Admin)
 
 Navigation → **Schüler importieren**:
-1. Schuljahr wählen (aktives Schuljahr vorausgewählt)
-2. CSV-Datei aus Schild-NRW hochladen
-3. **Vorschau** prüfen: neu / aktualisiert / unverändert / Fehler
-4. **Import durchführen**
+1. CSV-Datei aus Schild-NRW hochladen
+2. **Vorschau** prüfen: neu / aktualisiert / unverändert / Fehler
+3. **Import durchführen**
+
+**Der Import geht immer in das aktive Schuljahr.** Die Seite zeigt oben an,
+welches das ist; wählbar ist es dort nicht. Soll in ein anderes Jahr
+importiert werden, wird es zuvor unter **Schuljahre** aktiviert – das
+schließt das bisherige ab.
 
 Schüler die nicht mehr in der CSV erscheinen werden automatisch inaktiviert.
 Das Import-Log zeigt die letzten 20 Importe mit Statistik.

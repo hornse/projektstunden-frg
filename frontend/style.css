@@ -180,7 +180,6 @@ select[multiple]{height:100px}
 .bereich-block{margin-bottom:12px}
 .bereich-title{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px}
 .komp-grid{display:flex;flex-wrap:wrap;gap:5px}
-.komp-cb{display:none}
 .komp-lbl{padding:4px 11px;border-radius:99px;font-size:12px;border:1px solid var(--border2);background:var(--surface);color:var(--text2);cursor:pointer;user-select:none;transition:all .12s}
 /* Hierarchische Kompetenzerwartungen */
 .komp-eltern-row{display:flex;align-items:center;gap:6px;margin-bottom:3px;width:100%}

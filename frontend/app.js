@@ -2121,15 +2121,26 @@ async function sjLoeschen(id, name) {
 let IMP_DATEI = null; // aktuell gewählte Datei merken
 
 async function initImport() {
-  // Schuljahr-Auswahl befüllen
-  const sel = document.getElementById('imp-sj');
+  // Das aktive Schuljahr ANZEIGEN, nicht zur Wahl stellen (E56).
+  //
+  // Vorher stand hier eine Auswahl, deren Wert nie beim Handler ankam. Wer in
+  // ein anderes Jahr importieren will, aktiviert es unter „Schuljahre“.
+  //
+  // Ist kein Jahr aktiv, steht hier derselbe Satz, den auch das Backend
+  // ausgibt. Das Dateifeld bleibt bedienbar: Die Bedingung wird an EINER
+  // Stelle entschieden, im Backend. Zwei Stellen, die dieselbe Bedingung
+  // entscheiden, sind der Mechanismus, aus dem dieser Fehler entstanden ist.
+  //
+  // textContent, nicht innerHTML -- der Name ist ein schlichter Wert.
+  const anzeige = document.getElementById('imp-sj-anzeige');
   const data = await GET('schuljahre');
-  if (data && data.length) {
-    sel.innerHTML = data.map(sj =>
-      `<option value="${sj.id}"${sj.status === 'aktiv' ? ' selected' : ''}>${sj.name}${sj.status === 'aktiv' ? ' (aktiv)' : ''}</option>`
-    ).join('');
+  const aktiv = (data || []).find(sj => sj.status === 'aktiv');
+  if (aktiv) {
+    anzeige.textContent = aktiv.name;
+    anzeige.style.color = '';
   } else {
-    sel.innerHTML = '<option value="">– Kein Schuljahr vorhanden –</option>';
+    anzeige.textContent = 'Kein aktives Schuljahr gefunden. Bitte zuerst ein Schuljahr aktivieren.';
+    anzeige.style.color = 'var(--err)';
   }
   // Import-Log laden
   await impLogLaden();
@@ -2184,10 +2195,11 @@ async function impVorschau() {
   IMP_DATEI = fileInput.files[0];
   ladeinfo.textContent = `Datei: ${IMP_DATEI.name} (${Math.round(IMP_DATEI.size / 1024)} KB) – wird analysiert …`;
 
-  const sjId = document.getElementById('imp-sj').value;
+  // Nur die Datei. `schuljahr_id` wurde frueher mitgeschickt und nie gelesen
+  // (E56): `$body` im Backend entsteht aus php://input, und das ist bei
+  // multipart/form-data leer.
   const fd = new FormData();
   fd.append('datei', IMP_DATEI);
-  if (sjId) fd.append('schuljahr_id', sjId);
 
   try {
     const r = await fetch(API_BASE + '/api/import/vorschau', {
@@ -2258,10 +2270,11 @@ async function impAusfuehren() {
   const btn   = document.getElementById('imp-btn-ausfuehren');
   if (!IMP_DATEI) { msgEl.className='msg msg-err'; msgEl.textContent='Keine Datei gewählt.'; return; }
 
-  const sjId = document.getElementById('imp-sj').value;
+  // Nur die Datei. `schuljahr_id` wurde frueher mitgeschickt und nie gelesen
+  // (E56): `$body` im Backend entsteht aus php://input, und das ist bei
+  // multipart/form-data leer.
   const fd = new FormData();
   fd.append('datei', IMP_DATEI);
-  if (sjId) fd.append('schuljahr_id', sjId);
 
   btn.disabled = true;
   btn.textContent = 'Wird importiert …';

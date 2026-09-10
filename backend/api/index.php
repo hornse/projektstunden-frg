@@ -1790,17 +1790,36 @@ function handle_import(string $method, string $sub, array $body): void {
     require_admin();
     $db = get_db();
 
-    // Aktives Schuljahr holen (oder aus Body falls angegeben)
-    $schuljahr_id = (int)($body['schuljahr_id'] ?? 0);
-    if (!$schuljahr_id) {
-        $sj = $db->prepare(
-            'SELECT id FROM schuljahre WHERE schule_id = ? AND status = "aktiv" LIMIT 1'
-        );
-        $sj->execute([$user['schule_id']]);
-        $row = $sj->fetch();
-        if (!$row) json_error('Kein aktives Schuljahr gefunden. Bitte zuerst ein Schuljahr aktivieren.');
-        $schuljahr_id = $row['id'];
-    }
+    // ---------------------------------------------------------------------
+    // Der Import laeuft immer gegen das AKTIVE Schuljahr (E56).
+    //
+    // Vorher stand hier `(int)($body['schuljahr_id'] ?? 0)` mit dem aktiven
+    // Jahr als Rueckfall. Der Wert kam nie an: Das Frontend haengt ihn an ein
+    // `FormData`, `$body` entsteht aber aus `php://input`, und das ist bei
+    // `multipart/form-data` leer. Die Oberflaeche sagte dazu ausdruecklich
+    // "Du kannst auch ein zukuenftiges Schuljahr waehlen" -- eine zugesagte
+    // Faehigkeit, die es nie gab.
+    //
+    // Gefaehrlich war das, weil der Import Schueler inaktiviert, die nicht in
+    // der Datei stehen: Wer beim Schuljahreswechsel die neue Datei hochlaedt
+    // und das neue Jahr waehlt, importierte in Wahrheit ins alte.
+    //
+    // Die Angabe wird jetzt gar nicht mehr gelesen. Ein Aufrufer, der sie
+    // trotzdem schickt, bewirkt damit nichts -- und soll auch nicht glauben,
+    // sie wirke. Ausdruecklich zurueckgewiesen wird sie nicht: Sie war seit
+    // jeher wirkungslos, und das Frontend schickt sie nicht mehr.
+    //
+    // MERKSATZ, der beim naechsten Upload gebraucht wird: Wer im Frontend
+    // `FormData` benutzt, muss im Backend `$_FILES` und `$_POST` lesen, nicht
+    // `$body`.
+    // ---------------------------------------------------------------------
+    $sj = $db->prepare(
+        'SELECT id FROM schuljahre WHERE schule_id = ? AND status = "aktiv" LIMIT 1'
+    );
+    $sj->execute([$user['schule_id']]);
+    $row = $sj->fetch();
+    if (!$row) json_error('Kein aktives Schuljahr gefunden. Bitte zuerst ein Schuljahr aktivieren.');
+    $schuljahr_id = (int)$row['id'];
 
     // GET /api/import/log – letzte Importe
     if ($method === 'GET' && $sub === 'log') {

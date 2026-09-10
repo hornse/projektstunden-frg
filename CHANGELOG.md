@@ -8,6 +8,33 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 ## [Unreleased]
 
 ### Behoben
+- **Die Schuljahr-Auswahl beim CSV-Import war wirkungslos** (E56, E57). Das
+  Frontend hängte `schuljahr_id` an ein `FormData`; der Handler las `$body`,
+  das aus `php://input` stammt – und das ist bei `multipart/form-data` **leer**.
+  Die Oberfläche hat die Fähigkeit dabei ausdrücklich zugesagt: „Du kannst auch
+  ein zukünftiges Schuljahr wählen." Wer sie nutzte, bekam eine Erfolgsmeldung
+  und einen Import ins aktive Jahr.
+- **Anzeige statt Auswahl.** Die Importseite zeigt jetzt an, in welches Jahr
+  importiert wird; der Handler ermittelt es ohne Vorbedingung und nimmt die
+  Angabe nicht mehr entgegen. Ohne aktives Jahr steht dort der Satz, den auch
+  das Backend ausgibt – das Dateifeld bleibt bedienbar, damit nicht zwei
+  Stellen dieselbe Bedingung entscheiden.
+- **Der Fehler kehrt nirgends wieder** – gesucht, nicht vermutet: `new FormData`
+  kommt im Frontend zweimal vor (beide im Import), `$_FILES` im Backend an
+  denselben zwei Stellen, und **`$_POST` hat im gesamten Backend null
+  Vorkommen**. Der Logo-Upload geht als Base64 in einem JSON-Rumpf.
+- **Rubrik „Import und aktives Schuljahr"** – zwei Prüfungen: `handle_import`
+  darf `schuljahr_id` **gar nicht** aus dem Rumpf lesen und muss das aktive
+  Jahr ermitteln; im Frontend darf kein Auswahlfeld zurückkehren, und die
+  Anzeige muss da sein. **70 → 72 Prüfungen.**
+- **Ein roter Testlauf wiederholt jetzt auch die Detailzeilen** unter einer
+  gefallenen Prüfung. Bisher stand am Ende nur „✗ …"; welche Zeile gemeint
+  war, stand allein im Protokoll – und ein `tail -3` verlor sie.
+- **`.komp-cb{display:none}` in `style.css` entfernt** (E55) – tote Regel;
+  die Kästchen sind bereits über `.komp-pill input[type=checkbox]` verborgen.
+  Vorher in Chrome belegt: mit und ohne die Regel `display=none, breite=0px`.
+
+### Behoben (vorheriger Vorgang)
 - **`import_log.dateiname` wurde roh ausgegeben.** Der Name der hochgeladenen
   Datei geht ungefiltert aus `$_FILES` in die Datenbank und stand von dort
   roh im Import-Protokoll – dieselbe Bauform wie E42, nur **über die

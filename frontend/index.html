@@ -16,10 +16,10 @@
          direkt hier. Ausgelagert ist sie zwischenspeicherbar, und die
          index.html schrumpft von 44 KB auf ein Drittel.
          Tokens zuerst, die projekteigene Datei zuletzt. -->
-    <link rel="stylesheet" href="/vendor/ci-css/ci-tokens.css?v=20260910085453">
-    <link rel="stylesheet" href="/vendor/ci-css/ci-komponenten.css?v=20260910085453">
-    <link rel="stylesheet" href="/vendor/ci-css/ci-shell.css?v=20260910085453">
-    <link rel="stylesheet" href="/style.css?v=20260910085453">
+    <link rel="stylesheet" href="/vendor/ci-css/ci-tokens.css?v=20260910093514">
+    <link rel="stylesheet" href="/vendor/ci-css/ci-komponenten.css?v=20260910093514">
+    <link rel="stylesheet" href="/vendor/ci-css/ci-shell.css?v=20260910093514">
+    <link rel="stylesheet" href="/style.css?v=20260910093514">
 </head>
 <body class="ci-seite">
     <a href="#hauptinhalt" class="skip-link">Zum Inhalt springen</a>
@@ -35,7 +35,7 @@
      Navigationspunkte. Vorher schwebte das Formular ohne Leiste im
      Nichts. -->
 <div id="app-view" class="ci-huelle" data-ci-huelle data-leiste="voll"
-     data-ci-icons="/vendor/ci-css/ci-icons.svg?v=20260910085453" style="display:flex">
+     data-ci-icons="/vendor/ci-css/ci-icons.svg?v=20260910093514" style="display:flex">
 <aside class="ci-leiste">
   <div class="ci-schild">
     <span class="ci-schild-platzhalter" id="nav-platzhalter" aria-hidden="true">P</span>
@@ -584,11 +584,12 @@
     <p class="sub">CSV/TXT-Export aus Schild-NRW hochladen und synchronisieren</p>
 
     <div class="card">
-      <h2>Schuljahr wählen</h2>
+      <h2>Schuljahr</h2>
       <p style="font-size:12px;color:var(--text3);margin-bottom:10px">
-        Standard: aktives Schuljahr. Du kannst auch ein zukünftiges Schuljahr wählen.
+        Der Import geht immer in das <strong>aktive</strong> Schuljahr. Gewechselt
+        wird es unter „Schuljahre“.
       </p>
-      <select id="imp-sj"><option value="">– wird geladen –</option></select>
+      <div id="imp-sj-anzeige" style="font-size:14px;font-weight:500">– wird geladen –</div>
     </div>
 
     <div class="card">
@@ -708,7 +709,7 @@
 </main>
 </div>
 
-<script src="/vendor/ci-css/ci-shell.js?v=20260910085453"></script>
+<script src="/vendor/ci-css/ci-shell.js?v=20260910093514"></script>
 <script src="/app.js"></script>
 </body>
 </html>

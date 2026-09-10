@@ -1848,3 +1848,67 @@ Inaktivierung dazu verhält.
 **Was das nicht heißt:** Es ist kein Anzeigefehler. Solange das Feld eine
 Auswahl anbietet, die nichts bewirkt, ist jede Nutzung davon eine falsche
 Zusicherung an den Benutzer.
+
+---
+
+## E57 — E56 abgeschlossen: Der Import zeigt das aktive Schuljahr, statt es zur Wahl zu stellen (10.09.2026)
+
+**Was die Oberfläche zugesagt hat.** E56 beschreibt ein wirkungsloses Feld. Es
+war mehr als das: Über der Auswahl stand wörtlich
+
+> „Standard: aktives Schuljahr. **Du kannst auch ein zukünftiges Schuljahr
+> wählen.**"
+
+Das ist keine stillschweigende Unwirksamkeit, sondern eine ausdrücklich
+zugesagte Fähigkeit, die es nie gab. Wer sie nutzte, bekam keinen Fehler,
+sondern eine Erfolgsmeldung — und einen Import ins alte Jahr.
+
+**Entscheidung, drei Teile:**
+
+Der Handler ermittelt das aktive Schuljahr **ohne Vorbedingung** und nimmt die
+Angabe nicht mehr entgegen. `import_log.schuljahr_id` bleibt, wie es ist — es
+war schon immer richtig gefüllt: Alle drei vorhandenen Zeilen tragen das aktive
+Jahr, weil der Wert nie ankam und der Rückfall immer lief.
+
+**Keine ausdrückliche Zurückweisung.** Ein Aufrufer, der `schuljahr_id`
+mitschickt, bewirkt nichts; ein Fehler dafür bestrafte ihn für eine Angabe, die
+seit jeher wirkungslos war, und das Frontend schickt sie nicht mehr.
+
+**Bei keinem aktiven Jahr** zeigt die Anzeige denselben Satz, den das Backend
+ausgibt, und das Dateifeld bleibt bedienbar. **Nicht sperren:** Zwei Stellen,
+die dieselbe Bedingung entscheiden, sind der Mechanismus, aus dem dieser Fehler
+entstanden ist.
+
+**Der Fall ist enger, als er aussieht.** Der Auftrag nahm an, „Schuljahre"
+erlaube, alle abzuschließen. Das stimmt nicht: Abschließen geschieht nur als
+Nebenwirkung des Aktivierens eines anderen Jahres, in einer Transaktion, und das
+aktive Jahr lässt sich ausdrücklich nicht löschen (`index.php:1754`). Erreichbar
+ist der Zustand nur vor der ersten Aktivierung — bei einer frischen
+Installation.
+
+**Kehrt der Fehler anderswo wieder? Nein — gesucht, nicht vermutet:**
+
+| Suche | Treffer |
+|---|---|
+| `new FormData` im gesamten Frontend | 2 — beide im Import |
+| `fetch`-Rümpfe, die kein JSON sind | 2 — dieselben |
+| `$_FILES` im gesamten Backend | 2 — dieselben Endpunkte |
+| **`$_POST` im gesamten Backend** | **0** |
+
+Der einzige weitere Upload — das Schullogo — geht als Base64 in einem
+JSON-Rumpf; dort ist `php://input` gefüllt.
+
+**Die Regel, die beim nächsten Upload gebraucht wird:**
+
+> **Wer im Frontend `FormData` benutzt, muss im Backend `$_FILES` und `$_POST`
+> lesen, nicht `$body`.**
+
+`$body` entsteht aus `php://input`, und das ist bei `multipart/form-data` leer.
+Der Fehler ist nicht „jemand hat ein Feld vergessen", sondern eine Eigenschaft
+der Übertragungsart. Dass `$_POST` heute **null** Vorkommen hat, ist die
+Kehrseite derselben Sache: Das Projekt liest sonst überall JSON — und genau
+deshalb fiel niemandem auf, dass eine Stelle es nicht tut.
+
+**Was das nicht heißt:** Die Inaktivierungslogik bleibt unangetastet. Sie
+bezieht sich weiter auf den Bestand des aktiven Jahres; das war nie falsch,
+sondern nur unsichtbar, solange ein anderes Jahr wählbar schien.

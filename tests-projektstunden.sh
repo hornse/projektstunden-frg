@@ -40,7 +40,15 @@ if [ -z "${PRUEF_INNEN:-}" ]; then
     PROTOKOLL="logs/pruefung-letzter.txt"
     PRUEF_INNEN=1 "$0" "$@" 2>&1 | tee "$PROTOKOLL"
     ERGEBNIS=${PIPESTATUS[0]}
-    ROTE=$(grep "✗" "$PROTOKOLL" || true)
+    # Nicht nur die Zeilen mit dem Haken: Eine rote Pruefung kann darunter
+    # Details fuehren, die sagen, WORAN es lag ("Zeile 2145: e.dateiname").
+    # Die tragen kein Zeichen und fehlten bisher im Auszug -- wer nur `tail`
+    # las, erfuhr welche Pruefung fiel, nicht warum.
+    ROTE=$(awk '
+        /^  ✗ / { drin = 1; print; next }
+        drin && /^    [^ ]/ { print; next }
+        { drin = 0 }
+    ' "$PROTOKOLL" || true)
     if [ -n "$ROTE" ]; then
         ROTDATEI="logs/pruefung-rot-$(date +%Y%m%d-%H%M%S).txt"
         cp "$PROTOKOLL" "$ROTDATEI"
@@ -1041,6 +1049,67 @@ else
             gruen "Fehlerliste liest grund und daten, beide vollstaendig maskiert"
         fi
     fi
+fi
+
+echo ""
+echo "Import und aktives Schuljahr"
+# ------------------------------------------------------------------
+# E56: Das Frontend haengte `schuljahr_id` an ein `FormData`, der Handler las
+# sie aus `$body` -- und `$body` entsteht aus php://input, das bei
+# `multipart/form-data` leer ist. Die Auswahl war wirkungslos, und die
+# Oberflaeche sagte ausdruecklich zu, sie wirke.
+#
+# Gefaehrlich war das, weil der Import Schueler inaktiviert, die nicht in der
+# Datei stehen: Wer beim Schuljahreswechsel das neue Jahr waehlte,
+# importierte ins alte.
+#
+# Pruefung 1 ist ABSICHTLICH STRENGER als die Anforderung: Sie verbietet, den
+# Wert ueberhaupt zu LESEN, nicht ihn zu verwenden. Ein
+# `$egal = (int)($body['schuljahr_id'] ?? 0);` faellt durch, obwohl es
+# harmlos waere.
+#
+# GRENZE, benannt statt verschwiegen: Sie trennt nicht "liest und verwendet"
+# von "liest und verwirft". Das ginge nur, wenn sie dem Wert durch die
+# Funktion folgte -- statisch nicht zu haben, und eine Naeherung waere die
+# schwache Pruefung, die hier nichts zu suchen hat. Die strenge Fassung ist
+# in dieser Richtung ungefaehrlich: Wer nicht liest, kann nicht versehentlich
+# verwenden.
+#
+# Beide Pruefungen laufen ohne Kommentare -- der Kommentar am Handler zitiert
+# die alte Zeile im Wortlaut und wuerde sonst selbst als Fund gelten.
+# ------------------------------------------------------------------
+API=backend/api/index.php
+if [ ! -f "$API" ]; then
+    rot "$API fehlt – Voraussetzung der Schuljahrpruefung"
+else
+    IMP_FKT=$(awk '/^function handle_import\(/{an=1} an{print} an&&/^}/{exit}' "$API" \
+              | perl -0777 -pe 's{/\*.*?\*/}{}gs' | grep -v '^[[:space:]]*//')
+    if [ -z "$IMP_FKT" ]; then
+        rot "handle_import nicht gefunden"
+    else
+        LIEST=$(printf '%s' "$IMP_FKT" | grep -c "body\['schuljahr_id'\]" || true)
+        AKTIV=$(printf '%s' "$IMP_FKT" | grep -c 'status = "aktiv"' || true)
+        if [ "$LIEST" -gt 0 ]; then
+            rot "handle_import liest schuljahr_id aus dem Rumpf – bei multipart ist der leer (E56)"
+        elif [ "$AKTIV" -eq 0 ]; then
+            rot "handle_import ermittelt das aktive Schuljahr nicht"
+        else
+            gruen "Import ermittelt das aktive Schuljahr und liest schuljahr_id nicht aus dem Rumpf"
+        fi
+    fi
+fi
+
+# Kein Auswahlfeld mehr -- in beiden Haelften, damit nicht die eine ohne die
+# andere verschwindet. `imp-sj-anzeige` ist die Anzeige und bleibt.
+AUSW_HTML=$(grep -c 'id="imp-sj"' "$HTML" || true)
+AUSW_JS=$(grep -c "getElementById('imp-sj')" "$JS" || true)
+ANZEIGE=$(grep -c 'imp-sj-anzeige' "$HTML" || true)
+if [ "$AUSW_HTML" -gt 0 ] || [ "$AUSW_JS" -gt 0 ]; then
+    rot "Auswahlfeld fuers Schuljahr wieder da (HTML=$AUSW_HTML, JS=$AUSW_JS) – es waere wirkungslos"
+elif [ "$ANZEIGE" -eq 0 ]; then
+    rot "weder Auswahl noch Anzeige des Schuljahrs auf der Importseite"
+else
+    gruen "Importseite zeigt das Schuljahr an, statt es zur Wahl zu stellen"
 fi
 
 echo ""
