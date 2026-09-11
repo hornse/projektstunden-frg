@@ -173,12 +173,42 @@ oder einen **Vergleich** gefunden, nie durch Hinsehen:
   Der Weg geht über `pdftotext -bbox-layout`: Zeilen aus den Wörtern über die
   Grundlinie neu bilden, Blöcke aus Markerzeile plus Fortsetzungen bilden,
   **die Spaltenfrage am Block entscheiden** und innerhalb zweispaltiger Blöcke
-  am ersten Wort ab der Spaltengrenze trennen. Die Rinne ist zu messen, nicht
-  zu übernehmen — bei Englisch liegt sie zwischen 293 und 300 pt.
+  am ersten Wort ab der Spaltengrenze trennen. **Die Rinne ist je Fach zu
+  messen, nicht zu übernehmen:**
+
+  | Plan | freier Korridor | `SPALTE_RECHTS` | Trennungen | rechte Ränder |
+  |---|---|---|---|---|
+  | Englisch Sek I | 293 … 300 | 300.0 | 117 | 302, 303, 320, 331 |
+  | Französisch Sek I | 292.65 … 302.89 | 302.0 | 129 | 302.9, 303.0, 320.8, 331.3 |
+
+  **Und sie ist am BLOCK zu messen, nicht an den rohen Wortkanten.** Eine
+  Messung über alle linken Wortkanten fand für Französisch die Zone 293–301
+  „dünn besetzt, aber nicht leer" und hätte zu einer zu niedrigen Grenze
+  geführt. In zweispaltigen Blöcken ist dieselbe Zone **leer**; die Wörter
+  dort stehen ausnahmslos in einspaltigen Blöcken, die über die ganze Breite
+  laufen. Der Unterschied ist nicht Genauigkeit, sondern Gegenstand.
+- **Die Seitenzahl ist kein Text, und sie steht am Außenrand.** Auf ungeraden
+  Seiten rechts (x ≈ 511), auf geraden links (x ≈ 70.8). Beide Lagen
+  beschädigen eine Erwartung, die über den Seitenumbruch läuft: rechts hängt
+  sich die Zahl als Fortsetzung an den Text („… einordnen. 25"), links gilt
+  die Erwartung als beendet und ihre Fortsetzung fällt weg — der Satz bricht
+  mitten im Wort ab. Seitenzahlzeilen werden deshalb **vor** der Blockbildung
+  verworfen, und zwar streng gegen die Nummer der Seite geprüft.
+- **Ein Kapitel ohne eigene Erwartungen bekommt keinen Zweig.** Französisch
+  2.3 („ab Jahrgangsstufe 5") verweist auf 2.2 und führt nur eine Aufzählung
+  innerhalb eines Satzes. Seine Kapitelgrenze wird trotzdem gebraucht — sie
+  beendet das vorige Kapitel.
 - **Zwei Marker für dieselbe Sache, unangekündigt.** Englisch führt 170 `à`
   und 7 `•`; letztere nur in einem einzigen Abschnitt. Wer nur `à` kennt,
   bekommt 170 und eine Summe, die stimmig aussieht. Die Aufteilung je Marker
-  gehört deshalb in die Sollzahlen (E28).
+  gehört deshalb in die Sollzahlen (E28). Bei Französisch ist die Antwort die
+  umgekehrte — `•` kommt 34-mal vor, aber **nie** im Erwartungsteil —, und
+  auch sie ist zu messen: Die erwartete Zahl `0` steht dort in den Sollzahlen,
+  damit ein zweiter Marker auffiele, statt stillschweigend zu fehlen.
+- **Den Marker zählen, nicht das Zeichen.** In einem Französischplan ist `à`
+  ein Wort der Zielsprache. `pdftotext -layout | grep -o à | wc -l` ergibt 204,
+  die Zahl der Erwartungen ist 202 — die beiden übrigen stehen in
+  `a/à, ou/où` in der rechten Spalte.
 - **Überschriften haben in einem Plan mehrere Formen.** Bei Englisch drei:
   Kapitälchen, kurze Zeile mit Doppelpunkt, kurze Zeile ohne. Wer über die
   Form entscheidet, verliert eine davon; wer über ein Verzeichnis der

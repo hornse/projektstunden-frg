@@ -70,7 +70,7 @@ Abschnitt zum Plan.
 | 4 | `g9_e_klp_3417_…` | Englisch | Sek I | `à`+3/+4/+1 · `•`+3 | **zwei** | **3** | 177 | ✓ |
 | 5 | `g9_ek_klp_3408_…` | Erdkunde | Sek I | `à`+3 · `\x83`+3 | ein | 2 | 103 | ✓ |
 | 6 | `g9_er_klp_3414_…` | Ev. Religionslehre | Sek I | `à`+3 · `\x83`+3 | ein | 2 | 177 | ✓ |
-| 7 | `g9_f_klp_3410_…` | Französisch | Sek I | `à`+3/+4/+1 · `•`+4 | **zwei** | **3** | 204 | ✓ |
+| 7 | `g9_f_klp_3410_…` | Französisch | Sek I | `à`+3/+4/+1 | **zwei** | **3** | **202** | ✓ |
 | 8 | `g9_ge_klp_3407_…` | Geschichte | Sek I | `à`+3 · `\x83`+3 | ein | 2 | 137 | ✓ |
 | 9 | `g9_kr_klp_3403_…` | Kath. Religionslehre | Sek I | `à`+3/+4/+5 · `\x83`+3 | ein | 2 | 166 | ✓ |
 | 10 | `g9_ku_klp_3405_…` | Kunst | Sek I | `à`+3 · `\x83`+3 | ein | 2 | 99 | ✓ |
@@ -104,6 +104,27 @@ Abschnitt zum Plan.
 
 Die vier fett gesetzten Zahlen sind gegen die Datenbank belegt: Deutsch Sek I
 226, Deutsch GOSt 197, Sport Sek I 120 — und die Bereichszahlen 28, 30, 54.
+
+**Berichtigt am 11.09.2026, Französisch Sek I (Zeile 7):** Dort standen 204
+Erwartungen und `•`+4 als zweiter Marker. Beides ist beim Import gemessen
+worden (E63) und war falsch beziehungsweise irreführend:
+
+* **202, nicht 204.** Die 204 ist die Zahl der **Zeichen** `à` im extrahierten
+  Text, nicht die der Marker am Zeilenanfang. In einem Französischplan ist `à`
+  ein Wort der Zielsprache: Die zwei überzähligen stehen in `a/à, ou/où` in der
+  rechten Spalte. **Wo der Marker ein Buchstabe der Zielsprache ist, muss die
+  Zählung am Zeilenanfang ansetzen.** Das betrifft Französisch und Spanisch.
+* **`•` ist hier kein Erwartungsmarker.** Es kommt 34-mal vor, aber in keinem
+  der drei Erwartungskapitel: 22-mal in Kapitel 1, sechsmal in Kapitel 2.3 als
+  Aufzählung innerhalb eines Satzes, sechsmal in Kapitel 3.
+* **Die Spaltengrenze ist gemessen**, nicht aus Englisch übernommen: Der freie
+  Korridor liegt zwischen 292.65 und 302.89 pt, gemessen an Blöcken und nicht
+  an rohen Wortkanten.
+
+Damit steht die Frage im Raum, ob weitere gelesene Pläne in dieser Tabelle
+ungeprüfte Zahlen tragen. Für Englisch Sek I stimmten sie (177) — das ist ein
+Datenpunkt, keine Gewähr. Bei jedem weiteren Fachimport ist die Zeile hier
+gegen die Messung zu halten und, wo sie abweicht, zu berichtigen.
 
 ---
 
@@ -155,7 +176,7 @@ Kompetenzmarkern**:
 | Spanisch Sek I | 27 % | Fachliche Konkretisierungen (`−`) | x ≈ 300 pt |
 | Englisch GOSt | 28 % | Fachliche Konkretisierungen (`−`) | x ≈ 300 pt |
 | Englisch Sek I | 23 % | Fachliche Konkretisierungen (`−`) | x ≈ 300 pt |
-| Französisch Sek I | 18 % | Fachliche Konkretisierungen (`−`) | x ≈ 300 pt |
+| Französisch Sek I | 18 % | Fachliche Konkretisierungen (`−`) | **302.9 pt, gemessen** |
 | Französisch GOSt | 17 % | Fachliche Konkretisierungen (`−`) | x ≈ 300 pt |
 | Spanisch GOSt | 18 % | Fachliche Konkretisierungen (`−`) | x ≈ 300 pt |
 

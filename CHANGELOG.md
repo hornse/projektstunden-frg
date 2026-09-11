@@ -7,6 +7,19 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 
 ## [Unreleased]
 
+### Hinzugefügt
+- **Französisch Sekundarstufe I** (`FRA_KLP`, Seed 20, E63): **202
+  Kompetenzerwartungen an 48 Blättern, 60 Knoten**, erzeugt aus
+  `g9_f_klp_3410_2019_06_23.pdf` durch `sql/gen/gen_franzoesisch_klp.py`.
+  Aufteilung 55 / 74 / 73 auf zweite Fremdsprache (Erste und Zweite Stufe) und
+  dritte Fremdsprache.
+- **Erstes Fach mit einem Bildungsgang als Wurzelknoten** (`art =
+  'bildungsgang'`). Der Baum ist vier Ebenen tief statt drei; das Schema aus
+  E29b trägt es ohne Änderung. Kapitel 2.3 bekommt keinen Zweig – es verweist
+  auf 2.2 und führt keine eigenen Erwartungen.
+- **Prüfungszahl unverändert 76** – der Seed fällt unter die bestehenden
+  Fachdatenprüfungen (Quelle, Prüfsumme, Erzeuger, `art`, Baumkonsistenz).
+
 ### Entfernt
 - **Das Einstellungsfeld „Sekundärfarbe (Nav)"** (E62). Es bot samt Erklärung
   „Sekundärfarbe für die Navigation" etwas an, das es nie gab: Der Wert wurde

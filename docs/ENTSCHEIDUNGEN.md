@@ -2335,3 +2335,94 @@ Regel es las.
 **Damit ist der Bestand an CSS-Variablen in beide Richtungen dicht**, und
 `--nav-bg` kann nicht unbemerkt zurückkehren: Es wieder zu definieren, ohne es
 zu lesen, macht den Lauf rot — belegt.
+
+---
+
+## E63 — Französisch Sek I: der Bildungsgang wird ein Wurzelknoten (11.09.2026)
+
+**Anlass:** Französisch ist das erste Fach mit einer Achse, die es bisher nicht
+gab. Der Plan gliedert nicht nach Phasen, sondern nach **Bildungsgängen**:
+zweite Fremdsprache in zwei Stufen (Kapitel 2.2.1 und 2.2.2) und dritte
+Fremdsprache (Kapitel 2.4).
+
+**Entscheidung, vier Teile.**
+
+**Der Bildungsgang wird ein Wurzelknoten** mit `art = 'bildungsgang'`, darunter
+die von Englisch bekannte Gliederung. Der Baum ist damit vier Ebenen tief —
+Bildungsgang, Kompetenzbereich, Teilbereich, Unterbereich —, und der Seed hat
+vier INSERTs auf `kompetenzbereiche` statt der drei bei Englisch. Der Baum aus
+E29b trägt das ohne Schemaänderung; das war sein Zweck.
+
+`phase` bleibt, was sie ist: `erste_stufe` und `zweite_stufe` für die zweite
+Fremdsprache, `sek1_uebergreifend` für die dritte, die „am Ende der
+Sekundarstufe I" gilt. Verworfen wurde, den Bildungsgang in die Phase zu
+ziehen — der ENUM wüchse je Fach, und die Phasenpalette aus E59 bräuchte neue
+Einträge für etwas, das keine Phase ist.
+
+**Kapitel 2.3 bekommt keinen Zweig.** „Französisch ab Jahrgangsstufe 5"
+verweist ausdrücklich auf Kapitel 2.2 und führt keine eigenen Erwartungen; die
+sechs `•` dort sind eine Aufzählung innerhalb eines Satzes. Seine Kapitelgrenze
+wird trotzdem gebraucht — sie beendet Kapitel 2.2.2.
+
+**Codeschema:** `FR_<Bildungsgang>[_<Stufe>]_<Bereich>[_<Unterbereich>]_<lfd>`,
+also `FR_2FS_S1_HOR_01`, `FR_2FS_S2_VSM_GRA_01`, `FR_3FS_IKK_SOW_01`. Der
+Bildungsgang steht **vorn**, weil er die äußere Achse ist — er ist der
+Wurzelknoten. Die **dritte Fremdsprache trägt kein Stufensegment**, weil der
+Lehrplan ihr keine Stufe gibt. Der Code bildet damit den Baum ab, statt eine
+feste Tiefe zu behaupten (E46). FKK fällt im Code aus, IKK und VSM bleiben —
+wie bei Englisch (E49).
+
+**Die Rinne wird am Block gemessen, nicht an den Wortkanten.** Für Französisch:
+freier Korridor **292.65 bis 302.89 pt**, `RINNE = (293.0, 302.0)`,
+`SPALTE_RECHTS = 302.0`. 129 Trennungen an genau vier rechten Rändern (302.9,
+303.0, 320.8/320.9, 331.3), ohne Ausreißer.
+
+**Warum das nicht bloß genauer ist, sondern etwas anderes misst:** Eine Messung
+über alle linken Wortkanten fand die Zone 293–301 „dünn besetzt, aber nicht
+leer" und hätte zu einer zu niedrigen Grenze geführt. In **zweispaltigen**
+Blöcken ist dieselbe Zone leer; die Wörter dort stehen ausnahmslos in
+einspaltigen Blöcken, die über die ganze Breite laufen. Wer über rohe
+Wortkanten misst, misst die Seite; wer über Blöcke misst, misst die Spalte.
+Für Spanisch, das dieselbe Bauform hat, gilt das mit.
+
+**Die Aufteilung der Interkulturellen Kompetenz ist 1/3/3**, in allen drei
+Bildungsgängen gleich — und nicht 1/2/4 wie bei Englisch. Sie war nicht
+ableitbar und ist ausgezählt worden. Daraus folgen 16 Blätter je Bildungsgang
+und **48** insgesamt, bei **60** Knoten.
+
+---
+
+**Was dabei gefunden wurde und den Englisch-Bestand betrifft — gemeldet, nicht
+in diesem Vorgang behoben:**
+
+**Die Seitenzahl stand im Text.** Sie steht am Außenrand: auf ungeraden Seiten
+rechts (x ≈ 511), auf geraden links (x ≈ 70.8). Rechts hängt sie sich als
+Fortsetzung an die letzte Erwartung der Seite; links beendet sie die Erwartung,
+und deren Fortsetzung auf der nächsten Seite fällt weg. Beim ersten Lauf des
+Französisch-Erzeugers hat beides je dreimal zugeschlagen: drei Erwartungen
+trugen eine Seitenzahl am Ende, drei brachen mitten im Satz oder mitten in
+einem getrennten Wort ab.
+
+**Der ausgelieferte Englisch-Seed hat denselben Fehler.** Fünf der 177
+Erwartungen tragen eine Seitenzahl am Ende (`… entnehmen. 15`, `… anwenden. 17`,
+`… nutzen, 23`, `… steuern. 31`, `… steuern. 39`), und mindestens eine ist
+abgeschnitten: `den eigenen Lernfortschritt auch an-`. Der Wortlautvergleich
+konnte das bei Englisch nicht fangen — es gab keinen Bestand, gegen den zu
+vergleichen gewesen wäre. Genau diesen Fall benennt REIHENREGELN 2 unter „Das
+erste Exemplar einer Sorte hat keinen Vergleich".
+
+Bitter daran: **`docs/curricula/STRUKTUR.md` wusste es.** Dort steht unter
+„Stufe 1 — messen", dass Seitenzahlzeilen vor jeder Auswertung zu tilgen sind.
+Die Erhebung hat es berücksichtigt, der Erzeuger nicht.
+
+Die Behebung ist ein eigener Vorgang: Der Englisch-Erzeuger bekommt denselben
+Filter, der Seed wird neu erzeugt und eingespielt. `ENG_KLP` trägt keine
+Zuweisungen (geprüft), die Korrektur kostet also keine Datenmigration.
+
+**Was an die Stelle des fehlenden Wortlautvergleichs getreten ist:** Die
+Kapitel 2.2.2 und 2.4 beschreiben dieselben Kompetenzen für zwei
+Bildungsgänge. 62 der 73 Erwartungen sind wortgleich; die elf Unterschiede sind
+inhaltlich und am Lehrplan belegt. **Der Plan prüft sich damit selbst** — ein
+abgeschnittener Text fiele als Unterschied auf, wo keiner sein darf. Diese
+Gegenprobe gibt es nur, weil das Fach zwei nahezu gleiche Kapitel führt; sie
+ist kein Ersatz für einen Bestand, aber besser als nichts.
