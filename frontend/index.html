@@ -16,10 +16,10 @@
          direkt hier. Ausgelagert ist sie zwischenspeicherbar, und die
          index.html schrumpft von 44 KB auf ein Drittel.
          Tokens zuerst, die projekteigene Datei zuletzt. -->
-    <link rel="stylesheet" href="/vendor/ci-css/ci-tokens.css?v=20260910180238">
-    <link rel="stylesheet" href="/vendor/ci-css/ci-komponenten.css?v=20260910180238">
-    <link rel="stylesheet" href="/vendor/ci-css/ci-shell.css?v=20260910180238">
-    <link rel="stylesheet" href="/style.css?v=20260910180238">
+    <link rel="stylesheet" href="/vendor/ci-css/ci-tokens.css?v=20260911063943">
+    <link rel="stylesheet" href="/vendor/ci-css/ci-komponenten.css?v=20260911063943">
+    <link rel="stylesheet" href="/vendor/ci-css/ci-shell.css?v=20260911063943">
+    <link rel="stylesheet" href="/style.css?v=20260911063943">
 </head>
 <body class="ci-seite">
     <a href="#hauptinhalt" class="skip-link">Zum Inhalt springen</a>
@@ -35,7 +35,7 @@
      Navigationspunkte. Vorher schwebte das Formular ohne Leiste im
      Nichts. -->
 <div id="app-view" class="ci-huelle" data-ci-huelle data-leiste="voll"
-     data-ci-icons="/vendor/ci-css/ci-icons.svg?v=20260910180238" style="display:flex">
+     data-ci-icons="/vendor/ci-css/ci-icons.svg?v=20260911063943" style="display:flex">
 <aside class="ci-leiste">
   <div class="ci-schild">
     <span class="ci-schild-platzhalter" id="nav-platzhalter" aria-hidden="true">P</span>
@@ -654,22 +654,17 @@
       <h2>Farben</h2>
       <p style="font-size:12px;color:var(--text3);margin-bottom:12px">
         Akzentfarbe wird für Buttons und Chips verwendet.
-        Sekundärfarbe für die Navigation.
       </p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-        <div>
-          <label>Akzentfarbe</label>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input type="color" id="ein-farbe-akzent" style="width:48px;height:36px;padding:2px;cursor:pointer;border:1px solid var(--border);border-radius:6px">
-            <input type="text" id="ein-farbe-akzent-hex" maxlength="7" placeholder="#3d6b4f" style="font-family:monospace;width:90px"><!-- rohfarbe-erlaubt: Beispiel im Platzhalter, keine Darstellung -->
-          </div>
-        </div>
-        <div>
-          <label>Sekundärfarbe (Nav)</label>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input type="color" id="ein-farbe-sek" style="width:48px;height:36px;padding:2px;cursor:pointer;border:1px solid var(--border);border-radius:6px">
-            <input type="text" id="ein-farbe-sek-hex" maxlength="7" placeholder="#2c4f3a" style="font-family:monospace;width:90px"><!-- rohfarbe-erlaubt: Beispiel im Platzhalter, keine Darstellung -->
-          </div>
+      <!-- Hier stand ein zweites Feld "Sekundärfarbe (Nav)" samt Zusage
+           "Sekundärfarbe für die Navigation." Der Wert wurde gespeichert und
+           nach --nav-bg geschrieben; gelesen hat ihn niemand, die Leiste
+           faerbt sich aus der vendorten Huelle (E62). Mit dem Feld ist auch
+           das Zweispaltenraster entfallen - fuer ein Feld braucht es keines. -->
+      <div>
+        <label>Akzentfarbe</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="color" id="ein-farbe-akzent" style="width:48px;height:36px;padding:2px;cursor:pointer;border:1px solid var(--border);border-radius:6px">
+          <input type="text" id="ein-farbe-akzent-hex" maxlength="7" placeholder="#3d6b4f" style="font-family:monospace;width:90px"><!-- rohfarbe-erlaubt: Beispiel im Platzhalter, keine Darstellung -->
         </div>
       </div>
       <button class="btn btn-p" onclick="farbenanSpeichern()" style="margin-top:16px">Farben speichern</button>
@@ -709,7 +704,7 @@
 </main>
 </div>
 
-<script src="/vendor/ci-css/ci-shell.js?v=20260910180238"></script>
+<script src="/vendor/ci-css/ci-shell.js?v=20260911063943"></script>
 <script src="/app.js"></script>
 </body>
 </html>

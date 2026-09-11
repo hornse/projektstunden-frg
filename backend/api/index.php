@@ -2707,7 +2707,20 @@ function handle_einstellungen(string $method, string $sub, array $body): void {
             'app_titel'      => ['typ' => 'text', 'max' => 60],
             'app_untertitel' => ['typ' => 'text', 'max' => 100],
             'farbe_akzent'   => ['typ' => 'farbe'],
-            'farbe_sekundaer'=> ['typ' => 'farbe'],
+            // `farbe_sekundaer` wird NICHT mehr entgegengenommen (E62): Das
+            // Frontend hat kein Feld mehr dafuer, und gelesen wurde der Wert
+            // ohnehin nie -- er ging nach `--nav-bg`, das niemand las. Was
+            // nicht gelesen wird, soll auch niemand glauben zu setzen (E57).
+            //
+            // Keine ausdrueckliche Zurueckweisung: Ein Aufrufer, der das Feld
+            // mitschickt, bewirkt nichts. Die Schleife laeuft ueber die
+            // erlaubten Schluessel, unbekannte werden uebergangen.
+            //
+            // Der GESPEICHERTE Wert bleibt stehen. Er traegt die Vorgabe
+            // `#2c4f3a` und wurde nie geaendert (geaendert_von IS NULL,
+            // nachgesehen). Faerbt jemand die Leiste spaeter doch, ist die
+            // Farbe noch da; eine Datenmigration dafuer waere
+            // unverhaeltnismaessig.
         ];
 
         $stmt = $db->prepare(
@@ -2818,6 +2831,9 @@ function handle_einstellungen(string $method, string $sub, array $body): void {
             'app_titel'      => 'Projektstunden NRW',
             'app_untertitel' => 'Gymnasium G9 – Kompetenz- und Stunden-Tracking',
             'farbe_akzent'   => '#3d6b4f',
+            // Bleibt in der Vorgabeliste: Zuruecksetzen stellt den
+            // gespeicherten Wert auf die Vorgabe, statt eine Zeile mit einem
+            // beliebigen Altwert stehen zu lassen (E62).
             'farbe_sekundaer'=> '#2c4f3a',
             'logo_pfad'      => '',
             'logo_mime'      => '',

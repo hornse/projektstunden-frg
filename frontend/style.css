@@ -49,7 +49,9 @@
   --accent:var(--ci-akzent);
   --accent-bg:var(--ci-akzent-flaeche);
   --accent-text:var(--ci-akzent-text);
-  --nav-bg:var(--ci-flaeche);
+  /* --nav-bg ist entfallen (E62). Es wurde definiert, aus den Einstellungen
+     beschrieben und nirgends gelesen -- die Leiste faerbt sich aus der
+     vendorten Huelle. Wer sie kuenftig faerben will, faengt hier an. */
 
   --warn-bg:var(--ci-warnung-flaeche);
   --warn:var(--ci-warnung);

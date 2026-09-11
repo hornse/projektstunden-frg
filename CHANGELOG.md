@@ -8,6 +8,25 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 ## [Unreleased]
 
 ### Entfernt
+- **Das Einstellungsfeld „Sekundärfarbe (Nav)"** (E62). Es bot samt Erklärung
+  „Sekundärfarbe für die Navigation" etwas an, das es nie gab: Der Wert wurde
+  gespeichert und nach `--nav-bg` geschrieben – gelesen hat ihn niemand, die
+  Leiste färbt sich aus der vendorten Hülle. Mit dem Feld entfallen die
+  Variable `--nav-bg`, die Konstante `STANDARD_SEKUNDAER` und das
+  Zweispaltenraster der Karte.
+- **Das Backend nimmt `farbe_sekundaer` nicht mehr entgegen** – nach E57: Was
+  nicht gelesen wird, soll auch niemand glauben zu setzen. Der **gespeicherte
+  Wert bleibt**; er trägt die Vorgabe und wurde nie geändert
+  (`geaendert_von IS NULL`, nachgesehen).
+
+### Hinzugefügt
+- **Gegenrichtung der Variablenprüfung**: Jede eigene CSS-Variable muss auch
+  gelesen werden – Definitionen aus den eigenen Stilvorlagen **und** aus
+  `setProperty`, Verwendungen aus dem ganzen `frontend/`. Ohne den
+  `setProperty`-Teil fiele ein Fall wie `--accent-dark` durch beide
+  Richtungen. **75 → 76 Prüfungen.**
+
+### Entfernt (vorheriger Vorgang)
 - **Sieben tote CSS-Regeln** (`.imp-row`, `.imp-row:last-child`, `.imp-icon`,
   `.imp-neu`, `.imp-upd`, `.imp-ok`, `.imp-err`) aus einer früheren Fassung der
   Import-Vorschau, die heute mit `.stat` und `.sec` arbeitet (E61). Keine der

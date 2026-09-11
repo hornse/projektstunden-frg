@@ -2263,3 +2263,75 @@ aber unbenutzt" hätte ihn nur gesehen, wenn das Schreiben als Definition zählt
 und dann meldet sie ihn. Beides zusammen gedacht: **Die Gegenrichtung mit
 `setProperty` als Definition hätte ihn gefangen.** Ohne diese Erweiterung fällt
 er durch beide Netze. Das war die Frage, und das ist die Antwort.
+
+---
+
+## E62 — Das Feld „Sekundärfarbe (Nav)" entfällt; die Gegenrichtung der Variablenprüfung steht (11.09.2026)
+
+**Anlass:** E61 hat `--nav-bg` als Zusage ohne Deckung ausgewiesen — ein Feld
+samt Erklärung „Sekundärfarbe für die Navigation", ein gespeicherter Wert, ein
+`setProperty`, und kein einziges `var(--nav-bg)`. Die Leiste färbt sich aus der
+vendorten Hülle.
+
+**Entscheidung: Das Feld wird entfernt.** Nicht die Leiste einfärben — das wäre
+eine Gestaltungsänderung, die niemand angefordert hat, und sie berührt die
+vendorte Hülle (REIHENREGELN 6). Nicht zur Anzeige machen wie bei E57: Dort gab
+es etwas anzuzeigen — das aktive Schuljahr, gegen das der Import tatsächlich
+läuft. Hier gäbe es einen Wert, der nirgends wirkt.
+
+---
+
+**Der gespeicherte Wert bleibt stehen.** Er trägt die Vorgabe `#2c4f3a` und
+wurde **nie geändert** — nachgesehen, nicht angenommen: `geaendert_von` ist
+`NULL` und der Zeitstempel derselbe wie bei den übrigen Saatzeilen vom
+09.07.2026. Es geht also nichts verloren, was jemand eingestellt hätte, und
+eine Datenmigration für eine Zeile, die exakt die Vorgabe enthält, wäre
+unverhältnismäßig. Färbt jemand die Leiste später doch, ist die Farbe noch da.
+
+**Das Backend nimmt `farbe_sekundaer` nicht mehr entgegen.** Nach E57: Was
+nicht gelesen wird, soll auch niemand glauben zu setzen. Keine ausdrückliche
+Zurückweisung — die Schleife läuft über die erlaubten Schlüssel, ein
+mitgeschickter unbekannter bewirkt nichts. In der Vorgabeliste von
+`POST /zuruecksetzen` **bleibt** der Schlüssel: Zurücksetzen soll die
+gespeicherte Zeile auf die Vorgabe stellen und nicht einen beliebigen Altwert
+stehen lassen.
+
+**„Auf Standard zurücksetzen" bleibt stimmig — nachgesehen, nicht angenommen.**
+Der Knopf steht in der Karte „Farben", setzt aber mehr zurück: Schulname,
+Titel, Untertitel, Akzentfarbe, Sekundärfarbe und das Logo. Das war schon
+vorher so, und die Rückfrage sagt es auch: „Alle Einstellungen und das Logo auf
+Standard zurücksetzen?" Im Frontend entfällt nur `farbe_sekundaer` aus dem
+anschließenden `applyEinstellungen` — es hätte `--nav-bg` gesetzt, das es nicht
+mehr gibt.
+
+**Die Karte steht nicht schief.** Das Zweispaltenraster
+(`grid-template-columns:1fr 1fr`) ist mit dem zweiten Feld entfallen; für ein
+Feld braucht es keines. Gemessen statt angesehen — die Farbzeile behält ihre
+Breite, die Karte ihre Höhe minus der Zeile, die weg ist.
+
+---
+
+**Die Gegenrichtung der Variablenprüfung ist gebaut** (Zuschnitt aus E61):
+Definitionen aus den eigenen Stilvorlagen **und** aus `setProperty`,
+Verwendungen aus dem ganzen `frontend/` einschließlich der vendorten Dateien.
+**75 → 76 Prüfungen.**
+
+`setProperty` als Definition ist der tragende Teil. Ohne ihn sieht die Prüfung
+nur die Stilvorlage — und gerade die zur Laufzeit gesetzten Namen sind die
+gefährdeten: Sie stehen in keiner CSS-Datei. `--accent-dark` kam überhaupt nur
+an seinem `setProperty` vor und fiel deshalb durch **beide** Richtungen (E61).
+Die Gegenprobe dazu ist geführt: Ein `setProperty('--accent-dark', …)`
+wieder eingesetzt, und die Prüfung meldet ihn.
+
+Verwendungen zählen auch aus `frontend/vendor/`: Wer eine eigene Variable dort
+liest, benutzt sie. Auch das ist mit einer Gegenprobe belegt.
+
+**Grenzen, benannt:** Ein zur Laufzeit zusammengesetzter Name wird von keiner
+der beiden Richtungen gesehen. Und keine sagt, ob die Verwendung etwas bewirkt
+— eine Regel, die niemand trifft, liest ihre Variable trotzdem. Genau daran ist
+`.imp-err` vorbeigekommen (E61): Das Token galt als benutzt, weil eine tote
+Regel es las.
+
+**Damit ist der Bestand an CSS-Variablen in beide Richtungen dicht**, und
+`--nav-bg` kann nicht unbemerkt zurückkehren: Es wieder zu definieren, ohne es
+zu lesen, macht den Lauf rot — belegt.

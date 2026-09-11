@@ -2996,7 +2996,7 @@ async function selbstEinschaetzung(werkstatt_id, kompetenz_id, stufe, chipEl) {
 // Dass sie hier noch einmal steht, ist eine zweite Wahrheit und als
 // Befund gemeldet.
 const STANDARD_AKZENT    = '#3d6b4f'; /* rohfarbe-erlaubt: Vorgabewert der Einstellungen, keine Darstellung */
-const STANDARD_SEKUNDAER = '#2c4f3a'; /* rohfarbe-erlaubt: Vorgabewert der Einstellungen, keine Darstellung */
+// STANDARD_SEKUNDAER ist mit dem Feld "Sekundaerfarbe (Nav)" entfallen (E62).
 
 async function initEinstellungen() {
   const data = await GET('einstellungen');
@@ -3006,12 +3006,9 @@ async function initEinstellungen() {
   document.getElementById('ein-titel').value        = data.app_titel       || '';
   document.getElementById('ein-untertitel').value   = data.app_untertitel  || '';
 
-  const akzent = data.farbe_akzent    || STANDARD_AKZENT;
-  const sek    = data.farbe_sekundaer || STANDARD_SEKUNDAER;
+  const akzent = data.farbe_akzent || STANDARD_AKZENT;
   document.getElementById('ein-farbe-akzent').value     = akzent;
   document.getElementById('ein-farbe-akzent-hex').value = akzent;
-  document.getElementById('ein-farbe-sek').value         = sek;
-  document.getElementById('ein-farbe-sek-hex').value     = sek;
 
   // Color-Picker ↔ Hex-Feld synchronisieren
   document.getElementById('ein-farbe-akzent').oninput = e => {
@@ -3020,13 +3017,6 @@ async function initEinstellungen() {
   document.getElementById('ein-farbe-akzent-hex').oninput = e => {
     if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value))
       document.getElementById('ein-farbe-akzent').value = e.target.value;
-  };
-  document.getElementById('ein-farbe-sek').oninput = e => {
-    document.getElementById('ein-farbe-sek-hex').value = e.target.value;
-  };
-  document.getElementById('ein-farbe-sek-hex').oninput = e => {
-    if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value))
-      document.getElementById('ein-farbe-sek').value = e.target.value;
   };
 
   // Logo-Vorschau
@@ -3063,9 +3053,10 @@ async function einstellungenSpeichern() {
 }
 
 async function farbenanSpeichern() {
+  // Nur der Akzent. `farbe_sekundaer` ist mit seinem Feld entfallen (E62) und
+  // wird vom Backend auch nicht mehr entgegengenommen.
   const body = {
-    farbe_akzent:    document.getElementById('ein-farbe-akzent-hex').value,
-    farbe_sekundaer: document.getElementById('ein-farbe-sek-hex').value,
+    farbe_akzent: document.getElementById('ein-farbe-akzent-hex').value,
   };
   try {
     const r = await fetch('/api/einstellungen', {
@@ -3095,7 +3086,6 @@ async function einstellungenZuruecksetzen() {
       app_titel: 'Projektstunden NRW',
       app_untertitel: 'Gymnasium G9 – Kompetenz- und Stunden-Tracking',
       farbe_akzent: STANDARD_AKZENT,
-      farbe_sekundaer: STANDARD_SEKUNDAER,
     });
   } catch(e) { showMsg('ein-farb-msg', e.message, 'err'); }
 }
@@ -3162,9 +3152,10 @@ function applyEinstellungen(data) {
     // Gegenrichtung haetten das gefunden: Der Name kam ueberhaupt nur an
     // dieser einen Stelle vor.
   }
-  if (data.farbe_sekundaer) {
-    document.documentElement.style.setProperty('--nav-bg', data.farbe_sekundaer);
-  }
+  // Hier wurde `--nav-bg` aus `farbe_sekundaer` gesetzt. Gelesen hat es
+  // niemand -- kein var(--nav-bg) im ganzen frontend/ --, die Leiste faerbt
+  // sich aus der vendorten Huelle. Feld, Wert und Variable sind entfallen
+  // (E62); der gespeicherte Wert bleibt in der Datenbank stehen.
   if (data.schulname) {
     const el = document.getElementById('nav-schulname');
     if (el) el.textContent = data.schulname;

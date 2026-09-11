@@ -1386,6 +1386,83 @@ else
     fi
 fi
 
+# ------------------------------------------------------------------
+# GEGENRICHTUNG (E62): Jede eigene Definition wird auch verwendet.
+#
+# Die Pruefung darueber fragt "benutzt, aber nicht definiert". Diese
+# fragt umgekehrt. Beide zusammen halten den Bestand an CSS-Variablen
+# dicht; jede allein laesst eine Richtung offen.
+#
+# ANLASS: `--nav-bg` wurde definiert, aus den Einstellungen beschrieben
+# und nirgends gelesen -- die Oberflaeche bot dafuer ein Feld
+# "Sekundaerfarbe (Nav)" samt Zusage an. Das ist die Bauform aus E56/E57,
+# nur in einer CSS-Variablen.
+#
+# `setProperty('--x', …)` ZAEHLT ALS DEFINITION. Ohne das sieht die
+# Pruefung nur die Stilvorlage -- und gerade die zur Laufzeit gesetzten
+# Namen sind die gefaehrdeten: Sie stehen in keiner CSS-Datei und fallen
+# niemandem auf. `--accent-dark` kam ueberhaupt nur an seinem
+# setProperty vor und fiel deshalb durch BEIDE Richtungen (E61).
+#
+# `ci-tokens.css` ist NICHT die Quelle der Definitionen: Die 56 Farben
+# dort gehoeren der Reihe, und kein Projekt liest alle. Geprueft werden
+# die eigenen Stilvorlagen und das eigene JavaScript.
+#
+# Verwendet zaehlt ein `var(--x)` IRGENDWO in frontend/, auch in den
+# vendorten Dateien -- wer eine eigene Variable dort liest, benutzt sie.
+#
+# GRENZEN:
+#   1. Ein zur Laufzeit zusammengesetzter Name wird nicht gesehen,
+#      weder auf der einen noch auf der anderen Seite.
+#   2. Eine Variable, die nur als Rueckfall dient (`var(--a, var(--b))`),
+#      zaehlt als verwendet -- das ist sie auch.
+#   3. Sie sagt nichts darueber, ob die Verwendung etwas bewirkt. Eine
+#      Regel, die niemand trifft, liest ihre Variable trotzdem.
+# ------------------------------------------------------------------
+VARG_DATEIEN=$(find frontend -type f \( -name '*.css' -o -name '*.js' -o -name '*.html' \) \
+               ! -path 'frontend/vendor/*' | sort)
+VARG_ALLE=$(find frontend -type f \( -name '*.css' -o -name '*.js' -o -name '*.html' \) | sort)
+VARG_Z=$(printf '%s\n' "$VARG_DATEIEN" | grep -c . || true)
+
+if [ "$VARG_Z" -eq 0 ]; then
+    rot "keine eigene Frontend-Datei gefunden – Voraussetzung der Gegenrichtung fehlt"
+else
+    VARG_TEXT=$(printf '%s\n' "$VARG_DATEIEN" | while read -r f; do awk "$STRIP_AWK" "$f"; done)
+    # Definitionen: in eigenen Stilvorlagen und per setProperty
+    VARG_DEF=$( { printf '%s\n' "$VARG_TEXT" \
+                    | grep -oE '(^|[^A-Za-z0-9_-])--[A-Za-z0-9_-]+[[:space:]]*:' \
+                    | grep -oE -- '--[A-Za-z0-9_-]+'
+                  printf '%s\n' "$VARG_TEXT" \
+                    | grep -oE "setProperty\([[:space:]]*['\"]--[A-Za-z0-9_-]+" \
+                    | grep -oE -- '--[A-Za-z0-9_-]+'; } | sort -u)
+    # Verwendungen: var(--x) irgendwo unter frontend/, vendored eingeschlossen
+    VARG_USE=$(printf '%s\n' "$VARG_ALLE" | while read -r f; do awk "$STRIP_AWK" "$f"; done \
+               | grep -oE 'var\([[:space:]]*--[A-Za-z0-9_-]+' \
+               | sed -E 's/^var\([[:space:]]*//' | sort -u)
+    VARG_D_ZAHL=$(printf '%s\n' "$VARG_DEF" | grep -c '^--' || true)
+    if [ "$VARG_D_ZAHL" -eq 0 ]; then
+        rot "keine eigene Variablendefinition gefunden – Voraussetzung der Gegenrichtung fehlt"
+    else
+        VARG_TOT=$(comm -23 <(printf '%s\n' "$VARG_DEF") <(printf '%s\n' "$VARG_USE"))
+        VARG_T_ZAHL=$(printf '%s\n' "$VARG_TOT" | grep -c '^--' || true)
+        if [ "$VARG_T_ZAHL" -eq 0 ]; then
+            gruen "alle $VARG_D_ZAHL eigenen CSS-Variablen werden auch gelesen"
+        else
+            rot "$VARG_T_ZAHL von $VARG_D_ZAHL eigenen CSS-Variablen werden nirgends gelesen:"
+            printf '%s\n' "$VARG_TOT" | grep '^--' | while read -r v; do
+                # Die Fundstelle soll die DEFINITION zeigen, nicht die
+                # erstbeste Erwaehnung -- sonst zeigt sie auf den Kommentar,
+                # der das Entfernen erklaert.
+                ORT=$(printf '%s\n' "$VARG_DATEIEN" | while read -r f; do
+                          grep -nE -- "(^|[^A-Za-z0-9_-])$v[[:space:]]*:|setProperty\([[:space:]]*['\"]$v" "$f" \
+                              | head -1 | sed "s|^|$f:|"
+                      done | head -1)
+                printf '    %s (z. B. %s)\n' "$v" "${ORT:-Fundstelle nicht ermittelbar}"
+            done
+        fi
+    fi
+fi
+
 echo ""
 GESAMT=$((GRUEN + FEHLER))
 echo "$GRUEN/$GESAMT bestanden, $FEHLER rot"
