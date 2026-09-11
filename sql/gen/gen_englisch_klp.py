@@ -246,6 +246,35 @@ def bloecke(zeilen):
     return aus
 
 
+def ist_seitenzahl(zeile, nummer: int) -> bool:
+    """Eine Zeile, die nur aus der gedruckten Seitenzahl besteht.
+
+    DAS IST KEINE FORMALIE. Die Seitenzahl steht am AUSSENRAND: auf ungeraden
+    Seiten rechts, auf geraden links. Beide Lagen beschaedigen eine Erwartung,
+    die ueber den Seitenumbruch laeuft, und zwar auf zwei verschiedene Weisen:
+
+      * rechts: `x >= SPALTE_RECHTS` macht die Zahl zur Fortsetzung des
+        laufenden Blocks, und sie landet im Text -- "... entnehmen. 15".
+      * links: `x > rand + 4` ist falsch, die Erwartung gilt als beendet, und
+        ihre Fortsetzung auf der naechsten Seite faellt weg -- der Text bricht
+        mitten im Satz oder mitten in einem getrennten Wort ab.
+
+    Dieser Plan hat beides getragen: fuenf Erwartungen mit Seitenzahl und eine
+    abgeschnittene ("den eigenen Lernfortschritt auch an-"). Gefunden wurde es
+    erst beim Franzoesisch-Import (E63, E64), weil es dort dieselbe Bauform
+    traf und dort eine Stichprobe daraufgesehen hat.
+
+    `docs/curricula/STRUKTUR.md` wusste es von Anfang an -- unter "Stufe 1"
+    steht, dass Seitenzahlzeilen vor jeder Auswertung zu tilgen sind. Die
+    Erhebung hat es beruecksichtigt, dieser Erzeuger nicht.
+
+    Geprueft wird streng auf die Nummer der Seite, nicht auf "irgendeine
+    Zahl": Eine Zeile, die nur aus einer anderen Zahl bestuende, bliebe
+    erhalten.
+    """
+    return len(zeile) == 1 and zeile[0][4].strip() == str(nummer)
+
+
 def linke_spalte(seiten):
     """(Seitennummer, x der Zeile, Text) -- nur die linke Spalte.
 
@@ -257,7 +286,10 @@ def linke_spalte(seiten):
     """
     aus = []
     for nummer, woerter in enumerate(seiten, start=1):
-        for block in bloecke(zu_zeilen(woerter)):
+        # Die Seitenzahl faellt VOR der Blockbildung weg -- sonst haengt sie
+        # sich als Fortsetzung an den letzten Block der Seite.
+        zeilen = [z for z in zu_zeilen(woerter) if not ist_seitenzahl(z, nummer)]
+        for block in bloecke(zeilen):
             einspaltig = any(deckt_rinne(z) for z in block)
             for zeile in block:
                 if einspaltig:

@@ -7,6 +7,22 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 
 ## [Unreleased]
 
+### Behoben
+- **Neun Erwartungen in `ENG_KLP` waren beschädigt** (E64) – fünf trugen eine
+  Seitenzahl am Ende, eine mitten im Text, drei waren abgeschnitten. Ursache:
+  `gen_englisch_klp.py` fehlte der Seitenzahlfilter, der beim
+  Französisch-Import entstand (E63). Filter eingebaut, Seed neu erzeugt und
+  eingespielt; die drei Reparaturen sind gegen das PDF gegengelesen. `ENG_KLP`
+  trägt keine Zuweisungen – keine Datenmigration nötig.
+- **Prüfung „kein Kompetenztext endet auf einer Zahl oder einem Trennstrich"**
+  – statisch über alle Dateien mit Fachdaten, Kommentare vorher entfernt.
+  Belegt tragfähig: Von 922 Texten in den Seeds und 1028 in der Datenbank
+  endet kein einziger legitim so. **76 → 77 Prüfungen.**
+- **Zwei Grenzen der Prüfung, benannt statt weggeregelt:** Eine Zahl *mitten*
+  im Text bleibt ungeprüft (Sport führt zwei Erwartungen mit legitimen
+  freistehenden Zahlen), und ein Abbruch auf einem vollständigen Wort ist
+  statisch nicht erkennbar. Sie fängt sechs der neun Schadensbilder.
+
 ### Hinzugefügt
 - **Französisch Sekundarstufe I** (`FRA_KLP`, Seed 20, E63): **202
   Kompetenzerwartungen an 48 Blättern, 60 Knoten**, erzeugt aus

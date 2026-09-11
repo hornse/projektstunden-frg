@@ -2426,3 +2426,111 @@ inhaltlich und am Lehrplan belegt. **Der Plan prüft sich damit selbst** — ein
 abgeschnittener Text fiele als Unterschied auf, wo keiner sein darf. Diese
 Gegenprobe gibt es nur, weil das Fach zwei nahezu gleiche Kapitel führt; sie
 ist kein Ersatz für einen Bestand, aber besser als nichts.
+
+---
+
+## E64 — Die Seitenzahl im Englisch-Seed, und was daraus für künftige Fachimporte folgt (11.09.2026)
+
+**Anlass:** E63 meldete, dass `gen_englisch_klp.py` der Seitenzahlfilter fehlt
+und dass fünf Erwartungen eine Seitenzahl tragen, eine abgeschnitten.
+
+**Es waren neun, nicht sechs.** Der Filter ist eingebaut, der Seed neu erzeugt,
+und der Vergleich mit der ausgelieferten Fassung zeigt genau neun geänderte
+Einträge in drei Schadensbildern:
+
+| Bild | Zahl | Beispiel |
+|---|---|---|
+| Seitenzahl am Ende | 5 | `… wichtige Details entnehmen. 15` |
+| Seitenzahl **mitten im Text** | 1 | `… sowie zur 25 Textbesprechung und Textproduktion …` |
+| abgeschnitten | 3 | `den eigenen Lernfortschritt auch an-` |
+
+Von den drei abgeschnittenen endet nur eine auf einem Trennstrich. Die anderen
+beiden enden auf einem vollständigen Wort und sind grammatisch heil:
+`… differenziert erläutern` statt `… erläutern sowie kritisch hinterfragen`,
+und `… anhand digitaler Evaluationsinstrumente` statt `… einschätzen,
+Anregungen aufnehmen sowie eigene Fehlerschwerpunkte gezielt bearbeiten`.
+**Diese beiden hätte keine Prüfung am Seed gefunden.** Alle drei Reparaturen
+sind gegen das PDF gegengelesen.
+
+---
+
+**Eine Ableitung, die die Messung nicht bestätigt.** Naheliegend war: Deutsch
+Sek I, Deutsch GOSt und Sport wurden gegen einen geprüften Bestand verglichen,
+dort wäre es aufgefallen; Englisch und Französisch hatten keinen. Gemessen
+wurde stattdessen, wie oft in jedem Plan überhaupt eine Seitenzahl **zwischen**
+einer Markerzeile und ihrer Fortsetzung steht:
+
+| Plan | Seitenzahl in einer Aufzählung | tatsächlich beschädigt |
+|---|---|---|
+| Deutsch Sek I | **0** | 0 |
+| Deutsch GOSt | 23 — jedes Mal folgt ein Kolumnentitel, keine Fortsetzung | 0 |
+| Sport Sek I | 1 — in einer Tabellenzelle, keine Erwartung | 0 |
+| Englisch Sek I | 6 Stellen | **9 Einträge** |
+| Französisch Sek I | 6 | 6 (bei E63 behoben) |
+
+**Die drei sauberen Pläne sind nicht durch den Vergleich gerettet worden,
+sondern durch ihren Satz.** Bei Deutsch Sek I gab es überhaupt nichts zu
+fangen. Gefährdet sind die **zweispaltigen** Pläne: Dort sind die Spalten
+schmal, Erwartungen laufen häufig über den Seitenumbruch, und die Seitenzahl
+steht mitten darin. Für Spanisch Sek I und die GOSt-Pläne von Englisch,
+Französisch und Spanisch ist damit dasselbe zu erwarten.
+
+---
+
+**Die Prüfung: kein Kompetenztext endet auf einer Zahl oder einem
+Trennstrich.** Statisch über alle Dateien mit Fachdaten (dieselbe Ermittlung
+wie E27), Kommentare vorher entfernt. **76 → 77.**
+
+**Sie trägt, weil der Bestand es hergibt:** Über 922 Kompetenztexte in den
+Seeds und 1028 Einträge in der Datenbank — einschließlich des MKR — endet
+**kein einziger** legitim auf einer Ziffer oder einem Trennstrich. Nachgesehen,
+bevor die Prüfung gebaut wurde.
+
+**Zwei Grenzen, benannt statt weggeregelt:**
+
+*Eine Zahl mitten im Text wird nicht geprüft.* Genau so stand `… sowie zur 25
+Textbesprechung …` im Bestand, und die Prüfung fängt es nicht. Eine Prüfung
+darauf wäre falsch-rot: **Sport führt zwei Erwartungen mit freistehenden
+Zahlen** — „eine aerobe Ausdauerleistung ohne Unterbrechung im Schwimmen
+(15 min, beliebige Schwimmart, mind. 20 …)". Das ist ein legitimer Fall; nach
+REIHENREGELN 2 wird das Uneindeutige gar nicht geprüft, statt eine Ausnahme zu
+erfinden.
+
+*Ein Abbruch auf einem vollständigen Wort wird nicht geprüft.* Er ist am Text
+nicht erkennbar. Dagegen hilft nur der Filter im Erzeuger und ein Vergleich
+gegen die Quelle.
+
+Die Prüfung fängt also **sechs der neun** Schadensbilder. Das ist ihr Wert und
+ihre Grenze.
+
+---
+
+**Der eigentliche Befund, und was daraus folgt.**
+
+`docs/curricula/STRUKTUR.md` wusste es. Unter „Stufe 1 — messen" steht seit der
+Strukturerhebung: *„`\x0c` und Seitenzahlzeilen werden vor jeder Auswertung
+getilgt; ohne das gehen Zeilen verloren, die mit einem Seitenumbruch
+beginnen."* Die Erhebung hat es berücksichtigt. Zwei Erzeuger danach haben es
+nicht.
+
+Die Auskunft lag vor, war richtig, war am richtigen Ort — und wurde beim Bauen
+nicht gelesen. Das ist keine Nachlässigkeit im Einzelfall, sondern eine Lücke
+im Verfahren: Die Erhebung beschreibt, was ein Erzeuger tun muss, aber nichts
+verbindet beides.
+
+**Daraus folgt für jeden künftigen Fachimport:**
+
+1. **Der Auftrag zitiert die Zeile des Plans aus `STRUKTUR.md`** — Marker,
+   Spaltigkeit, Steuerzeichen, Zählwert — und nicht nur die Sollzahlen.
+2. **Was die Erhebung als Vorverarbeitung nennt, wird im Erzeuger
+   nachgewiesen.** Heute sind das drei Dinge: Seitenumbruch tilgen,
+   Seitenzahlzeilen verwerfen, C0-Steuerzeichen ersetzen (C1 **nicht**, E25).
+   Der Bericht sagt je Punkt, an welcher Stelle des Erzeugers er steht.
+3. **Wo die Zahlen der Erhebung von der Messung abweichen, wird `STRUKTUR.md`
+   berichtigt** — bei Französisch waren es 204 statt 202 (E63).
+
+Der erste Punkt ist der wichtigste: Ein Auftrag, der die Zeile nicht zitiert,
+lässt den Erzeuger genau das übersehen, was die Erhebung schon wusste.
+
+**Der Seed ist neu eingespielt.** `ENG_KLP` trägt keine Zuweisungen —
+nachgesehen, nicht angenommen —, die Korrektur kostet keine Datenmigration.

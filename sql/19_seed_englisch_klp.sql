@@ -168,7 +168,7 @@ SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
 FROM kompetenzbereiche kb JOIN (
   SELECT 'EN_EP_LES_01' AS code, 'kürzere Arbeitsanweisungen, Anleitungen und Erklärungen für ihren Lern- und Arbeitsprozess nutzen' AS kurzname, 'kürzere Arbeitsanweisungen, Anleitungen und Erklärungen für ihren Lern- und Arbeitsprozess nutzen' AS beschreibung
   UNION ALL
-  SELECT 'EN_EP_LES_02' AS code, 'Sach- und Gebrauchstexten sowie literarischen Texten wesentliche Informationen und wichtige Details entnehmen. 15' AS kurzname, 'Sach- und Gebrauchstexten sowie literarischen Texten wesentliche Informationen und wichtige Details entnehmen. 15' AS beschreibung
+  SELECT 'EN_EP_LES_02' AS code, 'Sach- und Gebrauchstexten sowie literarischen Texten wesentliche Informationen und wichtige Details entnehmen' AS kurzname, 'Sach- und Gebrauchstexten sowie literarischen Texten wesentliche Informationen und wichtige Details entnehmen' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'EN_EP_LES';
 -- Erprobungsstufe · Funktionale kommunikative Kompetenz · Sprechen: an Gesprächen teilnehmen (3)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
@@ -220,7 +220,7 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'EN_EP_VSM_WOR_02' AS code, 'einen allgemeinen sowie thematischen Wortschatz verstehen und situationsangemessen anwenden' AS kurzname, 'einen allgemeinen sowie thematischen Wortschatz verstehen und situationsangemessen anwenden' AS beschreibung
   UNION ALL
-  SELECT 'EN_EP_VSM_WOR_03' AS code, 'Vokabular zur einfachen Beschreibung sprachlicher Elemente und Strukturen sowie zu einfachen Formen der Textbesprechung …' AS kurzname, 'Vokabular zur einfachen Beschreibung sprachlicher Elemente und Strukturen sowie zu einfachen Formen der Textbesprechung und Textproduktion verstehen und anwenden. 17' AS beschreibung
+  SELECT 'EN_EP_VSM_WOR_03' AS code, 'Vokabular zur einfachen Beschreibung sprachlicher Elemente und Strukturen sowie zu einfachen Formen der Textbesprechung …' AS kurzname, 'Vokabular zur einfachen Beschreibung sprachlicher Elemente und Strukturen sowie zu einfachen Formen der Textbesprechung und Textproduktion verstehen und anwenden' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'EN_EP_VSM_WOR';
 -- Erprobungsstufe · Funktionale kommunikative Kompetenz · Verfügen über sprachliche Mittel · Grammatik (7)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
@@ -338,7 +338,7 @@ FROM kompetenzbereiche kb JOIN (
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
 FROM kompetenzbereiche kb JOIN (
-  SELECT 'EN_S1_LES_01' AS code, 'Arbeitsanweisungen, Anleitungen und Erklärungen für ihren Lern- und Arbeitsprozess nutzen, 23' AS kurzname, 'Arbeitsanweisungen, Anleitungen und Erklärungen für ihren Lern- und Arbeitsprozess nutzen, 23' AS beschreibung
+  SELECT 'EN_S1_LES_01' AS code, 'Arbeitsanweisungen, Anleitungen und Erklärungen für ihren Lern- und Arbeitsprozess nutzen' AS kurzname, 'Arbeitsanweisungen, Anleitungen und Erklärungen für ihren Lern- und Arbeitsprozess nutzen' AS beschreibung
   UNION ALL
   SELECT 'EN_S1_LES_02' AS code, 'Sach- und Gebrauchstexten sowie literarischen Texten die Gesamtaussage sowie Hauptpunkte und wichtige Details entnehmen' AS kurzname, 'Sach- und Gebrauchstexten sowie literarischen Texten die Gesamtaussage sowie Hauptpunkte und wichtige Details entnehmen' AS beschreibung
   UNION ALL
@@ -398,7 +398,7 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'EN_S1_VSM_WOR_03' AS code, 'grundlegende lexikalische Unterschiede zwischen amerikanischem und britischem Englisch beachten' AS kurzname, 'grundlegende lexikalische Unterschiede zwischen amerikanischem und britischem Englisch beachten' AS beschreibung
   UNION ALL
-  SELECT 'EN_S1_VSM_WOR_04' AS code, 'Vokabular zur Beschreibung sprachlicher Elemente und Strukturen sowie zur 25 Textbesprechung und Textproduktion …' AS kurzname, 'Vokabular zur Beschreibung sprachlicher Elemente und Strukturen sowie zur 25 Textbesprechung und Textproduktion verstehen und anwenden' AS beschreibung
+  SELECT 'EN_S1_VSM_WOR_04' AS code, 'Vokabular zur Beschreibung sprachlicher Elemente und Strukturen sowie zur Textbesprechung und Textproduktion verstehen …' AS kurzname, 'Vokabular zur Beschreibung sprachlicher Elemente und Strukturen sowie zur Textbesprechung und Textproduktion verstehen und anwenden' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'EN_S1_VSM_WOR';
 -- Erste Stufe · Funktionale kommunikative Kompetenz · Verfügen über sprachliche Mittel · Grammatik (9)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
@@ -502,7 +502,7 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'EN_S1_SLK_05' AS code, 'Hilfsmittel nutzen und erstellen, um analoge und digitale Texte und Arbeitsprodukte zu verstehen, erstellen und …' AS kurzname, 'Hilfsmittel nutzen und erstellen, um analoge und digitale Texte und Arbeitsprodukte zu verstehen, erstellen und überarbeiten sowie das eigene Sprachenlernen zu unterstützen' AS beschreibung
   UNION ALL
-  SELECT 'EN_S1_SLK_06' AS code, 'den eigenen Lernfortschritt auch anhand digitaler Evaluationsinstrumente' AS kurzname, 'den eigenen Lernfortschritt auch anhand digitaler Evaluationsinstrumente' AS beschreibung
+  SELECT 'EN_S1_SLK_06' AS code, 'den eigenen Lernfortschritt auch anhand digitaler Evaluationsinstrumente einschätzen, Anregungen aufnehmen sowie eigene …' AS kurzname, 'den eigenen Lernfortschritt auch anhand digitaler Evaluationsinstrumente einschätzen, Anregungen aufnehmen sowie eigene Fehlerschwerpunkte gezielt bearbeiten' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'EN_S1_SLK';
 -- Erste Stufe · Sprachbewusstheit (6)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
@@ -518,7 +518,7 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'EN_S1_SBW_05' AS code, 'das eigene und fremde Kommunikationsverhalten im Hinblick auf Kommunikationserfolge und -probleme ansatzweise …' AS kurzname, 'das eigene und fremde Kommunikationsverhalten im Hinblick auf Kommunikationserfolge und -probleme ansatzweise kritisch-konstruktiv reflektieren' AS beschreibung
   UNION ALL
-  SELECT 'EN_S1_SBW_06' AS code, 'ihren mündlichen und schriftlichen Sprachgebrauch den Erfordernissen vertrauter Kommunikationssituationen entsprechend …' AS kurzname, 'ihren mündlichen und schriftlichen Sprachgebrauch den Erfordernissen vertrauter Kommunikationssituationen entsprechend steuern. 31' AS beschreibung
+  SELECT 'EN_S1_SBW_06' AS code, 'ihren mündlichen und schriftlichen Sprachgebrauch den Erfordernissen vertrauter Kommunikationssituationen entsprechend …' AS kurzname, 'ihren mündlichen und schriftlichen Sprachgebrauch den Erfordernissen vertrauter Kommunikationssituationen entsprechend steuern' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'EN_S1_SBW';
 -- Zweite Stufe · Funktionale kommunikative Kompetenz · Hör-/Hörsehverstehen (3)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
@@ -644,7 +644,7 @@ FROM kompetenzbereiche kb JOIN (
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
 SELECT kb.id, @fach, @schule, t.code, t.kurzname, t.beschreibung, NULL
 FROM kompetenzbereiche kb JOIN (
-  SELECT 'EN_S2_IKK_VER_01' AS code, '(inter-)kulturelle Stereotype/Klischees und Vorurteile differenziert erläutern' AS kurzname, '(inter-)kulturelle Stereotype/Klischees und Vorurteile differenziert erläutern' AS beschreibung
+  SELECT 'EN_S2_IKK_VER_01' AS code, '(inter-)kulturelle Stereotype/Klischees und Vorurteile differenziert erläutern sowie kritisch hinterfragen' AS kurzname, '(inter-)kulturelle Stereotype/Klischees und Vorurteile differenziert erläutern sowie kritisch hinterfragen' AS beschreibung
   UNION ALL
   SELECT 'EN_S2_IKK_VER_02' AS code, 'sich aktiv in Denk- und Verhaltensweisen von Menschen anderer Kulturen hineinversetzen und dadurch Verständnis für den …' AS kurzname, 'sich aktiv in Denk- und Verhaltensweisen von Menschen anderer Kulturen hineinversetzen und dadurch Verständnis für den anderen bzw. kritische Distanz entwickeln' AS beschreibung
   UNION ALL
@@ -682,7 +682,7 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'EN_S2_SLK_04' AS code, 'auch digitale Hilfsmittel nutzen und erstellen, um analoge und digitale Texte und Arbeitsprodukte zu verstehen, zu …' AS kurzname, 'auch digitale Hilfsmittel nutzen und erstellen, um analoge und digitale Texte und Arbeitsprodukte zu verstehen, zu erstellen und zu überarbeiten sowie das eigene Sprachenlernen zu unterstützen' AS beschreibung
   UNION ALL
-  SELECT 'EN_S2_SLK_05' AS code, 'den eigenen Lernfortschritt auch an-' AS kurzname, 'den eigenen Lernfortschritt auch an-' AS beschreibung
+  SELECT 'EN_S2_SLK_05' AS code, 'den eigenen Lernfortschritt auch anhand digitaler Evaluationsinstrumente einschätzen, kontrollieren und dokumentieren, …' AS kurzname, 'den eigenen Lernfortschritt auch anhand digitaler Evaluationsinstrumente einschätzen, kontrollieren und dokumentieren, Anregungen zur Weiterarbeit aufnehmen sowie eigene Fehlerschwerpunkte gezielt bearbeiten' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'EN_S2_SLK';
 -- Zweite Stufe · Sprachbewusstheit (5)
 INSERT INTO kompetenzen (bereich_id, fach_id, schule_id, code, kurzname, beschreibung, eltern_kompetenz_id)
@@ -696,7 +696,7 @@ FROM kompetenzbereiche kb JOIN (
   UNION ALL
   SELECT 'EN_S2_SBW_04' AS code, 'das eigene und fremde Kommunikationsverhalten im Hinblick auf Kommunikationserfolge und -probleme kritisch-konstruktiv …' AS kurzname, 'das eigene und fremde Kommunikationsverhalten im Hinblick auf Kommunikationserfolge und -probleme kritisch-konstruktiv reflektieren' AS beschreibung
   UNION ALL
-  SELECT 'EN_S2_SBW_05' AS code, 'ihren mündlichen und schriftlichen Sprachgebrauch den Erfordernissen der jeweiligen Kommunikationssituation …' AS kurzname, 'ihren mündlichen und schriftlichen Sprachgebrauch den Erfordernissen der jeweiligen Kommunikationssituation entsprechend steuern. 39' AS beschreibung
+  SELECT 'EN_S2_SBW_05' AS code, 'ihren mündlichen und schriftlichen Sprachgebrauch den Erfordernissen der jeweiligen Kommunikationssituation …' AS kurzname, 'ihren mündlichen und schriftlichen Sprachgebrauch den Erfordernissen der jeweiligen Kommunikationssituation entsprechend steuern' AS beschreibung
 ) t ON kb.rahmen_id = @rahmen AND kb.code = 'EN_S2_SBW';
 
 COMMIT;

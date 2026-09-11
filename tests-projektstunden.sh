@@ -589,6 +589,81 @@ else
         || rot "ohne Quellenangabe:$OHNE_QUELLE"
 fi
 
+# --- Prüfung 4b: Kein Kompetenztext endet, wo kein Text stehen sollte (E64)
+# ------------------------------------------------------------------
+# ANLASS: Die Seitenzahl der Quelle stand im Text. Sie steht am Aussenrand --
+# auf ungeraden Seiten rechts, auf geraden links -- und beschaedigt eine
+# Erwartung, die ueber den Seitenumbruch laeuft, auf zwei Weisen: rechts haengt
+# sie sich als Fortsetzung an ("... entnehmen. 15"), links beendet sie die
+# Erwartung, und deren Fortsetzung faellt weg ("... auch an-").
+#
+# Im ausgelieferten Englisch-Seed waren neun Erwartungen betroffen, ueber drei
+# Monate unbemerkt. Gefunden wurden sie erst, als dieselbe Bauform bei
+# Franzoesisch auftrat und eine Stichprobe daraufsah.
+#
+# WAS SIE PRUEFT: das Ende jedes Kompetenztextes. Eine Zahl dort ist eine
+# Seitenzahl, ein Trennstrich dort ist ein abgeschnittener Satz. Beides ist
+# im Bestand nachweislich nie legitim -- 1028 Kompetenzen ueber sechs Rahmen
+# nachgesehen, kein einziger Text endet auf einer Ziffer oder einem
+# Trennstrich (ausser den neun beschaedigten).
+#
+# WAS SIE NICHT PRUEFT, und warum keine Ausnahme erfunden wird:
+#
+#   1. Eine Zahl MITTEN im Text. Genau so stand "... sowie zur 25
+#      Textbesprechung ..." im Bestand. Eine Pruefung darauf waere falsch-rot:
+#      Sport fuehrt zwei Erwartungen mit freistehenden Zahlen
+#      ("(15 min, ...)", "mind. 20"). Das ist ein legitimer Fall, und er wird
+#      gemeldet statt weggeregelt (REIHENREGELN 2: das Uneindeutige gar nicht
+#      pruefen).
+#   2. Einen Abbruch, der auf einem vollstaendigen Wort endet. Zwei der neun
+#      sahen so aus ("... differenziert erlaeutern" statt "... erlaeutern
+#      sowie kritisch hinterfragen"). Statisch ist das nicht zu erkennen --
+#      der Text ist grammatisch heil. Dagegen hilft nur der Filter im Erzeuger
+#      und ein Vergleich gegen die Quelle.
+#
+# Sie faengt also sechs der neun Schadensbilder. Das ist ihr Wert und ihre
+# Grenze, und beides gehoert dazugesagt.
+# ------------------------------------------------------------------
+ENDE_FEHLER=""
+ENDE_ZAHL=0
+for DATEI in sql/*.sql; do
+    ls -1 "$DATEI" > /dev/null 2>&1 || continue
+    perl -0777 -ne 's{^\s*--.*$}{}gm;
+        exit(!(/INSERT\s+(?:IGNORE\s+)?INTO\s+(?:kompetenzen|kompetenzbereiche)\b/is))' \
+        "$DATEI" || continue
+    # Kommentare vorher entfernen: Ein Seed, der einen beschaedigten Text als
+    # Beispiel zitiert, darf die Pruefung nicht ausloesen (REIHENREGELN 2).
+    FUND=$(perl -0777 -ne 's{^\s*--.*$}{}gm;
+        while (/'"'"'((?:[^'"'"']|'"'"''"'"')*)'"'"'\s+AS\s+beschreibung/gis) {
+            my $t = $1; $t =~ s/'"'"''"'"'/'"'"'/g;
+            print "$t\n" if $t =~ /[0-9]$/ || $t =~ /[-\x{2013}\x{2014}]$/;
+        }' "$DATEI")
+    if [ -n "$FUND" ]; then
+        ANZ=$(printf '%s\n' "$FUND" | grep -c . || true)
+        ENDE_ZAHL=$((ENDE_ZAHL + ANZ))
+        # Nur das Ende zeigen -- der Anfang ist unverdaechtig, und die
+        # Fundstelle steht am Schluss.
+        ENDE_FEHLER="$ENDE_FEHLER
+    $(basename "$DATEI"): $ANZ
+$(printf '%s\n' "$FUND" | awk '{ n = length($0); print "      …" (n > 60 ? substr($0, n - 59) : $0) }')"
+    fi
+done
+# Zaehlwert der geprueften Texte -- null Funde waeren ein Fehler, kein Ergebnis.
+ENDE_TEXTE=$(for DATEI in sql/*.sql; do
+        perl -0777 -ne 's{^\s*--.*$}{}gm;
+            exit(!(/INSERT\s+(?:IGNORE\s+)?INTO\s+(?:kompetenzen|kompetenzbereiche)\b/is))' \
+            "$DATEI" 2>/dev/null || continue
+        perl -0777 -ne 's{^\s*--.*$}{}gm; my $n = () = /AS\s+beschreibung/gis; print "$n\n"' "$DATEI"
+    done | awk '{s+=$1} END {print s+0}')
+if [ "${ENDE_TEXTE:-0}" -eq 0 ]; then
+    rot "kein Kompetenztext in den Seeds gefunden – die Endeprüfung fand ihre Voraussetzung nicht"
+elif [ "$ENDE_ZAHL" -gt 0 ]; then
+    rot "$ENDE_ZAHL von $ENDE_TEXTE Kompetenztexten enden auf einer Zahl oder einem Trennstrich:"
+    printf '%s\n' "$ENDE_FEHLER" | grep -v '^$'
+else
+    gruen "kein Kompetenztext endet auf einer Zahl oder einem Trennstrich ($ENDE_TEXTE geprüft)"
+fi
+
 # --- Prüfungen 5 bis 7: Baumintegrität (E29b, E31)
 # Geprüft wird statisch am Seed, nicht gegen die Datenbank: `deploy.sh` führt
 # dieses Skript aus, und dort steht keine Datenbank zur Verfügung. Ein Seed
