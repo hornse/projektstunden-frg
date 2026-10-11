@@ -9,6 +9,13 @@ Ergänzend:
 - Konfigurationsreferenz: @docs/CONFIG.md
 - Regeln der Reihe: @REIHENREGELN.md
 - Fallstricke PHP/Router/WebUntis: @FALLSTRICKE.md
+- Was über die WebUntis-API gemessen ist, liegt verstreut — Liste aller
+  Fundstellen (846 in zehn Repos, Stand 11.10.2026), ohne Import:
+  `~/Projekte/koordination/docs/BEFUND-2026-10-11-webuntis-api-bestand.md`.
+  **Vor jedem neuen Aufruf dort nachsehen.** Die Fundstellen widersprechen
+  sich (Abschnitt 4 der Liste), etwa bei den Feldern von `getStudents`,
+  beim Weg des Mitteilungsversands und bei der Schülerzahl (3563, 3782
+  oder 3802). **Keine Messung trägt die WebUntis-Version.**
 
 ## Was das Projekt ist
 
