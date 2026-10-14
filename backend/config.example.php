@@ -89,7 +89,10 @@ function session_start_secure(): void {
         'path'     => '/',
         'secure'   => true,
         'httponly' => true,
-        'samesite' => 'Strict',
+        // Lax, nicht Strict: Strict schickt das Cookie bei einem Link von
+        // außen (Mail, WebUntis) nicht mit, und der Benutzer landet trotz
+        // gültiger Sitzung auf der Anmeldemaske. Der Betrieb liefert Lax.
+        'samesite' => 'Lax',
     ]);
     session_start();
 }
