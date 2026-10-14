@@ -34,3 +34,6 @@ NEUES_PROJEKT_PROMPT.md
 
 # Sicherungen der Konfiguration – enthalten Passwörter
 backend/config.php.*
+
+# Python-Zwischenstaende der Erzeuger (sql/gen/)
+__pycache__/
