@@ -119,10 +119,11 @@ curl -s https://projektstunden.hornse.de/api/auth/me -b /tmp/c.txt
 # Erwartet: JSON mit id/vorname/rolle. Bei {"error":"Nicht eingeloggt."} anhalten.
 
 # 3. Hat der Cookie das Secure-Flag?
-curl -s -X POST https://projektstunden.hornse.de/api/auth/login \
-  -H "Content-Type: application/json" -d '{"username":"x","passwort":"x"}' \
+#    Über logout, nicht login: Ein fehlgeschlagener Login startet keine
+#    Sitzung und setzt kein Cookie, logout startet sie ohne Bedingung.
+curl -s -X POST https://projektstunden.hornse.de/api/auth/logout \
   -D - -o /dev/null | grep -i set-cookie
-# Erwartet: "; secure; HttpOnly; SameSite=Lax"
+# Erwartet: "; secure; HttpOnly; SameSite=Lax". Leere Ausgabe heißt anhalten.
 
 # 4. Serverfehler seit dem letzten Deploy?
 ssh hornse@halimede.uberspace.de 'supervisorctl tail projektstunden stderr' | tail -20
