@@ -2534,3 +2534,51 @@ lässt den Erzeuger genau das übersehen, was die Erhebung schon wusste.
 
 **Der Seed ist neu eingespielt.** `ENG_KLP` trägt keine Zuweisungen —
 nachgesehen, nicht angenommen —, die Korrektur kostet keine Datenmigration.
+
+---
+
+## E65 — Das Protokoll wird nicht mehr geladen (14.10.2026)
+
+**Vorbemerkung zur Nummer:** Vor dem Anfügen nachgesehen, höchste vergebene
+Nummer war E64 (E30).
+
+**Anlass:** `CLAUDE.md` importierte diese Datei über `@`. Die Importe ergaben
+zusammen 214 420 Bytes, bei einer Grenze von 150k. Diese Datei allein trug
+128 925 davon.
+
+**Entscheidung:** Der Import entfällt. `CLAUDE.md` nennt den Pfad und sagt,
+wann man hineinsieht: bevor an einer Stelle gebaut wird, auf die sich ein
+E-Eintrag bezieht, wenn ein „E…" zitiert wird, und vor dem Anfügen eines
+Eintrags, um die höchste vergebene Nummer nachzusehen. Die übrigen vier Importe
+bleiben: Regelwerk, Fallstricke, Server- und Konfigurationsreferenz.
+
+**Warum:** Es ist ein Protokoll, kein Gedächtnis (REIHENREGELN 10). Es wächst
+und wird nie gekürzt, und gebraucht wird je Vorgang ein Eintrag, nicht alle
+vierundsechzig. Was bei jedem Start geladen wird, muss gepflegt werden und darf
+schrumpfen; beides trifft hier nicht zu.
+
+**Gemessen nach der Umstellung** (`wc -c`):
+
+| Datei | Bytes |
+|---|---|
+| `CLAUDE.md` | 8 073 |
+| `REIHENREGELN.md` | 45 229 |
+| `FALLSTRICKE.md` | 20 577 |
+| `docs/CONFIG.md` | 6 342 |
+| `deploy/uberspace.md` | 5 523 |
+| **zusammen** | **85 744** |
+
+214 420 → 85 744 Bytes, etwa 64k Abstand zur Grenze. Die importierten Dateien
+importieren selbst nichts weiter (nachgesehen). Eine benutzerweite
+`~/.claude/CLAUDE.md` gibt es auf dem Arbeitsrechner nicht, ebenso keine
+`CLAUDE.md` in `~/Projekte` oder `~`. Das Verzeichnis `~/.claude` selbst ist
+vorhanden und wurde gelesen. Die Summe ist damit vollständig, Stand heute.
+Kommt eine der Dateien hinzu, zählt sie mit.
+
+**Was das nicht heißt:** Die Einträge gelten weiter, sie werden nur nicht mehr
+ungefragt gelesen. Die Sorgfalt verschiebt sich auf das Nachschlagen. Deshalb
+steht in `CLAUDE.md`, wann nachzuschlagen ist, und nicht nur, wo.
+
+**Warum der Überlauf unbemerkt blieb:** REIHENREGELN 10 verlangt eine Prüfung,
+die die Importe zählt und über der Grenze rot wird. `tests-projektstunden.sh`
+hatte keine. Sie kommt im nächsten Commit.

@@ -4,7 +4,10 @@ Diese Datei wird bei jedem Sessionstart automatisch gelesen. Was hier
 steht, muss nicht mehr erklärt werden.
 
 Ergänzend:
-- Entscheidungen mit Begründung: @docs/ENTSCHEIDUNGEN.md
+- Entscheidungen mit Begründung: `docs/ENTSCHEIDUNGEN.md` — ein Protokoll,
+  wird nicht geladen (REIHENREGELN 10). Hineinsehen, bevor an einer Stelle
+  gebaut wird, auf die sich ein E-Eintrag bezieht, oder wenn ein „E…" zitiert
+  wird; vor dem Anfügen die höchste vergebene Nummer nachsehen (E30).
 - Serverkonfiguration: @deploy/uberspace.md
 - Konfigurationsreferenz: @docs/CONFIG.md
 - Regeln der Reihe: @REIHENREGELN.md
