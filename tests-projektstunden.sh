@@ -1539,6 +1539,71 @@ else
 fi
 
 echo ""
+echo "Ladespeicher"
+# E65: Die @-Importe von CLAUDE.md waren auf 214 420 Bytes angewachsen, bei
+# einer Grenze von 150k -- und nichts wurde rot. REIHENREGELN 10 verlangt
+# genau diese Pruefung; ohne sie faellt nur auf, dass etwas nicht ankommt.
+#
+# Gezaehlt werden Bytes, nicht Zeichen: Bei Umlauten sind es mehr, die
+# Grenze wird also eher frueher erreicht als spaeter.
+#
+# Mitgezaehlt wird, was bei jedem Start geladen wird: CLAUDE.md, rekursiv
+# ihre Importe, und eine benutzerweite ~/.claude/CLAUDE.md, falls es sie
+# gibt. Ob es sie gibt, sagt die gruene Zeile.
+#
+# Ein @ in einem Codeblock, in `Backticks` oder in einem HTML-Kommentar ist
+# kein Import, sondern seine Beschreibung -- E65 nennt den Pfad gerade so,
+# und die Pruefung darf darauf nicht anschlagen (REIHENREGELN 2).
+#
+# IMPORT_GRENZE ist nur fuer die Gegenprobe an der Grenze da; die gruene
+# Zeile nennt den Wert, mit dem gelaufen wurde.
+IMPORT_GRENZE=${IMPORT_GRENZE:-150000}
+LADE_ERGEBNIS=$(perl -e '
+    use strict; use warnings;
+    use File::Basename qw(dirname);
+    my %gesehen; my $summe = 0; my @fehlt; my $zahl = 0;
+    sub lies {
+        my ($datei, $tiefe) = @_;
+        return if $gesehen{$datei}++;
+        open(my $fh, "<:raw", $datei) or do { push @fehlt, $datei; return };
+        local $/; my $text = <$fh>; close $fh;
+        $summe += length($text); $zahl++;
+        return if $tiefe >= 5;
+        $text =~ s/^```.*?^```//gms;
+        $text =~ s/<!--.*?-->//gs;
+        $text =~ s/`[^`\n]*`//g;
+        while ($text =~ m{(?:^|\s)@((?:~/|\.{0,2}/)?[A-Za-z0-9_.\-/]+)}g) {
+            my $pfad = $1; $pfad =~ s/[.,;:]+$//;
+            next unless $pfad =~ m{[/.]};
+            $pfad =~ s{^~/}{$ENV{HOME}/};
+            $pfad = dirname($datei) . "/" . $pfad unless $pfad =~ m{^/};
+            lies($pfad, $tiefe + 1);
+        }
+    }
+    -f "CLAUDE.md" or do { print "KEINE\n"; exit };
+    lies("CLAUDE.md", 0);
+    my $global = "$ENV{HOME}/.claude/CLAUDE.md";
+    my $mit_global = -f $global ? "ja" : "nein";
+    lies($global, 0) if -f $global;
+    print "SUMME $summe\nDATEIEN $zahl\nGLOBAL $mit_global\n";
+    print "FEHLT $_\n" for @fehlt;
+')
+LADE_SUMME=$(printf '%s\n' "$LADE_ERGEBNIS" | awk '/^SUMME /{print $2}')
+LADE_ZAHL=$(printf '%s\n' "$LADE_ERGEBNIS" | awk '/^DATEIEN /{print $2}')
+LADE_GLOBAL=$(printf '%s\n' "$LADE_ERGEBNIS" | awk '/^GLOBAL /{print $2}')
+LADE_FEHLT=$(printf '%s\n' "$LADE_ERGEBNIS" | sed -n 's/^FEHLT //p')
+if [ -z "$LADE_SUMME" ]; then
+    rot "CLAUDE.md nicht gefunden oder nicht auswertbar – der Ladespeicher ist nicht gemessen"
+elif [ -n "$LADE_FEHLT" ]; then
+    rot "CLAUDE.md importiert Dateien, die es nicht gibt:"
+    printf '%s\n' "$LADE_FEHLT" | sed 's/^/    /'
+elif [ "$LADE_SUMME" -gt "$IMPORT_GRENZE" ]; then
+    rot "CLAUDE.md lädt $LADE_SUMME Bytes aus $LADE_ZAHL Dateien, Grenze $IMPORT_GRENZE – ein Protokoll nennen statt importieren (E65)"
+else
+    gruen "CLAUDE.md lädt $LADE_SUMME von $IMPORT_GRENZE Bytes aus $LADE_ZAHL Dateien (~/.claude/CLAUDE.md: $LADE_GLOBAL)"
+fi
+
+echo ""
 GESAMT=$((GRUEN + FEHLER))
 echo "$GRUEN/$GESAMT bestanden, $FEHLER rot"
 if [ "$FEHLER" -eq 0 ]; then echo "ALLES GRÜN"; exit 0; fi
