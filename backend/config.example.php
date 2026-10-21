@@ -54,6 +54,10 @@ $WEBUNTIS_CONFIG = [
     'allowed_person_types' => [2, 16, 5],
     'connect_timeout'      => 5,
     'timeout'              => 10,
+    // Anmeldebremse (backend/auth/Anmeldebremse.php): ab max_failed_logins
+    // Fehlversuchen 60 Sekunden Wartezeit, nie eine Sperre. lockout_minutes
+    // heisst aus Gewohnheit so und ist das ZAEHLFENSTER – gezaehlt werden
+    // Fehlversuche der letzten 15 Minuten, seit der letzten gelungenen Anmeldung.
     'max_failed_logins'    => 5,
     'lockout_minutes'      => 15,
 

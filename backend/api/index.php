@@ -118,23 +118,29 @@ try {
 //  AUTH
 // ============================================================
 /**
- * Haelt den tatsaechlichen Grund einer Ablehnung fest, die nach aussen wie
- * ein falsches Passwort aussieht. WebUntisAuth kennt diese Gruende nicht:
- * Sie entstehen eine Ebene hoeher, nach erfolgreicher Anmeldung.
+ * Fragt die Anmeldebremse (backend/auth/Anmeldebremse.php) und weist ab,
+ * wenn sie es verlangt: 429 mit den Sekunden, 503 wenn die Zaehlung
+ * scheitert. Sonst die Kennung des laufenden Versuchs; jeder Ausgang von
+ * handle_auth schliesst ihn in derselben Zeile ab.
  *
- * Ohne diesen Eintrag waere die Frage "warum komme ich nicht rein" von
- * niemandem mehr zu beantworten.
+ * Die Zeile haelt auch den tatsaechlichen Grund einer Ablehnung fest, die
+ * nach aussen wie ein falsches Passwort aussieht (schueler_id_fehlt, …).
+ * Ohne ihn waere die Frage "warum komme ich nicht rein" von niemandem mehr
+ * zu beantworten.
  */
-function protokolliere_ablehnungsgrund(PDO $db, string $benutzername, string $grund, string $ip): void {
-    try {
-        $db->prepare(
-            'INSERT INTO webuntis_login_log (benutzername, erfolgreich, grund, ip)
-             VALUES (?, 0, ?, ?)'
-        )->execute([$benutzername, $grund, $ip]);
-    } catch (Throwable $e) {
-        error_log("Login abgelehnt ({$grund}) fuer '{$benutzername}' von {$ip}; "
-                  . 'Protokolltabelle nicht erreichbar: ' . $e->getMessage());
+function bremse_beginnen(PDO $db, string $benutzername, string $ip): int {
+    global $WEBUNTIS_CONFIG;
+    require_once __DIR__ . '/../auth/Anmeldebremse.php';
+    $r = Anmeldebremse::beginnen(
+        $db, $benutzername, $ip,
+        (int)($WEBUNTIS_CONFIG['max_failed_logins'] ?? 5),
+        (int)($WEBUNTIS_CONFIG['lockout_minutes']   ?? 15)
+    );
+    if (!$r['urteil']['durch']) {
+        if ($r['urteil']['status'] === 429) header('Retry-After: ' . Anmeldebremse::WARTEN_SEKUNDEN);
+        json_error($r['urteil']['meldung'], $r['urteil']['status']);
     }
+    return $r['id'];
 }
 
 function handle_auth(string $method, string $sub, array $body): void {
@@ -144,6 +150,13 @@ function handle_auth(string $method, string $sub, array $body): void {
         if (!$username || !$pass) json_error('Zugangsdaten erforderlich.');
 
         $db = get_db();
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unbekannt';
+
+        // ── Schritt 0: Bremse – vor jedem Passwort, lokal wie WebUntis ──
+        $versuch = bremse_beginnen($db, $username, $ip);
+        // Hat das lokale Passwort entschieden (Konto da, Passwort falsch)?
+        // Dann zaehlt der Versuch auch, wenn WebUntis danach nicht antwortet.
+        $lokalFalsch = false;
 
         // ── Schritt 1: Lokaler Login (E-Mail + Passwort) ──
         if (filter_var($username, FILTER_VALIDATE_EMAIL)) {
@@ -154,6 +167,7 @@ function handle_auth(string $method, string $sub, array $body): void {
             $stmt->execute([$username, SCHULE_ID]);
             $user = $stmt->fetch();
             if ($user && $user['aktiv'] && password_verify($pass, $user['passwort_hash'])) {
+                Anmeldebremse::abschliessen($db, $versuch, true, 'lokal');
                 session_start_secure();
                 session_regenerate_id(true);
                 $_SESSION['benutzer_id'] = $user['id'];
@@ -164,6 +178,7 @@ function handle_auth(string $method, string $sub, array $body): void {
                                'nachname' => $user['nachname'], 'rolle' => $user['rolle'],
                                'typ' => 'benutzer', 'id' => $user['id']]);
             }
+            if ($user && $user['aktiv']) $lokalFalsch = true;
         }
 
         // ── Schritt 2: WebUntis-Login ──
@@ -173,8 +188,19 @@ function handle_auth(string $method, string $sub, array $body): void {
         if (defined('WEBUNTIS_ENABLED') && WEBUNTIS_ENABLED && !empty($WEBUNTIS_CONFIG)) {
             require_once __DIR__ . '/../auth/WebUntisAuth.php';
             $wu     = new WebUntisAuth($db, $WEBUNTIS_CONFIG);
-            $ip     = $_SERVER['REMOTE_ADDR'] ?? 'unbekannt';
-            $result = $wu->authenticateAndGetDetails($username, $pass, $ip);
+            $result = $wu->authenticateAndGetDetails($username, $pass);
+
+            if ($result === null) {
+                if ($wu->grund() === 'ohne_entscheid' && $lokalFalsch) {
+                    Anmeldebremse::abschliessen($db, $versuch, false, 'falsches_lokales_passwort');
+                } elseif ($wu->grund() === 'ohne_entscheid') {
+                    // WebUntis antwortete nicht: kein Passwort hat entschieden.
+                    Anmeldebremse::ohneEntscheid($db, $versuch);
+                } else {
+                    Anmeldebremse::abschliessen($db, $versuch, false, $wu->grund());
+                }
+                json_error('Ungültige Anmeldedaten.', 401);
+            }
 
             if ($result !== null) {
                 $personType = $result['personType'];
@@ -213,6 +239,7 @@ function handle_auth(string $method, string $sub, array $body): void {
                         }
                     }
 
+                    Anmeldebremse::abschliessen($db, $versuch, true, null);
                     session_start_secure();
                     session_regenerate_id(true);
                     $_SESSION['benutzer_id']  = $dbUserId ?? 0;
@@ -244,7 +271,7 @@ function handle_auth(string $method, string $sub, array $body): void {
                         // machte die Anwendung zum Pruefstand fuer fremde
                         // Zugangsdaten (FALLSTRICKE.md 8). Der Grund steht im
                         // Protokoll, nicht in der Antwort.
-                        protokolliere_ablehnungsgrund($db, $username, 'schueler_id_fehlt', $ip);
+                        Anmeldebremse::abschliessen($db, $versuch, false, 'schueler_id_fehlt');
                         json_error('Ungültige Anmeldedaten.', 401);
                     }
 
@@ -303,10 +330,11 @@ function handle_auth(string $method, string $sub, array $body): void {
                     if (!$schueler) {
                         // Siehe oben: gleicher Wortlaut, gleicher Statuscode
                         // wie beim falschen Passwort.
-                        protokolliere_ablehnungsgrund($db, $username, 'schueler_nicht_gefunden', $ip);
+                        Anmeldebremse::abschliessen($db, $versuch, false, 'schueler_nicht_gefunden');
                         json_error('Ungültige Anmeldedaten.', 401);
                     }
 
+                    Anmeldebremse::abschliessen($db, $versuch, true, null);
                     session_start_secure();
                     session_regenerate_id(true);
                     $_SESSION['benutzer_id'] = $schueler['id'];
@@ -321,6 +349,10 @@ function handle_auth(string $method, string $sub, array $body): void {
             }
         }
 
+        // Ohne WebUntis (oder ein Kontotyp ohne eigenen Zweig): Entschieden
+        // hat das lokale Passwort oder das fehlende Konto – der Versuch zaehlt.
+        Anmeldebremse::abschliessen($db, $versuch, false,
+            $lokalFalsch ? 'falsches_lokales_passwort' : 'unbekanntes_konto');
         json_error('Ungültige Anmeldedaten.', 401);
     }
 

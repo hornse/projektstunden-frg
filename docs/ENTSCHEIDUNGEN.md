@@ -2582,3 +2582,44 @@ steht in `CLAUDE.md`, wann nachzuschlagen ist, und nicht nur, wo.
 **Warum der Überlauf unbemerkt blieb:** REIHENREGELN 10 verlangt eine Prüfung,
 die die Importe zählt und über der Grenze rot wird. `tests-projektstunden.sh`
 hatte keine. Sie kommt im nächsten Commit.
+
+---
+
+## E66 — Anmeldebremse: Wartezeit statt Sperre, auch vor dem lokalen Passwort (21.10.2026)
+
+**Anlass:** Auftrag aus koordination (`AUFTRAG-anmeldebremse-reihe.md`,
+16.10.2026). Die Bremse sperrte nach 5 Fehlversuchen 15 Minuten lang, auch
+den Inhaber mit dem richtigen Passwort, und jeder abgewiesene Versuch
+verlängerte die Sperre. Lehrkräfte melden sich mit ihrem Kürzel an, und die
+Kürzel stehen öffentlich: Jeder konnte jede Lehrkraft dauerhaft aussperren.
+
+**Entscheidung:** Die Bauart der Reihe, wie in schulprozesse (dort E11) und
+signage. Ab der Schwelle (weiter 5) 60 Sekunden Wartezeit, ohne Staffel, nie
+eine Sperre. Erst eintragen, dann zählen, dann prüfen. Eine gelungene
+Anmeldung setzt zurück, gezählt ab ihrer Kennung. Abgewiesene Versuche und
+Versuche, bei denen WebUntis nicht antwortete, zählen nicht.
+
+**Der lokale Login wird mitgebremst.** Er prüft ein Passwort und war bisher
+gar nicht gebremst. Ein falsches lokales Passwort zählt auch dann, wenn
+WebUntis danach nicht antwortet – sonst wäre der lokale Weg genau im Ausfall
+von WebUntis ungebremst (derselbe Fall wie das Notfallpasswort in
+schulprozesse).
+
+**Ablehnungen nach richtigem Passwort zählen** (falsche Rolle, Schüler ohne
+Schild-ID oder nicht gefunden). Sie sehen nach außen aus wie ein falsches
+Passwort (FALLSTRICKE 8); zählten sie nicht, verriete die Bremse, dass das
+Passwort stimmte.
+
+**Die bekannte Grenze:** Ein Skript, das einmal pro Minute fehlschlägt, hält
+ein Konto in der Wartezeit. Mühsamer als die Sperre, nicht ausgeschlossen.
+Ob die Herkunft dazukommt, ist eine eigene Entscheidung der Reihe.
+
+**Was das nicht heißt:** `lockout_minutes` wird nicht umbenannt –
+`config.php` ist nicht versioniert und steht auf dem Server so. Der Wert ist
+jetzt das Zählfenster.
+
+**Zur Herkunft der Datei:** `WebUntisAuth.php` ist projekteigen, entstanden
+am 07.07.2026 aus schulprozesse, und ein Vorfahr von `webuntis-auth-php`
+(09.07.2026) – keine Kopie. Deshalb wird hier umgebaut statt im Modul;
+so entschieden in koordination am 21.10.2026.
+

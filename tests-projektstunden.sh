@@ -1604,6 +1604,27 @@ else
 fi
 
 echo ""
+echo "Anmeldebremse (tests/anmeldebremse_test.php, ausgeführt gegen SQLite)"
+# Wartezeit statt Sperre, Bauart der Reihe (Auftrag koordination 16.10.2026).
+# PHP ist keine Kür: Die Anwendung ist PHP. Fehlt es, ist die Prüfung rot,
+# nicht übersprungen. Jede Zeile der Suite zählt hier einzeln, damit ihre
+# Zahl in der Summe steht – und ein Abbruch ohne rote Zeile ist trotzdem rot.
+if ! command -v php > /dev/null 2>&1; then
+    rot "Anmeldebremse: php fehlt – die Suite lief nicht"
+else
+    BREMSE_AUS=$(php tests/anmeldebremse_test.php 2>/dev/null); BREMSE_EXIT=$?
+    while IFS= read -r z; do
+        case "$z" in
+            "  ✓ "*) gruen "Anmeldebremse: ${z#  ✓ }" ;;
+            "  ✗ "*) rot   "Anmeldebremse: ${z#  ✗ }" ;;
+        esac
+    done <<< "$BREMSE_AUS"
+    if [ "$BREMSE_EXIT" -ne 0 ] && ! printf '%s\n' "$BREMSE_AUS" | grep -q '^  ✗ '; then
+        rot "Anmeldebremse: Suite endete mit $BREMSE_EXIT ohne rote Zeile"
+    fi
+fi
+
+echo ""
 GESAMT=$((GRUEN + FEHLER))
 echo "$GRUEN/$GESAMT bestanden, $FEHLER rot"
 if [ "$FEHLER" -eq 0 ]; then echo "ALLES GRÜN"; exit 0; fi

@@ -57,7 +57,7 @@ $WEBUNTIS_CONFIG = [
     'connect_timeout'      => 5,
     'timeout'              => 10,
     'max_failed_logins'    => 5,
-    'lockout_minutes'      => 15,
+    'lockout_minutes'      => 15,   // Zählfenster der Bremse, keine Sperre
 ];
 ```
 
@@ -158,7 +158,7 @@ $WEBUNTIS_CONFIG = [
     'connect_timeout'      => 5,
     'timeout'              => 10,
     'max_failed_logins'    => 5,
-    'lockout_minutes'      => 15,
+    'lockout_minutes'      => 15,   // Zählfenster der Bremse, keine Sperre
 ];
 ```
 

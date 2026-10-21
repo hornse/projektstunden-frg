@@ -7,6 +7,31 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 
 ## [Unreleased]
 
+### Geändert
+- **Anmeldebremse: Wartezeit statt Sperre** (E66, Auftrag aus koordination
+  vom 16.10.2026, Bauart der Reihe). Bisher sperrte `WebUntisAuth` nach 5
+  Fehlversuchen 15 Minuten lang – auch den Inhaber mit dem richtigen
+  Passwort –, jeder abgewiesene Versuch verlängerte die Sperre, ein nicht
+  erreichbares WebUntis zählte als Fehlversuch, und **der lokale Login
+  (E-Mail + Passwort) war gar nicht gebremst.** Jetzt in
+  `backend/auth/Anmeldebremse.php`, vor jedem Passwort: erst eintragen, dann
+  zählen, dann prüfen; ab der Schwelle 60 Sekunden Wartezeit (429 mit
+  `Retry-After`), nie eine Sperre; abgewiesene Versuche zählen nicht; eine
+  gelungene Anmeldung setzt zurück (gezählt ab ihrer Kennung); scheitert die
+  Zählung, 503 mit eigenem Satz; antwortet WebUntis nicht, zählt der Versuch
+  nicht – außer das lokale Passwort hat entschieden.
+- **`WebUntisAuth` bremst und protokolliert nicht mehr selbst**, sondern meldet
+  über `grund()`, warum eine Anmeldung nicht gelang. In `webuntis_login_log`
+  schreibt nur noch die Bremse, eine Zeile je Versuch. Kein `NOW()`/`DATE_SUB`
+  mehr: die Zeit rechnet PHP aus den Zeitstempeln der Datenbank.
+- **Kopfvermerk in `WebUntisAuth.php`:** projekteigen, nicht vendored,
+  entstanden am 07.07.2026 aus schulprozesse, Vorfahr von `webuntis-auth-php`.
+- **Prüfungen 78 → 116** (+38, erwartet +38): neu `tests/anmeldebremse_test.php`,
+  ausgeführt gegen SQLite, samt dem ganzen Anmeldeweg `handle_auth`;
+  eingebunden in `tests-projektstunden.sh`. Vor dem Umbau 37 von 38 rot.
+  Mutationsserie `tests/mutationen_anmeldebremse.sh`: 24 von 24 belegt
+  (22 Mutationen an der erwarteten Zeile, Einbindung, harmlose Gegenprobe).
+
 ### Behoben
 - **Neun Erwartungen in `ENG_KLP` waren beschädigt** (E64) – fünf trugen eine
   Seitenzahl am Ende, eine mitten im Text, drei waren abgeschnitten. Ursache:

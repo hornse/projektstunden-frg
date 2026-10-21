@@ -8,11 +8,22 @@
  * WebUntis JSON-RPC-API. Adaptiert von Schulprozesse/WebUntisAuth.php
  * für MariaDB und die Projektstunden-Datenbankstruktur.
  *
+ * PROJEKTEIGEN – NICHT VENDORED. Entstanden am 07.07.2026 aus der
+ * Fassung in schulprozesse (dort seit 23.06.2026, der Ursprung). Diese
+ * Datei ist ein VORFAHR des Moduls webuntis-auth-php (erster Stand
+ * 09.07.2026), keine Kopie davon: Sie entspricht keiner Modulfassung und
+ * wird nicht nachgezogen. Festgehalten am 21.10.2026 (Bericht
+ * koordination 2026-10-16, Anmeldebremse).
+ *
  * Unterschiede zu Schulprozesse:
- *   - MariaDB statt SQLite (NOW() statt datetime('now'))
+ *   - MariaDB statt SQLite
  *   - personType 2 (Lehrkraft) und 5 (Schüler) werden separat behandelt
- *   - Login-Log in audit_log statt login_log
  *   - Kein eigener Namespace (Einzeldatei-Architektur)
+ *
+ * Seit 21.10.2026 bremst und protokolliert diese Klasse nicht mehr selbst.
+ * Die Bremse steht in Anmeldebremse.php und gilt für jeden Weg, der ein
+ * Passwort annimmt; diese Klasse meldet über grund(), WARUM eine Anmeldung
+ * nicht gelang, und der Router schließt den Versuch damit ab.
  *
  * Copyright (C) 2026 Sebastian Horn, Friedrich-Rückert-Gymnasium Düsseldorf
  * SPDX-License-Identifier: GPL-3.0-or-later
@@ -26,6 +37,18 @@ class WebUntisAuth
     const TYPE_SCHUELER = 5;
 
     private string $sessionCookie = ''; // aktive Session-Cookie
+    private ?string $grund = null;
+
+    /**
+     * Warum die letzte Anmeldung nicht gelang: 'leer', 'falsches_passwort'
+     * (WebUntis hat abgelehnt), 'falsche_rolle' (Passwort stimmte, Kontotyp
+     * nicht zugelassen) oder 'ohne_entscheid' (WebUntis antwortete nicht –
+     * kein Passwort hat entschieden, der Versuch zählt nicht).
+     */
+    public function grund(): ?string
+    {
+        return $this->grund;
+    }
 
     public function __construct(
         private readonly PDO   $db,
@@ -39,15 +62,11 @@ class WebUntisAuth
      *
      * @return array|null  null = Login fehlgeschlagen
      */
-    public function authenticateAndGetDetails(string $username, string $password, string $ip): ?array
+    public function authenticateAndGetDetails(string $username, string $password): ?array
     {
+        $this->grund = null;
         $username = trim($username);
-        if ($username === '' || $password === '') return null;
-
-        if ($this->tooManyAttempts($username)) {
-            $this->log($username, false, 'zu_viele_versuche', $ip);
-            return null;
-        }
+        if ($username === '' || $password === '') { $this->grund = 'leer'; return null; }
 
         // Einloggen – Cookie wird in $this->sessionCookie gespeichert
         $authResponse = $this->jsonRpc('authenticate', [
@@ -56,8 +75,12 @@ class WebUntisAuth
             'client'   => $this->config['client'] ?? 'ProjektstundenNRW',
         ], true); // true = Cookie aus Response speichern
 
-        if ($authResponse === null || isset($authResponse['error'])) {
-            $this->log($username, false, 'falsches_passwort_oder_netzwerk', $ip);
+        if ($authResponse === null) {
+            $this->grund = 'ohne_entscheid';
+            return null;
+        }
+        if (isset($authResponse['error'])) {
+            $this->grund = 'falsches_passwort';
             return null;
         }
 
@@ -68,7 +91,7 @@ class WebUntisAuth
         $erlaubt = $this->config['allowed_person_types'] ?? [self::TYPE_LEHRER];
         if (!in_array($personType, $erlaubt, true)) {
             $this->jsonRpc('logout', []);
-            $this->log($username, false, 'falsche_rolle', $ip);
+            $this->grund = 'falsche_rolle';
             return null;
         }
 
@@ -128,7 +151,6 @@ class WebUntisAuth
         // Session freigeben
         $this->jsonRpc('logout', []);
         $this->sessionCookie = '';
-        $this->log($username, true, null, $ip);
 
         return $details;
     }
@@ -145,9 +167,9 @@ class WebUntisAuth
      * Alte authenticate-Methode – bleibt für Rückwärtskompatibilität.
      * @deprecated Nutze authenticateAndGetDetails()
      */
-    public function authenticate(string $username, string $password, string $ip): ?array
+    public function authenticate(string $username, string $password): ?array
     {
-        return $this->authenticateAndGetDetails($username, $password, $ip);
+        return $this->authenticateAndGetDetails($username, $password);
     }
 
     /**
@@ -219,37 +241,5 @@ class WebUntisAuth
         }
 
         return $decoded;
-    }
-
-    /**
-     * Brute-Force-Bremse: blockiert nach zu vielen Fehlversuchen.
-     */
-    private function tooManyAttempts(string $username): bool
-    {
-        $max     = $this->config['max_failed_logins'] ?? 5;
-        $minutes = $this->config['lockout_minutes']   ?? 15;
-
-        $stmt = $this->db->prepare(
-            'SELECT COUNT(*) FROM webuntis_login_log
-             WHERE benutzername = ? AND erfolgreich = 0
-               AND zeitpunkt >= DATE_SUB(NOW(), INTERVAL ? MINUTE)'
-        );
-        $stmt->execute([$username, $minutes]);
-        return (int)$stmt->fetchColumn() >= $max;
-    }
-
-    /**
-     * Login-Versuch protokollieren.
-     */
-    private function log(string $username, bool $ok, ?string $grund, string $ip): void
-    {
-        try {
-            $this->db->prepare(
-                'INSERT INTO webuntis_login_log (benutzername, erfolgreich, grund, ip)
-                 VALUES (?, ?, ?, ?)'
-            )->execute([$username, $ok ? 1 : 0, $grund, $ip]);
-        } catch (Throwable $e) {
-            error_log('WebUntisAuth log: ' . $e->getMessage());
-        }
     }
 }
