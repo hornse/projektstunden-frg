@@ -36,6 +36,21 @@ if (str_starts_with($uri, '/api/') || $uri === '/api') {
     return true;
 }
 
+// ---- Sperrliste ---------------------------------------------
+// Was Apache sperrt (Editor-Reste, Daten, Einstellungen, Doku, Skripte,
+// Punktdateien), liefert auch dieser Router nicht aus. Vor JEDER
+// Dateiauslieferung und vor dem SPA-Rückfall, damit die Antwort nicht
+// davon abhängt, ob die Datei existiert: immer 404, nie 403.
+// Die Liste steht in sperrliste.php; tests/sperrliste_test.php misst sie
+// gegen die Apache-Vorlage.
+require_once __DIR__ . '/sperrliste.php';
+if (ps_pfad_gesperrt($uri)) {
+    http_response_code(404);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo 'Nicht gefunden';
+    return true;
+}
+
 // ---- Statische Frontend-Dateien -----------------------------
 //
 // SICHERHEIT: Der eingebaute PHP-Server normalisiert „..“ NICHT,
