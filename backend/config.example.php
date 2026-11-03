@@ -54,11 +54,11 @@ $WEBUNTIS_CONFIG = [
     'allowed_person_types' => [2, 16, 5],
     'connect_timeout'      => 5,
     'timeout'              => 10,
-    // Anmeldebremse (backend/auth/Anmeldebremse.php): ab max_failed_logins
-    // Fehlversuchen 60 Sekunden Wartezeit, nie eine Sperre. lockout_minutes
+    // Anmeldebremse (backend/auth/Anmeldebremse.php): ab acht Fehlversuchen
+    // 60 Sekunden Wartezeit, nie eine Sperre. Die Schwelle steht im Code
+    // (Anmeldebremse::SCHWELLE, M56 der Reihe), nicht hier. lockout_minutes
     // heisst aus Gewohnheit so und ist das ZAEHLFENSTER – gezaehlt werden
     // Fehlversuche der letzten 15 Minuten, seit der letzten gelungenen Anmeldung.
-    'max_failed_logins'    => 5,
     'lockout_minutes'      => 15,
 
     // Zusätzlich: Lehrer-Kürzel (personType 2) die auch Admin werden sollen.

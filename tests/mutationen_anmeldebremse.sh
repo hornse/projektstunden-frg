@@ -67,22 +67,22 @@ php "$R/tests/anmeldebremse_test.php" > /dev/null 2>&1 || { echo "ABBRUCH: Suite
 B=backend/auth/Anmeldebremse.php
 A=backend/api/index.php
 WU=backend/auth/WebUntisAuth.php
-mut S1 $B 's/\$seit < self::WARTEN_SEKUNDEN\)/\$seit < 0)/' "an der Schwelle (5), gerade eben"
-mut S2 $B 's/\$seit < self::WARTEN_SEKUNDEN\)/\$seit < 900)/' "der letzte von 5 vor 60 s: durch"
+mut S1 $B 's/\$seit < self::WARTEN_SEKUNDEN\)/\$seit < 0)/' "an der Schwelle ("
+mut S2 $B 's/\$seit < self::WARTEN_SEKUNDEN\)/\$seit < 900)/' "der letzte an der Schwelle vor 60 s: durch"
 mut S3 $B 's/\$seit < self::WARTEN_SEKUNDEN\)/\$seit <= self::WARTEN_SEKUNDEN)/' "auf der Grenze"
 mut S4 $B 's/        if \(\$lage === null\) \{/        if (false) {/' "Zählung gescheitert"
 mut S5 $B 's/        \} catch \(Exception \$e\) \{\n            \/\/ Der Grund ins Server-Log/        } catch (\\DomainException \$e) {\n            \/\/ Der Grund ins Server-Log/' "ohne Tabelle"
 mut S6 $B 's/                \$db->prepare\(\x27DELETE FROM webuntis_login_log WHERE id = \?\x27\)->execute\(\[\$id\]\);/                null;/' \
   "der abgewiesene Versuch zählt nicht"
 mut S7 $B 's/VALUES \(\?, 0, \?, \?\)\x27\)/VALUES (?, 2, ?, ?)\x27)/' "gleichzeitig"
-mut S8 $B 's/            \$zurueck = \(int\) \$st->fetchColumn\(\);/            \$zurueck = 0;/' "Rücksetzen: 5 Fehlversuche"
+mut S8 $B 's/            \$zurueck = \(int\) \$st->fetchColumn\(\);/            \$zurueck = 0;/' "Rücksetzen: Schwelle erreicht"
 mut S9 $B 's/AND id > \? AND zeitpunkt >= \?/AND zeitpunkt > (SELECT MAX(z2.zeitpunkt) FROM webuntis_login_log z2 WHERE z2.id = ?) AND zeitpunkt >= ?/' \
   "nach der Nummer"
 mut S10 $B 's/WHERE benutzername = \? AND erfolgreich = 1\x27/WHERE (benutzername = ? OR 1 = 1) AND erfolgreich = 1\x27/' \
   "je Benutzer: die Anmeldung eines anderen"
 mut S11 $B 's/WHERE benutzername = \? AND erfolgreich = 0 AND/WHERE (benutzername = ? OR 1 = 1) AND erfolgreich = 0 AND/' \
-  "je Benutzer: 6 fremde"
-mut S12 $B 's/max\(1, \$fensterMinuten\)/(100 * max(1, \$fensterMinuten))/' "Fenster: 4 Fehlversuche vor 17 Minuten"
+  "je Benutzer: fremde Fehlversuche"
+mut S12 $B 's/max\(1, \$fensterMinuten\)/(100 * max(1, \$fensterMinuten))/' "Fenster: einer unter der Schwelle"
 mut S13 $B 's/        \$db->prepare\(\x27DELETE FROM webuntis_login_log WHERE id = \? AND grund = \?\x27\)->execute\(\[\$id, self::LAEUFT\]\);/        return;/' \
   "ohne Entscheid: der laufende Eintrag verschwindet"
 mut S14 $WU 's/\$this->grund = \x27ohne_entscheid\x27;/\$this->grund = \x27falsches_passwort\x27;/' \
@@ -90,11 +90,11 @@ mut S14 $WU 's/\$this->grund = \x27ohne_entscheid\x27;/\$this->grund = \x27falsc
 mut S15 $A 's/            if \(\$user && \$user\[\x27aktiv\x27\]\) \$lokalFalsch = true;/            if (false) \$lokalFalsch = true;/' \
   "lokal falsch, WebUntis tot"
 mut S16 $A 's/        \$versuch = bremse_beginnen\(\$db, \$username, \$ip\);/        \$versuch = 0;/' \
-  "lokal, fünf Fehlversuche gerade eben"
+  "lokal, Schwelle erreicht gerade eben"
 mut S17 $A 's/\} elseif \(\$wu->grund\(\) === \x27ohne_entscheid\x27\) \{/} elseif (false) {/' \
   "kein lokales Konto, WebUntis tot"
 mut S18 $B 's/\x27Zu viele Fehlversuche\. Erneut versuchen in noch \x27 \. \$rest/\x27Zu viele Fehlversuche. Bitte später.\x27 . \x27\x27/' \
-  "fünf Fehlversuche im Abstand von 15 s"
+  "Schwelle erreicht im Abstand von 15 s"
 mut S19 $A 's/                Anmeldebremse::abschliessen\(\$db, \$versuch, true, \x27lokal\x27\);/                null;/' \
   "lokal, richtiges Passwort"
 mut S20 $A 's/                    Anmeldebremse::abschliessen\(\$db, \$versuch, true, null\);\n(                    session_start_secure\(\);\n                    session_regenerate_id\(true\);\n                    \$_SESSION\[\x27benutzer_id\x27\]  = \$dbUserId)/$1/' \
@@ -104,12 +104,30 @@ mut S21 $A 's/                        Anmeldebremse::abschliessen\(\$db, \$versu
 mut S22 $A 's/                    Anmeldebremse::abschliessen\(\$db, \$versuch, false, \$wu->grund\(\)\);/                    Anmeldebremse::ohneEntscheid(\$db, \$versuch);/' \
   "WebUntis: falsches Passwort"
 
+# S73 (03.11.2026): Schwelle als Konstante (M56), eigener Satz bei Ausfall,
+# eine Quelle je Satz. N2 und N3 bauen jeweils die frühere, belegte Fassung
+# wieder ein (REIHENREGELN 2: die falsche Fassung ausdrücklich suchen).
+V=backend/config.example.php
+mut N1 $B 's/public const SCHWELLE = 8;/public const SCHWELLE = 5;/' "Schwelle: acht Fehlversuche"
+mut N2 $A 's/        Anmeldebremse::SCHWELLE,\n/        (int)(\$WEBUNTIS_CONFIG[\x27max_failed_logins\x27] ?? 8),\n/' \
+  "Konfiguration sagt max_failed_logins 5"
+mut N3 $A 's/json_error\(Anmeldebremse::SATZ_AUSFALL, 503\);/json_error(Anmeldebremse::SATZ_ABGELEHNT, 401);/' \
+  "kein lokales Konto, WebUntis tot"
+mut N4 $B 's/Bitte in ein paar Minuten erneut versuchen\.\x27;/Bitte spaeter erneut versuchen.\x27;/' \
+  "kein lokales Konto, WebUntis tot"
+mut N5 $A 's/json_error\(Anmeldebremse::SATZ_ABGELEHNT, 401\);/json_error(\x27Ungültige Anmeldedaten.\x27, 401);/' \
+  "„Ungültige Anmeldedaten.“ ist eine Konstante"
+mut N6 $V 's/    \x27lockout_minutes\x27      => 15,/    \x27max_failed_logins\x27    => 5,\n    \x27lockout_minutes\x27      => 15,/' \
+  "die Vorlage nennt keine Schwelle mehr"
+mut N7 $B 's/SATZ_ABGELEHNT = \x27Ungültige Anmeldedaten\.\x27;/SATZ_ABGELEHNT = \x27Anmeldung abgelehnt.\x27;/' \
+  "„Ungültige Anmeldedaten.“ ist eine Konstante"
+
 # E1 – die Einbindung: Ist die Suite rot, muss tests-projektstunden.sh rot sein.
 GELAUFEN=$((GELAUFEN + 1))
 if einbauen E1 "$R/$B" 's/\$seit < self::WARTEN_SEKUNDEN\)/\$seit < 0)/'; then
   if (cd "$R" && ./tests-projektstunden.sh > /dev/null 2>&1); then
     echo "E1: NICHT ANGESCHLAGEN – tests-projektstunden.sh übersieht die rote Suite"; FEHLT=$((FEHLT + 1))
-  elif grep -qF "✗ Anmeldebremse: an der Schwelle (5), gerade eben" "$R/logs/pruefung-letzter.txt"; then
+  elif grep -qF "✗ Anmeldebremse: an der Schwelle (" "$R/logs/pruefung-letzter.txt"; then
     echo "E1: angeschlagen (tests-projektstunden.sh rot, an der erwarteten Zeile)"
   else
     echo "E1: NICHT AN DER ERWARTETEN ZEILE – tests-projektstunden.sh rot, aber nicht wegen der Bremse"; FEHLT=$((FEHLT + 1))
@@ -132,8 +150,26 @@ else
 fi
 ruecknahme H1 "$R/$B"
 
+# H2, H3 – die Sätze und der alte Schlüssel als KOMMENTAR dürfen nicht
+# anschlagen: Die Prüfungen lesen Zeichenketten über den Tokenizer, nicht Text.
+for h in "H2|$A|s/(function handle_auth\\()/\\/\\/ json_error(\x27Ungültige Anmeldedaten.\x27, 401);\\n\$1/" \
+         "H3|$V|s/(    \x27lockout_minutes\x27)/    \\/\\/ \x27max_failed_logins\x27 => 5,\\n\$1/"; do
+  hn=${h%%|*}; rest=${h#*|}; hd=${rest%%|*}; ha=${rest#*|}
+  GELAUFEN=$((GELAUFEN + 1))
+  if einbauen "$hn" "$R/$hd" "$ha"; then
+    if php "$R/tests/anmeldebremse_test.php" > /dev/null 2>&1; then
+      echo "$hn: richtig nicht angeschlagen (Kommentar, Suite grün)"
+    else
+      echo "$hn: FALSCH ANGESCHLAGEN – die Prüfung liest einen Kommentar"; FEHLT=$((FEHLT + 1))
+    fi
+  else
+    FEHLT=$((FEHLT + 1))
+  fi
+  ruecknahme "$hn" "$R/$hd"
+done
+
 echo ""
 # Null gelaufene Mutationen sind ein Fehler, kein sauberer Lauf.
-[ "$GELAUFEN" -ge 24 ] || { echo "FEHLER: nur $GELAUFEN Mutationen gelaufen, erwartet 24"; exit 1; }
+[ "$GELAUFEN" -ge 33 ] || { echo "FEHLER: nur $GELAUFEN Mutationen gelaufen, erwartet 33"; exit 1; }
 if [ "$FEHLT" -eq 0 ]; then echo "ALLE $GELAUFEN MUTATIONEN BELEGT"; exit 0; fi
 echo "$FEHLT VON $GELAUFEN MUTATION(EN) OHNE BELEG"; exit 1

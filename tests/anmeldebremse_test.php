@@ -46,20 +46,28 @@ foreach (['backend/auth/Anmeldebremse.php', 'backend/auth/WebUntisAuth.php'] as 
 $da = class_exists('Anmeldebremse');
 pruefe('Voraussetzung: Anmeldebremse vorhanden (backend/auth/Anmeldebremse.php)', $da);
 
-const SCHWELLE = 5;     // config.example.php, max_failed_logins
+// Die Schwelle kommt aus der Klasse, nicht aus einer Abschrift (M56: acht
+// für die ganze Reihe). Fehlt die Konstante, gilt der frühere Wert der
+// Vorlage – nur damit die Prüfungen unten lesbar rot werden statt die Suite
+// abzubrechen; die Prüfung „Schwelle 8“ schlägt dann an.
+define('SCHWELLE', defined('Anmeldebremse::SCHWELLE') ? Anmeldebremse::SCHWELLE : 5);
 const FENSTER  = 15;    // config.example.php, lockout_minutes
 
 // ---- das Urteil, rein ------------------------------------------------------
 echo PHP_EOL . 'Das Urteil: ab der Schwelle 60 Sekunden, ohne Staffel' . PHP_EOL;
 $u = fn(?array $lage): array => $da ? Anmeldebremse::urteil($lage, SCHWELLE) : ['durch' => null, 'status' => 0, 'meldung' => ''];
 $l = fn(int $n, ?int $seit): array => ['fehlversuche' => $n, 'seit' => $seit];
-pruefe('unter der Schwelle (4): durch', $u($l(4, 0))['durch'] === true);
-pruefe('an der Schwelle (5), gerade eben: 429, „60 Sekunden“',
-    $u($l(5, 0))['status'] === 429 && str_contains($u($l(5, 0))['meldung'], '60 Sekunden'));
+// $n Fehlversuche, der letzte vor $letzter Sekunden, je $abstand Sekunden auseinander.
+$reihe = fn(int $n, int $letzter, int $abstand): array => array_map(fn($i) => $letzter + $abstand * ($n - 1 - $i), range(0, $n - 1));
+pruefe('Schwelle: acht Fehlversuche (M56), als Konstante der Anmeldebremse',
+    $da && defined('Anmeldebremse::SCHWELLE') && Anmeldebremse::SCHWELLE === 8);
+pruefe('unter der Schwelle (' . (SCHWELLE - 1) . '): durch', $u($l(SCHWELLE - 1, 0))['durch'] === true);
+pruefe('an der Schwelle (' . SCHWELLE . '), gerade eben: 429, „60 Sekunden“',
+    $u($l(SCHWELLE, 0))['status'] === 429 && str_contains($u($l(SCHWELLE, 0))['meldung'], '60 Sekunden'));
 pruefe('auf der Grenze: 59 s nach dem letzten noch „1 Sekunde“, nach 60 s durch',
-    $u($l(5, 59))['status'] === 429 && str_contains($u($l(5, 59))['meldung'], '1 Sekunde.')
-    && $u($l(5, 60))['durch'] === true);
-pruefe('ohne Staffel: 30 Fehlversuche warten wie 5 – 60 Sekunden', str_contains($u($l(30, 0))['meldung'], '60 Sekunden'));
+    $u($l(SCHWELLE, 59))['status'] === 429 && str_contains($u($l(SCHWELLE, 59))['meldung'], '1 Sekunde.')
+    && $u($l(SCHWELLE, 60))['durch'] === true);
+pruefe('ohne Staffel: 30 Fehlversuche warten wie die Schwelle – 60 Sekunden', str_contains($u($l(30, 0))['meldung'], '60 Sekunden'));
 pruefe('Zählung gescheitert: 503 mit eigenem Satz, nicht „Ungültige Anmeldedaten“',
     $u(null)['status'] === 503 && $u(null)['durch'] === false
     && str_contains($u(null)['meldung'], 'Anmeldeversuche') && !str_contains($u(null)['meldung'], 'Anmeldedaten'));
@@ -117,72 +125,72 @@ pruefe('ohne Vorgeschichte: durch, der Versuch steht schon da – laufend, Kennu
 pruefe('der Grund „(läuft)“ passt in die Spalte (VARCHAR(50))',
     $da && mb_strlen(Anmeldebremse::LAEUFT) <= 50 && str_contains($block, 'grund        VARCHAR(50)'));
 $p = neue_db();
-fehl($p, 'Vzq', [30, 30, 30, 30]);
+fehl($p, 'Vzq', array_fill(0, SCHWELLE - 1, 30));
 $r1 = $beginnen($p, 'Vzq');
 $r2 = $beginnen($p, 'Vzq');
-pruefe('gleichzeitig: 4 Fehlversuche, zwei Anfragen – die erste läuft, die zweite sieht sie und wartet',
+pruefe('gleichzeitig: einer unter der Schwelle, zwei Anfragen – die erste läuft, die zweite sieht sie und wartet',
     $r1['status'] === 200 && $r2['status'] === 429);
-pruefe('der abgewiesene Versuch zählt nicht: seine Zeile ist wieder fort', $zeilen($p) === 5);
+pruefe('der abgewiesene Versuch zählt nicht: seine Zeile ist wieder fort', $zeilen($p) === SCHWELLE);
 
 echo PHP_EOL . 'Im Tempo einer Person' . PHP_EOL;
 $p = neue_db();
-fehl($p, 'Vzq', [75, 60, 45, 30, 15]);
+fehl($p, 'Vzq', $reihe(SCHWELLE, 15, 15));
 $r = $beginnen($p, 'Vzq');
-pruefe('fünf Fehlversuche im Abstand von 15 s, der letzte vor 15 s: der sechste wartet, 44–45 s, mit Satz',
+pruefe('Schwelle erreicht im Abstand von 15 s, der letzte vor 15 s: der nächste wartet, 44–45 s, mit Satz',
     $r['status'] === 429 && preg_match('/noch (44|45) Sekunden\./', $r['meldung']) === 1);
 $p = neue_db();
-fehl($p, 'Vzq', [600, 540, 480, 420, 61]);
+fehl($p, 'Vzq', $reihe(SCHWELLE, 61, 60));
 pruefe('… der letzte vor 61 s: durch – keine Sperre über 15 Minuten', $beginnen($p, 'Vzq')['status'] === 200);
 
 echo PHP_EOL . 'Die Grenze, ausgeführt' . PHP_EOL;
 $p = neue_db();
-fehl($p, 'Vzq', [300, 290, 280, 270, 58]);
-pruefe('der letzte von 5 vor 58 s: abgewiesen, 1–2 s Rest',
+fehl($p, 'Vzq', $reihe(SCHWELLE, 58, 10));
+pruefe('der letzte an der Schwelle vor 58 s: abgewiesen, 1–2 s Rest',
     preg_match('/noch [12] Sekunden?\./', $beginnen($p, 'Vzq')['meldung']) === 1);
 $p = neue_db();
-fehl($p, 'Vzq', [300, 290, 280, 270, 60]);
-pruefe('der letzte von 5 vor 60 s: durch', $beginnen($p, 'Vzq')['status'] === 200);
+fehl($p, 'Vzq', $reihe(SCHWELLE, 60, 10));
+pruefe('der letzte an der Schwelle vor 60 s: durch', $beginnen($p, 'Vzq')['status'] === 200);
 $p = neue_db();
-fehl($p, 'Vzq', [17 * 60, 17 * 60, 17 * 60, 17 * 60, 1]);
-pruefe('Fenster: 4 Fehlversuche vor 17 Minuten und einer vor 1 s – nur der eine zählt, durch',
+fehl($p, 'Vzq', [...array_fill(0, SCHWELLE - 1, 17 * 60), 1]);
+pruefe('Fenster: einer unter der Schwelle vor 17 Minuten und einer vor 1 s – nur der eine zählt, durch',
     $beginnen($p, 'Vzq')['status'] === 200);
 $p = neue_db();
-fehl($p, 'andere', [1, 1, 1, 1, 1, 1]);
-pruefe('je Benutzer: 6 fremde Fehlversuche gerade eben zählen nicht', $beginnen($p, 'Vzq')['status'] === 200);
+fehl($p, 'andere', array_fill(0, SCHWELLE + 1, 1));
+pruefe('je Benutzer: fremde Fehlversuche über der Schwelle, gerade eben, zählen nicht', $beginnen($p, 'Vzq')['status'] === 200);
 
 echo PHP_EOL . 'Eine gelungene Anmeldung setzt zurück' . PHP_EOL;
 $p = neue_db();
-fehl($p, 'Vzq', [400, 380, 360, 340, 320]);
+fehl($p, 'Vzq', $reihe(SCHWELLE, 320, 20));
 $anmelden($p, 'Vzq');
 fehl($p, 'Vzq', [1]);
-pruefe('Rücksetzen: 5 Fehlversuche, dann angemeldet, dann einer vor 1 s – durch', $beginnen($p, 'Vzq')['status'] === 200);
+pruefe('Rücksetzen: Schwelle erreicht, dann angemeldet, dann einer vor 1 s – durch', $beginnen($p, 'Vzq')['status'] === 200);
 $p = neue_db();
-fehl($p, 'Vzq', [400, 380, 360, 340, 320, 1]);
-pruefe('Gegenprobe: dieselben sechs ohne Anmeldung dazwischen – es wird gewartet', $beginnen($p, 'Vzq')['status'] === 429);
+fehl($p, 'Vzq', [...$reihe(SCHWELLE, 320, 20), 1]);
+pruefe('Gegenprobe: dieselben ohne Anmeldung dazwischen – es wird gewartet', $beginnen($p, 'Vzq')['status'] === 429);
 $p = neue_db();
-fehl($p, 'Vzq', [400, 380, 360, 340]);
+fehl($p, 'Vzq', $reihe(SCHWELLE - 1, 340, 20));
 $anmelden($p, 'Vzq');
 $zp = $p->query('SELECT zeitpunkt FROM webuntis_login_log WHERE erfolgreich = 1')->fetchColumn();
-for ($i = 0; $i < 5; $i++) {
+for ($i = 0; $i < SCHWELLE; $i++) {
     $p->prepare("INSERT INTO webuntis_login_log (benutzername, erfolgreich, grund, ip, zeitpunkt) VALUES ('Vzq', 0, 'falsches_passwort', '', ?)")
       ->execute([(string)$zp]);
 }
-pruefe('nach der Nummer: fünf Fehlversuche in derselben Sekunde wie die Anmeldung, danach eingetragen – sie zählen',
+pruefe('nach der Nummer: Schwelle erreicht in derselben Sekunde wie die Anmeldung, danach eingetragen – sie zählen',
     $zp !== false && $beginnen($p, 'Vzq')['status'] === 429);
 $p = neue_db();
-fehl($p, 'andere', [400, 380, 360, 340, 320]);
+fehl($p, 'andere', $reihe(SCHWELLE, 320, 20));
 $anmelden($p, 'Vzq');
 fehl($p, 'andere', [1]);
 pruefe('je Benutzer: die Anmeldung eines anderen setzt nicht zurück', $beginnen($p, 'andere')['status'] === 429);
 
 echo PHP_EOL . 'Die bekannte Grenze: ein Skript im Minutentakt' . PHP_EOL;
 $p = neue_db();
-fehl($p, 'Vzq', [241, 181, 121, 61, 1]);
+fehl($p, 'Vzq', $reihe(SCHWELLE, 1, 60));
 $r = $beginnen($p, 'Vzq');
 pruefe('Skript im Minutentakt, der letzte vor 1 s: der Inhaber muss warten (58–59 s)',
     $r['status'] === 429 && preg_match('/noch (58|59) Sekunden\./', $r['meldung']) === 1);
 $p = neue_db();
-fehl($p, 'Vzq', [300, 240, 180, 120, 60]);
+fehl($p, 'Vzq', $reihe(SCHWELLE, 60, 60));
 pruefe('… und der nächste Versuch des Skripts nach der Minute ist wieder durch', $beginnen($p, 'Vzq')['status'] === 200);
 
 echo PHP_EOL . 'Die Datenbank antwortet nicht' . PHP_EOL;
@@ -288,12 +296,25 @@ pruefe('lokal falsch, WebUntis tot: 401 – und der Versuch zählt, denn das lok
 $p = neue_db(); $benutzer($p);
 for ($i = 0; $i < SCHWELLE; $i++) $login($p, 'ada@schule.example', 'falsch-' . $i);
 $r = $login($p, 'ada@schule.example', 'Das lokale Passwort');
-pruefe('lokal, fünf Fehlversuche gerade eben: auch das richtige Passwort wartet – 429 mit Sekunden',
+pruefe('lokal, Schwelle erreicht gerade eben: auch das richtige Passwort wartet – 429 mit Sekunden',
     $r['status'] === 429 && preg_match('/noch \d+ Sekunden?\./', (string)($r['daten']['error'] ?? '')) === 1);
 $p = neue_db(); $benutzer($p);
 $r = $login($p, 'Vzq', 'irgendwas');
-pruefe('kein lokales Konto, WebUntis tot: 401, und es bleibt keine Zeile – kein Passwort hat entschieden',
-    $r['status'] === 401 && $zeilen($p) === 0);
+// Satz und Status wie in der Reihe (lernzeiten, kurse, signage; nachgelesen
+// am 03.11.2026). Erwartungswert, keine Abschrift aus dem Code.
+pruefe('kein lokales Konto, WebUntis tot: 503 „WebUntis ist gerade nicht erreichbar. …“, keine Zeile – kein Passwort hat entschieden',
+    $r['status'] === 503
+    && ($r['daten']['error'] ?? '') === 'WebUntis ist gerade nicht erreichbar. Bitte in ein paar Minuten erneut versuchen.'
+    && $zeilen($p) === 0);
+// M56: Die Schwelle steht im Code. Eine Konfiguration, die noch 5 sagt (so
+// stand sie in der Vorlage), darf nichts mehr bewirken – ausgeführt.
+$p = neue_db(); $benutzer($p);
+$WEBUNTIS_CONFIG = ['max_failed_logins' => 5] + $WU_TOT;
+for ($i = 0; $i < 5; $i++) $login($p, 'ada@schule.example', 'falsch-' . $i);
+$r = $login($p, 'ada@schule.example', 'Das lokale Passwort');
+$WEBUNTIS_CONFIG = $WU_TOT;
+pruefe('Konfiguration sagt max_failed_logins 5: nach fünf Fehlversuchen trotzdem angemeldet – die Schwelle kommt nicht von dort',
+    $r['status'] === 200);
 $p = neue_db(); $benutzer($p);
 $p->exec('DROP TABLE webuntis_login_log');
 $r = $login($p, 'ada@schule.example', 'Das lokale Passwort');
@@ -309,10 +330,10 @@ pruefe('WebUntis: falsches Passwort – 401 „Ungültige Anmeldedaten.“, eine
     $r['status'] === 401 && ($r['daten']['error'] ?? '') === 'Ungültige Anmeldedaten.'
     && count($a) === 1 && (int)$a[0]['erfolgreich'] === 0 && $a[0]['grund'] === 'falsches_passwort');
 $p = neue_db(); $benutzer($p);
-fehl($p, 'Vzq', [50, 40, 30, 20, 10]);
+fehl($p, 'Vzq', $reihe(SCHWELLE, 10, 5));
 WebUntisAttrappe::$aufrufe = 0;
 $r = $login($p, 'Vzq', 'richtig', true);
-pruefe('WebUntis: fünf Fehlversuche gerade eben – 429, und WebUntis wird gar nicht erst gefragt',
+pruefe('WebUntis: Schwelle erreicht gerade eben – 429, und WebUntis wird gar nicht erst gefragt',
     $r['status'] === 429 && WebUntisAttrappe::$aufrufe === 0);
 $p = neue_db(); $benutzer($p);
 WebUntisAttrappe::$ergebnis = ['personType' => 2, 'personId' => 99, 'kuerzel' => 'Vzq', 'vorname' => 'S', 'nachname' => 'H'];
@@ -340,6 +361,22 @@ echo PHP_EOL . 'Wer in webuntis_login_log schreibt (Quelltext)' . PHP_EOL;
 $auth = (string)file_get_contents("$W/backend/auth/WebUntisAuth.php");
 pruefe('nur noch die Anmeldebremse – kein INSERT im Router und in WebUntisAuth.php',
     !str_contains($router, 'INSERT INTO webuntis_login_log') && !str_contains($auth, 'INSERT INTO webuntis_login_log'));
+
+// ---- eine Quelle je Satz, eine Quelle der Schwelle -------------------------
+echo PHP_EOL . 'Eine Stelle je Satz und je Schwelle (Quelltext, Tokenizer)' . PHP_EOL;
+$literale = function (string $code): array {
+    $l = [];
+    foreach (token_get_all($code) as $t) {
+        if (is_array($t) && $t[0] === T_CONSTANT_ENCAPSED_STRING) $l[] = substr($t[1], 1, -1);
+    }
+    return $l;
+};
+pruefe('„Ungültige Anmeldedaten.“ ist eine Konstante der Anmeldebremse und steht im Router nicht mehr als Zeichenkette',
+    $da && defined('Anmeldebremse::SATZ_ABGELEHNT') && Anmeldebremse::SATZ_ABGELEHNT === 'Ungültige Anmeldedaten.'
+    && !in_array('Ungültige Anmeldedaten.', $literale($router), true));
+$vorlage = (string)file_get_contents("$W/backend/config.example.php");
+pruefe('die Vorlage nennt keine Schwelle mehr (kein Schlüssel max_failed_logins) – sie würde nicht gelesen',
+    $vorlage !== '' && !in_array('max_failed_logins', $literale($vorlage), true));
 
 echo PHP_EOL . ($fehler === 0 ? 'ALLE TESTS GRÜN' : "$fehler ROT") . PHP_EOL;
 exit($fehler === 0 ? 0 : 1);

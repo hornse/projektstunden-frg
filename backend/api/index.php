@@ -133,7 +133,7 @@ function bremse_beginnen(PDO $db, string $benutzername, string $ip): int {
     require_once __DIR__ . '/../auth/Anmeldebremse.php';
     $r = Anmeldebremse::beginnen(
         $db, $benutzername, $ip,
-        (int)($WEBUNTIS_CONFIG['max_failed_logins'] ?? 5),
+        Anmeldebremse::SCHWELLE,
         (int)($WEBUNTIS_CONFIG['lockout_minutes']   ?? 15)
     );
     if (!$r['urteil']['durch']) {
@@ -145,6 +145,7 @@ function bremse_beginnen(PDO $db, string $benutzername, string $ip): int {
 
 function handle_auth(string $method, string $sub, array $body): void {
     if ($method === 'POST' && $sub === 'login') {
+        require_once __DIR__ . '/../auth/Anmeldebremse.php';
         $username = trim($body['username'] ?? $body['email'] ?? '');
         $pass     = $body['passwort'] ?? '';
         if (!$username || !$pass) json_error('Zugangsdaten erforderlich.');
@@ -195,11 +196,15 @@ function handle_auth(string $method, string $sub, array $body): void {
                     Anmeldebremse::abschliessen($db, $versuch, false, 'falsches_lokales_passwort');
                 } elseif ($wu->grund() === 'ohne_entscheid') {
                     // WebUntis antwortete nicht: kein Passwort hat entschieden.
+                    // Eigener Satz, 503 – die Wartezeit und der Ausfall
+                    // duerfen sich unterscheiden, sie verraten nichts ueber
+                    // ein Passwort (FALLSTRICKE 8, Satz der Reihe).
                     Anmeldebremse::ohneEntscheid($db, $versuch);
+                    json_error(Anmeldebremse::SATZ_AUSFALL, 503);
                 } else {
                     Anmeldebremse::abschliessen($db, $versuch, false, $wu->grund());
                 }
-                json_error('Ungültige Anmeldedaten.', 401);
+                json_error(Anmeldebremse::SATZ_ABGELEHNT, 401);
             }
 
             if ($result !== null) {
@@ -272,7 +277,7 @@ function handle_auth(string $method, string $sub, array $body): void {
                         // Zugangsdaten (FALLSTRICKE.md 8). Der Grund steht im
                         // Protokoll, nicht in der Antwort.
                         Anmeldebremse::abschliessen($db, $versuch, false, 'schueler_id_fehlt');
-                        json_error('Ungültige Anmeldedaten.', 401);
+                        json_error(Anmeldebremse::SATZ_ABGELEHNT, 401);
                     }
 
                     // Schüler in DB suchen
@@ -331,7 +336,7 @@ function handle_auth(string $method, string $sub, array $body): void {
                         // Siehe oben: gleicher Wortlaut, gleicher Statuscode
                         // wie beim falschen Passwort.
                         Anmeldebremse::abschliessen($db, $versuch, false, 'schueler_nicht_gefunden');
-                        json_error('Ungültige Anmeldedaten.', 401);
+                        json_error(Anmeldebremse::SATZ_ABGELEHNT, 401);
                     }
 
                     Anmeldebremse::abschliessen($db, $versuch, true, null);
@@ -353,7 +358,7 @@ function handle_auth(string $method, string $sub, array $body): void {
         // hat das lokale Passwort oder das fehlende Konto – der Versuch zaehlt.
         Anmeldebremse::abschliessen($db, $versuch, false,
             $lokalFalsch ? 'falsches_lokales_passwort' : 'unbekanntes_konto');
-        json_error('Ungültige Anmeldedaten.', 401);
+        json_error(Anmeldebremse::SATZ_ABGELEHNT, 401);
     }
 
     if ($method === 'POST' && $sub === 'logout') {

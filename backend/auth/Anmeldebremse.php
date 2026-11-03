@@ -30,6 +30,14 @@
  * `lockout_minutes` heißt weiter so, weil config.php nicht versioniert ist
  * und auf dem Server so steht; es ist jetzt das ZÄHLFENSTER.
  *
+ * DIE SCHWELLE STEHT HIER, nicht in config.php (M56 der Reihe, 03.11.2026:
+ * acht Fehlversuche überall). Ein Wert in einer nicht versionierten Datei
+ * driftet unbemerkt, und Hilfe und FAQ nennen die Zahl – die Suite hält
+ * beide an dieser Konstante. `max_failed_logins` wird nicht mehr gelesen.
+ *
+ * Die Sätze der Anmeldung stehen ebenfalls hier, je einmal: Der Router
+ * benutzt sie, die Hilfe zitiert sie, die Suite vergleicht beides.
+ *
  * BEKANNTE GRENZE: Ein Skript, das einmal pro Minute fehlschlägt, hält ein
  * Konto in der Wartezeit – mühsamer als die Sperre, nicht ausgeschlossen.
  *
@@ -40,6 +48,16 @@
 final class Anmeldebremse
 {
     public const WARTEN_SEKUNDEN = 60;
+    /** Ab so vielen Fehlversuchen wird gewartet (M56). */
+    public const SCHWELLE = 8;
+    /**
+     * Der eine Satz für jede Ablehnung, bei der ein Passwort im Spiel war:
+     * falsches Passwort, nicht zugelassener Kontotyp, fehlender
+     * Schülerdatensatz (FALLSTRICKE 8). Immer mit 401.
+     */
+    public const SATZ_ABGELEHNT = 'Ungültige Anmeldedaten.';
+    /** WebUntis antwortete nicht, kein Passwort hat entschieden. 503, Wortlaut der Reihe. */
+    public const SATZ_AUSFALL = 'WebUntis ist gerade nicht erreichbar. Bitte in ein paar Minuten erneut versuchen.';
     /** Grund eines Versuchs, der gerade läuft. */
     public const LAEUFT = '(läuft)';
 
