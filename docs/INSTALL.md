@@ -143,7 +143,7 @@ HASH=$(php -r "echo password_hash('DEIN_PASSWORT', PASSWORD_BCRYPT);")
 # Admin eintragen
 mysql hornse_projektstunden -e "
 INSERT INTO benutzer (schule_id, vorname, nachname, email, passwort_hash, rolle)
-VALUES (1, 'Sebastian', 'Horn', 'deine@email.de', '$HASH', 'admin');"
+VALUES (1, 'Vorname', 'Nachname', 'deine@email.de', '$HASH', 'admin');"
 ```
 
 ---

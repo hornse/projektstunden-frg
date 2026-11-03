@@ -96,7 +96,7 @@ FROM benutzer WHERE schule_id = 1;"
 ```
 
 Das Kürzel entspricht dem WebUntis-Anmeldename (meist Nachname-Kürzel,
-z. B. `Vzq` für Horn).
+z. B. `Vzq` – erfunden).
 
 ---
 
