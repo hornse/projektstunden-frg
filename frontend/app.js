@@ -18,8 +18,16 @@ async function api(method, path, body) {
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch(API_BASE + '/api/' + path, opts);
   if (r.status === 401) {
-    // Nur zum Login wenn wir nicht gerade einloggen
-    if (path !== 'auth/login' && path !== 'auth/me') showLogin();
+    // Beim Anmelden ist 401 die Antwort auf falsche Zugangsdaten: Ihr Satz
+    // wird gezeigt. Vorher kam hier null zurück, doLogin las me.typ, und
+    // angezeigt wurde der Text eines TypeError (S73).
+    if (path === 'auth/login') {
+      const e = await r.json().catch(() => ({}));
+      throw new Error(e.error || 'Fehler 401');
+    }
+    // Sonst: Sitzung abgelaufen – zur Anmeldung, außer bei der Anfrage, die
+    // genau das prüft.
+    if (path !== 'auth/me') showLogin();
     return null;
   }
   if (!r.ok) {
@@ -66,7 +74,11 @@ function escHtml(wert) {
 // ============================================================
 // STATE – globale In-Memory-Daten (werden nach Login geladen)
 // ============================================================
-let STATE = { faecher: [], klassen: [], lehrer: [], rahmen: [], kompetenzen: [], user: null };
+/** Der Zustand ohne Sitzung. Eine Quelle: Start und gescheitertes Abmelden. */
+function leererState() {
+  return { faecher: [], klassen: [], lehrer: [], rahmen: [], kompetenzen: [], user: null };
+}
+let STATE = leererState();
 
 async function loadState() {
   const [faecher, klassen, lehrer, rahmen] = await Promise.all([
@@ -162,9 +174,25 @@ async function doLogin() {
     }
   } catch(e) { showMsg('l-msg', e.message, 'err'); }
 }
-async function doLogout() {
-  await POST('auth/logout', {});
-  showLogin();
+/**
+ * Abmelden (S73). Gelingt es, wird die Seite NEU GELADEN: Sonst blieben das
+ * Passwort im Feld, die Daten der Sitzung in STATE und die ausgeblendeten
+ * Ansichten im DOM stehen – auf geteilten Geräten, mit Schüler-Logins.
+ *
+ * Scheitert es, wird NICHT neu geladen: Die Sitzung besteht dann noch, und
+ * der Neuladen meldete sie wieder an. Stattdessen Passwortfeld und STATE
+ * leeren und dort melden, wo abgemeldet wurde.
+ */
+async function doLogout(msgId = 'abmelden-msg') {
+  try {
+    await POST('auth/logout', {});
+  } catch {
+    document.getElementById('l-pass').value = '';
+    STATE = leererState();
+    showMsg(msgId, 'Abmelden ist fehlgeschlagen. Bitte erneut versuchen oder den Browser schließen.', 'err');
+    return;
+  }
+  location.reload();
 }
 
 // ============================================================
@@ -2958,7 +2986,8 @@ async function schuelerWerkstattDetail(werkstatt_id) {
         ${rueckRows}
       </div>` : '<div class="card" style="margin-top:16px"><p style="font-size:13px;color:var(--text3)">Noch keine Rückmeldungen.</p></div>'}
 
-    <button class="btn" style="margin-top:16px;color:var(--danger)" onclick="doLogout()">Abmelden</button>
+    <button class="btn" style="margin-top:16px;color:var(--danger)" onclick="doLogout('sp-abmelden-msg')">Abmelden</button>
+    <div id="sp-abmelden-msg" role="status" aria-live="polite"></div>
   `;
 }
 

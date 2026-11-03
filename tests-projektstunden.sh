@@ -1647,6 +1647,62 @@ else
 fi
 
 echo ""
+echo "Anmelden, Abmelden, Hilfe (tests/anmeldung_test.js, ausgeführt in node)"
+# S73: Die Funktionen werden aus app.js geschnitten und ausgeführt; die Sätze
+# kommen aus Anmeldebremse.php. Fehlt node, läuft der Schritt sichtbar NICHT –
+# die Zeile unten sagt es, und die Prüfungszahl ist um diese Prüfungen kleiner.
+if ! command -v node > /dev/null 2>&1; then
+    echo "  –  ÜBERSPRUNGEN: node fehlt – Anmelden, Abmelden und Hilfe nicht ausgeführt"
+else
+    ANM_AUS=$(node tests/anmeldung_test.js 2>/dev/null); ANM_EXIT=$?
+    while IFS= read -r z; do
+        case "$z" in
+            "  ✓ "*) gruen "Anmeldung (node): ${z#  ✓ }" ;;
+            "  ✗ "*) rot   "Anmeldung (node): ${z#  ✗ }" ;;
+        esac
+    done <<< "$ANM_AUS"
+    if [ "$ANM_EXIT" -ne 0 ] && ! printf '%s\n' "$ANM_AUS" | grep -q '^  ✗ '; then
+        rot "Anmeldung (node): Suite endete mit $ANM_EXIT ohne rote Zeile"
+    fi
+fi
+
+echo ""
+echo "Anmeldemaske ist ein Formular (Quelltext, geparst – RÜCKFALL; die Eingabetaste ist Abnahmepunkt im Browser)"
+# REIHENREGELN 7: Eingabemasken sind <form> mit submit. Ob die Eingabetaste
+# anmeldet, sieht nur der Browser; hier wird die Struktur geprüft, aus der es
+# folgt. Gelesen mit DOMDocument, nicht mit grep: Ein Kommentar mit <form>
+# zählt nicht.
+FORM_AUS=$(php -r '
+    libxml_use_internal_errors(true);
+    $d = new DOMDocument(); $d->loadHTML(file_get_contents("frontend/index.html"));
+    $x = new DOMXPath($d);
+    $form = function (string $id) use ($x) {
+        $n = $x->query("//*[@id=\"$id\"]")->item(0);
+        while ($n && $n->nodeName !== "form") $n = $n->parentNode;
+        return $n;
+    };
+    $f = $form("l-email");
+    $ok = $f !== null && $f === $form("l-pass")
+       && $x->query(".//button[@type=\"submit\"]", $f)->length === 1
+       && str_contains((string)$f->getAttribute("onsubmit"), "preventDefault")
+       && str_contains((string)$f->getAttribute("onsubmit"), "doLogin(");
+    echo $ok ? "form-ja\n" : "form-nein\n";
+    $klick = 0;
+    foreach ($x->query("//*[@onclick]") as $n) if (str_contains($n->getAttribute("onclick"), "doLogin(")) $klick++;
+    echo "klick=$klick\n";
+' 2>&1)
+case "$FORM_AUS" in
+    *form-ja*) gruen "Anmeldung: <form> mit l-email, l-pass und einem Knopf type=submit; submit ruft doLogin ohne Neuladen" ;;
+    *)         rot   "Anmeldung: kein <form> um beide Felder mit Knopf type=submit und onsubmit → doLogin ($FORM_AUS)" ;;
+esac
+KLICK_JS=$(grep -c 'onclick="doLogin()"' "$JS" || true)
+case "$FORM_AUS" in
+    *klick=0*) [ "$KLICK_JS" -eq 0 ] && gruen "Anmeldung: kein onclick=\"doLogin()\" mehr (die frühere Fassung, ohne Eingabetaste)" \
+                   || rot "Anmeldung: onclick=\"doLogin()\" steht $KLICK_JS-mal in app.js" ;;
+    *)         rot "Anmeldung: onclick mit doLogin( steht noch in index.html ($FORM_AUS)" ;;
+esac
+
+echo ""
 GESAMT=$((GRUEN + FEHLER))
 echo "$GRUEN/$GESAMT bestanden, $FEHLER rot"
 if [ "$FEHLER" -eq 0 ]; then echo "ALLES GRÜN"; exit 0; fi

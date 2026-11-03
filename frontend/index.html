@@ -108,6 +108,7 @@
       <svg class="ci-symbol" aria-hidden="true"><use href="/vendor/ci-css/ci-icons.svg#ci-i-abmelden"></use></svg>
       <span class="ci-nav-text">Abmelden</span>
     </button>
+    <div id="abmelden-msg" role="status" aria-live="polite"></div>
   </nav>
 
   <button type="button" class="ci-leiste-schalter" data-ci-schalter aria-expanded="true">
@@ -142,11 +143,15 @@
         <p class="sub" id="login-schule">Gymnasium G9 – Kompetenz- und Stunden-Tracking</p>
       </div>
     </div>
-    <label>E-Mail oder WebUntis-Kürzel</label>
-    <input type="text" id="l-email" placeholder="lehrer@schule.de oder Kürzel" autocomplete="username">
-    <label>Passwort</label>
-    <input type="password" id="l-pass" autocomplete="current-password">
-    <button class="btn btn-p btn-full" onclick="doLogin()">Anmelden</button>
+    <!-- Ein Formular, damit die Eingabetaste anmeldet (REIHENREGELN 7).
+         preventDefault: kein Neuladen, doLogin schickt selbst. -->
+    <form id="login-form" onsubmit="event.preventDefault(); doLogin();">
+      <label for="l-email">E-Mail oder WebUntis-Kürzel</label>
+      <input type="text" id="l-email" placeholder="lehrer@schule.de oder Kürzel" autocomplete="username">
+      <label for="l-pass">Passwort</label>
+      <input type="password" id="l-pass" autocomplete="current-password">
+      <button type="submit" class="btn btn-p btn-full">Anmelden</button>
+    </form>
     <div id="l-msg" role="status" aria-live="polite"></div>
     <p style="font-size:11px;color:var(--text3);margin-top:12px;text-align:center">
       Lehrer: E-Mail/Passwort oder WebUntis-Kürzel<br>Schüler: WebUntis-Login
