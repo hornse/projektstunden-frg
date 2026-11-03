@@ -7,6 +7,25 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 
 ## [Unreleased]
 
+### Geändert – Hilfe vor der Anmeldung, Prüfungen im Browser (S73-Nachgang)
+- **„Hilfe zur Anmeldung“ in der Anmeldemaske.** Seit 15.08.2026
+  (`4b487ce`) blendete `navSichtbar(false)` vor der Anmeldung die Navigation
+  aus und mit ihr den einzigen Hilfe-Knopf. Die Hilfe erscheint unter der
+  Maske; der Knopf steht außerhalb des Formulars, Enter meldet weiter an.
+- **Eingabetaste und Hilfe werden im Browser geprüft**
+  (`tests/browser_test.mjs`: Chromium ohne Fenster, echte Tasten und Klicks,
+  Ersatz-Server ohne Datenbank). Ersetzt die Prüfung am Quelltext (A5), die
+  bei gesperrtem Knopf, geschluckter Eingabetaste, verstecktem Pflichtfeld
+  und falsch gelesenem Feld grün blieb. Ohne Chromium: sichtbar
+  „ÜBERSPRUNGEN“.
+- **Prüfungen 210 → 215** (−2 Quelltext, +7 Browser; angekündigt vor dem
+  Lauf). Rot vor der Behebung: 213/215 (die zwei Hilfe-Prüfungen).
+  Mutationsserie `tests/mutationen_browser.sh` 13; in
+  `tests/mutationen_anmeldung.sh` zeigen M2–M5 auf die Browser-Prüfungen.
+- Bei der Abnahme vom 03.11. meldete die Eingabetaste nicht an: getestet
+  direkt nach neun Fehlversuchen, die Bremse wies 60 Sekunden lang ab. Kein
+  Fehler der Eingabetaste; Nachtest bestanden.
+
 ### Geändert – Anmeldung, Doku und Hilfe (S73, Auftrag koordination 03.11.2026)
 - **Ein 401 beim Anmelden zeigt „Ungültige Anmeldedaten.“** Vorher gab
   `api()` `null` zurück, und im Feld stand „Cannot read properties of null

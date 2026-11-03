@@ -103,14 +103,19 @@ mut F10 $J 's/  \} catch \{\n    document\.getElementById\(\x27l-pass\x27\)/  } 
   "Abmelden gelingt" node
 # Der DOM-Ersatz liest index.html: fehlt die Meldestelle dort, wird es rot.
 mut M1 $H 's/    <div id="abmelden-msg" role="status" aria-live="polite"><\/div>\n//' "Abmelden scheitert" node
-# A5 – Formular
+# A5 – Formular. Seit dem S73-Nachgang misst das der Browser
+# (tests/browser_test.mjs, in der Suite als „Browser: …“), nicht mehr der
+# Quelltext. Weitere Gegenproben, an Kopien: tests/mutationen_browser.sh.
 mut M2 $H 's/<button type="submit" class="btn btn-p btn-full">Anmelden/<button type="button" class="btn btn-p btn-full">Anmelden/' \
-  "Anmeldung: kein <form>" suite
-mut M3 $H 's/onsubmit="event\.preventDefault\(\); doLogin\(\);"/onsubmit="doLogin();"/' "Anmeldung: kein <form>" suite
+  "Browser: Enter im Passwortfeld schickt genau eine Anmeldung ab" suite
+# Ohne preventDefault geht die Anmeldung ab, aber die Seite lädt neu.
+mut M3 $H 's/onsubmit="event\.preventDefault\(\); doLogin\(\);"/onsubmit="doLogin();"/' \
+  "Browser: Enter im Passwortfeld meldet an: die Maske ist danach weg" suite
+# Die frühere Fassung (onclick) neben dem Formular: zwei Anmeldungen je Enter.
 mut M4 $H 's/<button type="submit" class="btn btn-p btn-full">Anmelden/<button type="submit" class="btn btn-p btn-full" onclick="doLogin()">Anmelden/' \
-  "Anmeldung: onclick mit doLogin( steht noch in index.html" suite
+  "Browser: Enter im Passwortfeld schickt genau eine Anmeldung ab" suite
 mut M5 $H 's/    <form id="login-form" onsubmit="event\.preventDefault\(\); doLogin\(\);">\n(.*?)    <\/form>\n/$1/s' \
-  "Anmeldung: kein <form>" suite
+  "Browser: Enter im Passwortfeld schickt genau eine Anmeldung ab" suite
 
 # C – Hilfe und Handbuch zitieren die Anwendung. Je Seite: der Text ändert
 # sich, der Code ändert sich, die alte Fassung kommt zurück, ein verbotener

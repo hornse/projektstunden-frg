@@ -2617,6 +2617,19 @@ async function toggleBewRueckSichtbar(projekt_id, schueler_id, sichtbar) {
 function initHilfe() {
   hilfeTab('schnellstart', document.querySelector('#hilfe-tabs .rtab'));
 }
+/**
+ * Hilfe vor der Anmeldung (S73-Nachgang). Die Navigation ist vor der
+ * Anmeldung ausgeblendet (navSichtbar), mit ihr der Hilfe-Knopf – wer nicht
+ * hineinkommt, fand die Hilfe nicht. Die Hilfe braucht keine API; sie
+ * erscheint unter der Maske, die Maske bleibt stehen. Der Fokus geht in die
+ * Hilfe, sonst führte der nächste Tabulatorsprung zurück durch die Maske.
+ * Geprüft im Browser: tests/browser_test.mjs, „Vor der Anmeldung …“.
+ */
+function hilfeVorAnmeldung() {
+  go('hilfe');
+  document.getElementById('s-hilfe').scrollIntoView({ block: 'start' });
+  document.querySelector('#hilfe-tabs .rtab')?.focus({ preventScroll: true });
+}
 
 function hilfeTab(id, btn) {
   document.querySelectorAll('#hilfe-tabs .rtab').forEach(b => b.classList.remove('on'));

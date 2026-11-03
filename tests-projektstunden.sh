@@ -1686,40 +1686,32 @@ else
 fi
 
 echo ""
-echo "Anmeldemaske ist ein Formular (Quelltext, geparst – RÜCKFALL; die Eingabetaste ist Abnahmepunkt im Browser)"
-# REIHENREGELN 7: Eingabemasken sind <form> mit submit. Ob die Eingabetaste
-# anmeldet, sieht nur der Browser; hier wird die Struktur geprüft, aus der es
-# folgt. Gelesen mit DOMDocument, nicht mit grep: Ein Kommentar mit <form>
-# zählt nicht.
-FORM_AUS=$(php -r '
-    libxml_use_internal_errors(true);
-    $d = new DOMDocument(); $d->loadHTML(file_get_contents("frontend/index.html"));
-    $x = new DOMXPath($d);
-    $form = function (string $id) use ($x) {
-        $n = $x->query("//*[@id=\"$id\"]")->item(0);
-        while ($n && $n->nodeName !== "form") $n = $n->parentNode;
-        return $n;
-    };
-    $f = $form("l-email");
-    $ok = $f !== null && $f === $form("l-pass")
-       && $x->query(".//button[@type=\"submit\"]", $f)->length === 1
-       && str_contains((string)$f->getAttribute("onsubmit"), "preventDefault")
-       && str_contains((string)$f->getAttribute("onsubmit"), "doLogin(");
-    echo $ok ? "form-ja\n" : "form-nein\n";
-    $klick = 0;
-    foreach ($x->query("//*[@onclick]") as $n) if (str_contains($n->getAttribute("onclick"), "doLogin(")) $klick++;
-    echo "klick=$klick\n";
-' 2>&1)
-case "$FORM_AUS" in
-    *form-ja*) gruen "Anmeldung: <form> mit l-email, l-pass und einem Knopf type=submit; submit ruft doLogin ohne Neuladen" ;;
-    *)         rot   "Anmeldung: kein <form> um beide Felder mit Knopf type=submit und onsubmit → doLogin ($FORM_AUS)" ;;
-esac
-KLICK_JS=$(grep -c 'onclick="doLogin()"' "$JS" || true)
-case "$FORM_AUS" in
-    *klick=0*) [ "$KLICK_JS" -eq 0 ] && gruen "Anmeldung: kein onclick=\"doLogin()\" mehr (die frühere Fassung, ohne Eingabetaste)" \
-                   || rot "Anmeldung: onclick=\"doLogin()\" steht $KLICK_JS-mal in app.js" ;;
-    *)         rot "Anmeldung: onclick mit doLogin( steht noch in index.html ($FORM_AUS)" ;;
-esac
+echo "Anmeldung und Hilfe im Browser (tests/browser_test.mjs, Chromium ohne Fenster)"
+# S73-Nachgang: Ob die Eingabetaste anmeldet und ob die Hilfe vor der
+# Anmeldung erreichbar ist, misst nur ein Browser. Die frühere Prüfung am
+# Quelltext (Formularaufbau) blieb grün bei einem gesperrten Knopf, bei
+# geschluckter Eingabetaste und bei einem versteckten Pflichtfeld
+# (tests/mutationen_browser.sh, E1–E3); sie ist durch diese ersetzt.
+# Fehlt node oder Chromium, läuft der Schritt sichtbar NICHT – die Zeile
+# sagt es, und die Prüfungszahl ist um diese Prüfungen kleiner.
+if ! command -v node > /dev/null 2>&1; then
+    echo "  –  ÜBERSPRUNGEN: node fehlt – Eingabetaste und Hilfe vor der Anmeldung nicht im Browser geprüft"
+else
+    BR_AUS=$(node tests/browser_test.mjs 2>/dev/null); BR_EXIT=$?
+    if [ "$BR_EXIT" -eq 3 ]; then
+        echo "  –  ÜBERSPRUNGEN: kein Chromium – Eingabetaste und Hilfe vor der Anmeldung nicht im Browser geprüft"
+    else
+        while IFS= read -r z; do
+            case "$z" in
+                "  ✓ "*) gruen "Browser: ${z#  ✓ }" ;;
+                "  ✗ "*) rot   "Browser: ${z#  ✗ }" ;;
+            esac
+        done <<< "$BR_AUS"
+        if [ "$BR_EXIT" -ne 0 ] && ! printf '%s\n' "$BR_AUS" | grep -q '^  ✗ '; then
+            rot "Browser: Lauf endete mit $BR_EXIT ohne rote Zeile"
+        fi
+    fi
+fi
 
 echo ""
 GESAMT=$((GRUEN + FEHLER))
