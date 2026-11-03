@@ -86,8 +86,8 @@ in der Datenbank hinterlegt sein:
 ```bash
 # Kürzel für deinen Account eintragen
 mysql hornse_projektstunden -e "
-UPDATE benutzer SET webuntis_user = 'Hor'
-WHERE email = 'sebastian.horn@frg-duesseldorf.de';"
+UPDATE benutzer SET webuntis_user = 'Vzq'
+WHERE email = 'vorname.nachname@frg-duesseldorf.de';"
 
 # Prüfen
 mysql hornse_projektstunden -e "
@@ -96,7 +96,7 @@ FROM benutzer WHERE schule_id = 1;"
 ```
 
 Das Kürzel entspricht dem WebUntis-Anmeldename (meist Nachname-Kürzel,
-z. B. `Hor` für Horn).
+z. B. `Vzq` für Horn).
 
 ---
 

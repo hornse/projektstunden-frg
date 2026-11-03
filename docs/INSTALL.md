@@ -16,7 +16,7 @@ cd projektstunden
 ```bash
 git remote -v
 # Erwartet:
-# github    git@github.com:hornse/projektstunden.git
+# github    abc@schule.example:hornse/projektstunden.git
 # uberspace hornse@halimede.uberspace.de:repos/projektstunden.git
 ```
 

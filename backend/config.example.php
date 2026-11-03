@@ -63,7 +63,7 @@ $WEBUNTIS_CONFIG = [
 
     // Zusätzlich: Lehrer-Kürzel (personType 2) die auch Admin werden sollen.
     // WebUntis-Admins (personType 16) werden automatisch Admin ohne diese Liste.
-    'admin_kuerzel'        => ['Hor'],
+    'admin_kuerzel'        => ['Vzq'],
 ];
 
 // ============================================================
