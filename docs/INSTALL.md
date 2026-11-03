@@ -62,20 +62,21 @@ Lokal:
 git push uberspace main
 ```
 
-### Schritt 6 – Domain und Symlink
+### Schritt 6 – Domain
 
 ```bash
 uberspace web domain add projektstunden.hornse.de
-cd /var/www/virtual/hornse
-ln -s /home/hornse/projektstunden projektstunden
 ```
+
+Ein Symlink im vhost-Verzeichnis wird nicht gebraucht: Der Dienst liefert
+alles über `backend/router.php` aus (Schritt 7, 8).
 
 ### Schritt 7 – PHP Backend-Server (supervisord)
 
 ```bash
 cat > ~/etc/services.d/projektstunden.ini << 'EOF'
 [program:projektstunden]
-command=php -S 0.0.0.0:8082 /var/www/virtual/hornse/router.php
+command=php -S 0.0.0.0:8082 /home/hornse/projektstunden/backend/router.php
 directory=/home/hornse/projektstunden
 autostart=yes
 autorestart=yes
@@ -102,17 +103,17 @@ uberspace web backend list | grep projektstunden
 mysql -e "CREATE DATABASE IF NOT EXISTS hornse_projektstunden
           CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
 
-# Migrationen in dieser Reihenfolge einspielen:
+# Migrationen in der Reihenfolge ihrer Nummern einspielen
+# (Liste und Inhalt: Abschnitt „Migrationen“ unten):
 DB=hornse_projektstunden
-mysql $DB < /home/hornse/projektstunden/sql/01_schema.sql
-mysql $DB < /home/hornse/projektstunden/sql/02_seed.sql
-mysql $DB < /home/hornse/projektstunden/sql/03_migration_schuljahr_schueler_werkstatt.sql
-mysql $DB < /home/hornse/projektstunden/sql/04_migration_werkstatt_detail.sql
-mysql $DB < /home/hornse/projektstunden/sql/05_migration_rueckmeldungen.sql
-mysql $DB < /home/hornse/projektstunden/sql/09_seed_sport_konkrete_erwartungen.sql
+for f in /home/hornse/projektstunden/sql/[0-9][0-9]_*.sql; do
+  echo "== $f"; mysql $DB < "$f" || break
+done
 ```
 
-> Alle Migrationen müssen in dieser Reihenfolge eingespielt werden.
+> Die Reihenfolge ist die der Nummern. Eine 09 gibt es nicht mehr (entfernt
+> mit `f4b1338`, ersetzt durch Seed 12). Die Schleife ist am 03.11.2026
+> nicht ausgeführt worden – sie ersetzt eine Liste, die bei 05 stehen blieb.
 
 ### Schritt 10 – config.php prüfen
 
@@ -157,7 +158,23 @@ VALUES (1, 'Vorname', 'Nachname', 'deine@email.de', '$HASH', 'admin');"
 | `03_migration_schuljahr_schueler_werkstatt.sql` | Schuljahre, Import, Werkstatt-Erweiterungen, Bewertungsstufen |
 | `04_migration_werkstatt_detail.sql` | Abschluss je Schüler, Multi-Klassen |
 | `05_migration_rueckmeldungen.sql` | Rückmeldungen-Tabelle |
-| `09_seed_sport_konkrete_erwartungen.sql` | Konkrete Erwartungen für Sport-KLP |
+| `06_migration_webuntis_auth.sql` | WebUntis-Anmeldung: Login-Log (Anmeldebremse), Schüler-Zugriff, Selbsteinschätzung |
+| `07_migration_einstellungen.sql` | Schulanpassung: Einstellungen |
+| `08_migration_klp_schema.sql` | KLP-Schema für G9-Kernlehrpläne, Bereinigung falscher KLP-Daten |
+| `10_seed_deutsch_klp.sql` | Deutsch, Kernlehrplan Sek I (G9) |
+| `11_seed_deutsch_sii.sql` | Deutsch, Kernlehrplan Oberstufe |
+| `12_seed_sport_klp.sql` | Sport, Kernlehrplan Sek I (G9) |
+| `13_migration_klp_spalten.sql` | teilbereich und art auf kompetenzbereiche (E18) |
+| `14_migration_phase_sek1uebergreifend.sql` | Phase `sek1_uebergreifend` (E12, E14) |
+| `15_migration_kompetenzbereiche_baum.sql` | kompetenzbereiche bekommt parent_id (E29b, E31) |
+| `16_migration_mkr_baum.sql` | Medienkompetenzrahmen im Baummodell (E29b, E31) |
+| `17_migration_klp_spalten_entfernen.sql` | inhaltsfeld, kompetenzbereich und teilbereich entfallen (E29b) |
+| `18_migration_verwaiste_rueckmeldungen.sql` | verwaiste Rückmeldungen entfernen (E37) |
+| `19_seed_englisch_klp.sql` | Englisch, Kernlehrplan Sek I (G9) |
+| `20_seed_franzoesisch_klp.sql` | Französisch, Kernlehrplan Sek I (G9) |
+
+Die Inhalte stammen aus dem Kopf der jeweiligen Datei. Die Tabelle ist von
+Hand gepflegt: Kommt eine Migration dazu, gehört sie hierher.
 
 ---
 
@@ -210,6 +227,24 @@ git --git-dir=/home/hornse/repos/projektstunden.git log --oneline -5
 ```
 
 ---
+
+### Sicherung
+
+Uberspace sichert die Datenbank täglich. Eine eigene Sicherung per cron gibt
+es nicht (gezählt am 03.11.2026: `crontab -l` ist leer).
+
+### Datenschutz
+
+Übernommen aus der früheren `docs/ANLEITUNG.md` (8.2), am Code geprüft am
+03.11.2026: Die Tabelle `audit_log` gibt es (`sql/01_schema.sql`), und das
+Backend schreibt hinein.
+
+Gemäß DSGVO und Schulgesetz NRW:
+- Schülerdaten nur auf deutschen/EU-Servern (Uberspace: Deutschland)
+- Uberspace-AGB und eigene Schulvereinbarung mit der oder dem
+  Datenschutzbeauftragten abstimmen
+- Audit-Log (Tabelle `audit_log`) regelmäßig prüfen
+- Schüler dürfen nur aktiven Klassen zugeordnet sein (`aktiv = 1`)
 
 ## Uberspace-spezifische Konfiguration
 

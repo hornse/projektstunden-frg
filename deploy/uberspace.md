@@ -17,9 +17,12 @@ Das ist nötig damit URL-Routing korrekt funktioniert.
 
 **Config-Datei:** `~/etc/services.d/projektstunden.ini`
 
+Gemessen am 03.11.2026 (`uberspace web backend list`, `grep` auf die
+ini-Datei): Der Router ist `backend/router.php` im Arbeitsbaum.
+
 ```ini
 [program:projektstunden]
-command=php -S 0.0.0.0:8082 /var/www/virtual/hornse/router.php
+command=php -S 0.0.0.0:8082 /home/hornse/projektstunden/backend/router.php
 directory=/home/hornse/projektstunden
 autostart=yes
 autorestart=yes
@@ -58,17 +61,17 @@ uberspace web backend list | grep projektstunden
 
 ---
 
-## Domain-Symlink
+## Router
 
-```bash
-# Symlink im vhost-Verzeichnis anlegen
-ln -s /home/hornse/projektstunden \
-  /var/www/virtual/hornse/projektstunden
-```
+Der Router ist `backend/router.php` im Arbeitsbaum. Er leitet `/api/`-Anfragen
+an `backend/api/index.php` weiter, liefert Dateien aus `frontend/` aus und
+sperrt, was nicht ausgeliefert werden darf (Sperrliste wie die Apache-Vorlage,
+S61). Ein Symlink im vhost-Verzeichnis wird dafür **nicht** gebraucht.
 
-> Hinweis: Der router.php im supervisord-Command liegt unter
-> `/var/www/virtual/hornse/router.php` – dieser leitet `/api/`-Anfragen
-> an `backend/api/index.php` weiter und alle anderen an `frontend/index.html`.
+**Offen (03.11.2026):** Unter `/var/www/virtual/hornse/` liegen noch
+`projektstunden` (ein Verzeichnis, kein Symlink) und `router.php`. Der Dienst
+benutzt keines von beiden. Was sie enthalten und ob sie weg können, ist nicht
+geprüft.
 
 ---
 
@@ -95,21 +98,14 @@ git remote add uberspace hornse@halimede.uberspace.de:repos/projektstunden.git
 
 ---
 
-## Datenbank-Migrationen
+## Datenbank
 
-Einmalig bei Erstinstallation – in dieser Reihenfolge:
+MariaDB, Datenbank `hornse_projektstunden`. Die Migrationen und ihre
+Reihenfolge stehen **nur** in `docs/INSTALL.md` (Abschnitt „Migrationen“) –
+eine Liste, nicht zwei.
 
-```bash
-DB=/home/hornse/projektstunden/backend/datenbank.sqlite
-
-sqlite3 $DB < sql/01_schema.sql
-sqlite3 $DB < sql/02_seed.sql
-sqlite3 $DB < sql/03_migration_schuljahr_schueler_werkstatt.sql
-sqlite3 $DB < sql/09_seed_sport_konkrete_erwartungen.sql
-```
-
-> Die Datenbankdatei (`datenbank.sqlite`) liegt nicht im Git-Repo
-> und wird nicht durch `git push` überschrieben.
+**Sicherung:** Uberspace sichert die Datenbank täglich. Eine eigene Sicherung
+per cron gibt es nicht (gezählt am 03.11.2026: `crontab -l` ist leer).
 
 ---
 
@@ -145,23 +141,14 @@ uberspace web log access disable
 ├── backend/
 │   ├── api/
 │   │   └── index.php                 ← API-Router (alle Endpunkte)
-│   ├── config.php                    ← DB-Pfad, Session-Config, Konstanten
-│   └── router.php                    ← PHP built-in server Router
+│   ├── config.php                    ← DB-Zugang, Session, WebUntis (nicht in git)
+│   └── router.php                    ← Router des PHP built-in server
 ├── frontend/
 │   ├── index.html                    ← Single Page App
 │   └── app.js                        ← Gesamte Frontend-Logik
-├── sql/
-│   ├── 01_schema.sql
-│   ├── 02_seed.sql
-│   ├── 03_migration_schuljahr_schueler_werkstatt.sql
-│   └── 09_seed_sport_konkrete_erwartungen.sql
-├── backups/                          ← SQLite-Backups (nicht in git)
+├── sql/                              ← Migrationen, Liste in docs/INSTALL.md
 ├── docs/                             ← Dokumentation
 └── .gitignore
-
-/var/www/virtual/hornse/
-├── projektstunden/                   ← Symlink → /home/hornse/projektstunden
-└── router.php                        ← Haupt-Router (leitet an backend/router.php)
 
 ~/etc/services.d/
 └── projektstunden.ini                ← nicht in git – siehe oben
@@ -175,16 +162,18 @@ uberspace web log access disable
 ## Deployment-Workflow
 
 ```bash
-# Lokal – mit dem deploy.sh Script:
-./deploy.sh "feat: Werkstätten Multi-Lernbegleiter"
-
-# Oder manuell:
-git add -A
-git commit -m "Beschreibung"
-git push github main && git push uberspace main
+./deploy.sh "<Beschreibung>"
 ```
 
-Der post-receive Hook deployt automatisch nach `git push uberspace main`.
+**Nur über `deploy.sh`.** Es hält an, solange etwas unverfolgt oder nicht
+committet ist, lässt `./tests-projektstunden.sh` laufen (rot: kein Deploy),
+setzt den Cache-Stempel `?v=` in `frontend/index.html`, committet nur diese
+Datei und pusht nach `github` und `uberspace`. Ein Push von Hand liefert
+neuen Servercode mit altem Browsercode aus (REIHENREGELN 6). Der
+post-receive Hook checkt nach dem Push auf `uberspace` aus.
+
+**Achtung:** Der Upstream von `main` ist `uberspace/main`. Ein `git push`
+ohne Argument ist eine Auslieferung.
 
 ---
 

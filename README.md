@@ -102,7 +102,7 @@ bildet diesen Prozess vollständig ab:
 | Frontend | Vanilla JS/HTML/CSS, kein Build-Schritt |
 | Backend | PHP ohne Framework, eigener Router |
 | Datenbank | MariaDB 10.6 (PDO MySQL) |
-| Authentifizierung | E-Mail + bcrypt-Passwort |
+| Authentifizierung | WebUntis (Lehrkräfte mit Kürzel, Schüler mit ihrem WebUntis-Login) und lokales Konto (E-Mail + bcrypt-Passwort) |
 | Hosting | Uberspace 7 (empfohlen) |
 
 ---
@@ -114,6 +114,12 @@ bildet diesen Prozess vollständig ab:
 - Soft-Delete statt physischem Löschen bei Schülern und Benutzern
 - Audit-Log für alle schreibenden Operationen
 - Zugangskontrolle auf Werkstatt-Ebene
+- Anmeldebremse: ab acht Fehlversuchen 60 Sekunden Wartezeit, nie eine Sperre
+  (`backend/auth/Anmeldebremse.php`, Schwelle als Konstante)
+- Eine Ablehnung für alle Fälle, in denen ein Passwort im Spiel war:
+  „Ungültige Anmeldedaten.“ mit 401 (FALLSTRICKE 8)
+- Der Router liefert keine Konfigurations-, Daten- oder Editor-Dateien aus
+  (Sperrliste wie die Apache-Vorlage der Reihe)
 
 ---
 
@@ -147,13 +153,8 @@ audit_log                     – Protokoll aller schreibenden Operationen
 ## Schnellstart (lokal)
 
 ```bash
-DB=backend/datenbank.sqlite
-mysql hornse_projektstunden < sql/01_schema.sql
-mysql hornse_projektstunden < sql/02_seed.sql
-mysql hornse_projektstunden < sql/03_migration_schuljahr_schueler_werkstatt.sql
-mysql hornse_projektstunden < sql/04_migration_werkstatt_detail.sql
-mysql hornse_projektstunden < sql/05_migration_rueckmeldungen.sql
-mysql hornse_projektstunden < sql/09_seed_sport_konkrete_erwartungen.sql
+# Migrationen in der Reihenfolge ihrer Nummern (Liste: docs/INSTALL.md)
+for f in sql/[0-9][0-9]_*.sql; do mysql hornse_projektstunden < "$f" || break; done
 php -S localhost:8082 backend/router.php
 ```
 
@@ -163,9 +164,10 @@ php -S localhost:8082 backend/router.php
 ./deploy.sh "Beschreibung der Änderung"
 ```
 
-Das Script aktualisiert automatisch den Cache-Busting-Timestamp in `frontend/index.html`
-und pusht auf GitHub und Uberspace. Details zur Uberspace-Konfiguration
-in `deploy/uberspace.md`.
+Das Script hält an, solange etwas unverfolgt oder nicht committet ist, lässt
+`./tests-projektstunden.sh` laufen (rot: kein Deploy), setzt den
+Cache-Stempel in `frontend/index.html` und pusht auf GitHub und Uberspace.
+Details zur Uberspace-Konfiguration in `deploy/uberspace.md`.
 
 ---
 

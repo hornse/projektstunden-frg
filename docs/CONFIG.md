@@ -53,13 +53,17 @@ $WEBUNTIS_CONFIG = [
     'school'   => 'frg-duesseldorf',              // ← Schulkürzel aus der WebUntis-URL
     // z. B. https://neilo.webuntis.com/WebUntis/?school=frg-duesseldorf
     'client'               => 'ProjektstundenNRW',
-    'allowed_person_types' => [2],    // 2 = Lehrkraft; [2, 5] wenn auch Schüler
+    'allowed_person_types' => [2, 16, 5],  // 2 Lehrkraft, 16 WebUntis-Admin, 5 Schüler – wie config.example.php
     'connect_timeout'      => 5,
     'timeout'              => 10,
-    'max_failed_logins'    => 5,
     'lockout_minutes'      => 15,   // Zählfenster der Bremse, keine Sperre
 ];
 ```
+
+**Die Schwelle der Anmeldebremse steht nicht hier**, sondern im Code:
+`Anmeldebremse::SCHWELLE = 8` (M56 der Reihe, seit S73). Ein Eintrag
+`max_failed_logins` in einer älteren `config.php` wird nicht mehr gelesen und
+kann entfallen.
 
 WebUntis-URL deiner Schule findest du indem du dich im Browser bei WebUntis
 anmeldest und die URL anschaust:
@@ -154,10 +158,9 @@ $WEBUNTIS_CONFIG = [
     'base_url'             => 'https://neilo.webuntis.com',
     'school'               => 'frg-duesseldorf',
     'client'               => 'ProjektstundenNRW',
-    'allowed_person_types' => [2],
+    'allowed_person_types' => [2, 16, 5],
     'connect_timeout'      => 5,
     'timeout'              => 10,
-    'max_failed_logins'    => 5,
     'lockout_minutes'      => 15,   // Zählfenster der Bremse, keine Sperre
 ];
 ```
