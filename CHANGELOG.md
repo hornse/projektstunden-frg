@@ -7,6 +7,36 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 
 ## [Unreleased]
 
+### Geändert – Anmeldung, Doku und Hilfe (S73, Auftrag koordination 03.11.2026)
+- **Ein 401 beim Anmelden zeigt „Ungültige Anmeldedaten.“** Vorher gab
+  `api()` `null` zurück, und im Feld stand „Cannot read properties of null
+  (reading 'typ')“.
+- **Abmelden lädt neu**, nachdem `auth/logout` geantwortet hat: Passwortfeld,
+  Daten der Sitzung und ausgeblendete Ansichten sind danach weg. Scheitert
+  das Abmelden, wird nicht neu geladen (sonst wäre die Sitzung wieder da);
+  Passwortfeld und Zustand werden geleert, die Meldung steht am Knopf.
+- **Die Anmeldung ist ein Formular** – die Eingabetaste meldet an.
+- **WebUntis nicht erreichbar:** 503 „WebUntis ist gerade nicht erreichbar.
+  Bitte in ein paar Minuten erneut versuchen.“ (Wortlaut der Reihe) statt
+  „Ungültige Anmeldedaten.“. Zählt weiterhin nicht.
+- **Acht Fehlversuche, als Konstante** `Anmeldebremse::SCHWELLE` (M56 der
+  Reihe). `max_failed_logins` wird nicht mehr gelesen, ist aus der Vorlage
+  entfernt; in einer älteren `config.php` kann der Eintrag entfallen.
+- **Hilfe und Handbuch:** Anmeldung auf beiden Wegen (WebUntis und eigenes
+  Konto), vier neue Fragen (Fehlversuche, WebUntis gestört, Eltern, geteilte
+  Geräte). Zitierte Sätze und die Schwelle werden gegen den Code geprüft.
+- **Betriebsdoku:** Router-Pfad, MariaDB, Migrationsliste 01–20, Sicherung
+  und Datenschutz in `INSTALL.md`; `deploy/uberspace.md` ohne `git add -A`.
+  Gestrichen: `docs/ANLEITUNG.md`, `docs/DOMAIN_HORNSE_DE.md`,
+  `docs/PROJEKTSTAND.md`.
+- **Klarnamen** im aktuellen Stand durch erfundene Werte ersetzt.
+- **Prüfungen 184 → 210** (+26; angekündigt nach Schritt 2: 207, dann 208
+  mit der zweiten A1-Prüfung, dann 210 mit je einer Voraussetzungsprüfung
+  für Hilfe und Handbuch – genannt, bevor sie liefen). Neu:
+  `tests/anmeldung_test.js` (node, 13), `tests/handbuch_test.php` (7),
+  Formular (2), Bremse/Sätze (4). Mutationsserien:
+  `tests/mutationen_anmeldebremse.sh` 33, `tests/mutationen_anmeldung.sh` 33.
+
 ### Geändert
 - **Anmeldebremse: Wartezeit statt Sperre** (E66, Auftrag aus koordination
   vom 16.10.2026, Bauart der Reihe). Bisher sperrte `WebUntisAuth` nach 5

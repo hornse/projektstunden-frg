@@ -183,6 +183,44 @@ async function fall(antworten, vorbereiten, aufruf, ...arg) {
   pruefe('503: „' + saetze.ausfall + '“ in l-msg',
     (await anmelden(503, saetze.ausfall)) === saetze.ausfall);
 
+  // ---- C: die Hilfe zitiert, was die Anwendung sagt ------------------------
+  // Ausgeführt wird, was die Hilfe-Seite anzeigt (hilfeSchnellstart, hilfeFaq,
+  // hilfeHandbuch geben HTML zurück); geprüft wird der sichtbare Text, nicht
+  // der Quelltext (REIHENREGELN 2: Darstellung am Dargestellten).
+  console.log('\nHilfe in der App (C)');
+  const hilfeNamen = ['hilfeSchnellstart', 'hilfeFaq', 'hilfeHandbuch'];
+  const hilfeTeile = hilfeNamen.map(schneide);
+  let html3 = null;
+  if (hilfeTeile.every(Boolean)) {
+    const hctx = vm.createContext({});
+    vm.runInContext(hilfeTeile.join('\n') + '\nglobalThis.__h = [hilfeSchnellstart(), hilfeFaq(), hilfeHandbuch()];', hctx);
+    html3 = hctx.__h;
+  }
+  const sichtbar = h => h.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/\s+/g, ' ');
+  const text = html3 ? sichtbar(html3.join(' ')) : '';
+  const prefix429 = saetze.warten.replace(/\d+ Sekunden?\.$/, '');
+  pruefe('Voraussetzung: hilfeSchnellstart, hilfeFaq, hilfeHandbuch ausgeführt, Text gelesen; Wartesatz mit Zahl am Ende',
+    html3 !== null && text.length > 1000 && prefix429 !== saetze.warten);
+  pruefe('Hilfe zitiert „' + saetze.abgelehnt + '“ wie der Server', text.includes('„' + saetze.abgelehnt + '“'));
+  pruefe('Hilfe zitiert „' + saetze.ausfall + '“ wie der Server', text.includes('„' + saetze.ausfall + '“'));
+  pruefe('Hilfe zitiert den Wartesatz „' + prefix429 + '… Sekunden.“ wie der Server',
+    text.includes('„' + prefix429 + '… Sekunden.“'));
+  const ZAHLWORT = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn', 'elf', 'zwölf'];
+  const vorFehl = [...text.matchAll(/(\S+) Fehlversuch/gi)].map(m => m[1].toLowerCase());
+  const zahlen = vorFehl.filter(w => ZAHLWORT.includes(w) || /^\d+$/.test(w));
+  pruefe('Hilfe nennt die Schwelle als „' + ZAHLWORT[saetze.schwelle] + ' Fehlversuch…“ wie Anmeldebremse::SCHWELLE – und keine andere Zahl davor',
+    zahlen.length >= 1 && zahlen.every(w => w === ZAHLWORT[saetze.schwelle] || w === String(saetze.schwelle)));
+  // FALLSTRICKE 8: Kein Satz, der erklärt, dass das Passwort stimmte und
+  // trotzdem abgelehnt wurde (Befund koordination 2026-11-03-doku-hilfe §8).
+  const VERBOTEN = /Passwort (stimmt|stimmte|war richtig|ist richtig|korrekt)|Kontotyp|freigeschaltet|Schild-ID|Datensatz|nicht zugelassen/i;
+  pruefe('Hilfe: kein Satz, den es nach FALLSTRICKE 8 nicht geben darf (Passwort stimmte, Kontotyp, Datensatz …)',
+    text.length > 0 && !VERBOTEN.test(text));
+  const karte = (text.match(/Wie melde ich mich an\?(.*?)Erste Werkstatt anlegen/) || [null, null])[1];
+  pruefe('Hilfe, Anmeldekarte: beide Wege (WebUntis und E-Mail-Adresse) – nicht mehr nur „E-Mail-Adresse und Passwort eingeben.“',
+    karte !== null && karte.includes('WebUntis') && karte.includes('E-Mail-Adresse')
+    && !karte.includes('E-Mail-Adresse und Passwort eingeben.'));
+
   console.log('\n' + (fehler === 0 ? 'ALLE TESTS GRÜN' : fehler + ' ROT'));
   process.exit(fehler === 0 ? 0 : 1);
 })();

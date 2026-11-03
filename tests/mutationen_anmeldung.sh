@@ -112,6 +112,36 @@ mut M4 $H 's/<button type="submit" class="btn btn-p btn-full">Anmelden/<button t
 mut M5 $H 's/    <form id="login-form" onsubmit="event\.preventDefault\(\); doLogin\(\);">\n(.*?)    <\/form>\n/$1/s' \
   "Anmeldung: kein <form>" suite
 
+# C – Hilfe und Handbuch zitieren die Anwendung. Je Seite: der Text ändert
+# sich, der Code ändert sich, die alte Fassung kommt zurück, ein verbotener
+# Satz kommt dazu.
+B=backend/auth/Anmeldebremse.php
+D=docs/BENUTZERHANDBUCH.md
+mut C1 $J 's/zeigt die App „Ungültige Anmeldedaten\.“ Nach acht/zeigt die App „Ungültige Anmeldedaten!“ Nach acht/' \
+  "Hilfe zitiert „Ungültige Anmeldedaten.“" node
+mut C2 $B 's/Bitte in ein paar Minuten erneut versuchen\.\x27;/Bitte gleich erneut versuchen.\x27;/' \
+  "Hilfe zitiert „WebUntis ist gerade nicht erreichbar." node
+mut C3 $B 's/Bitte in ein paar Minuten erneut versuchen\.\x27;/Bitte gleich erneut versuchen.\x27;/' \
+  "Handbuch: Handbuch zitiert „WebUntis ist gerade nicht erreichbar." suite
+mut C4 $B 's/public const SCHWELLE = 8;/public const SCHWELLE = 9;/' "Hilfe nennt die Schwelle" node
+mut C5 $J 's/Nach acht Fehlversuchen heißt es/Nach fünf Fehlversuchen heißt es/' "Hilfe nennt die Schwelle" node
+mut C6 $J 's/Eltern haben keinen Zugang, auch nicht mit einem WebUntis-Konto für Eltern\.\x27/Eltern haben keinen Zugang: Das Passwort stimmt dann, aber der Kontotyp ist nicht freigeschaltet.\x27/' \
+  "Hilfe: kein Satz, den es nach FALLSTRICKE 8" node
+mut C7 $J 's/text: \x27Lehrkräfte: WebUntis-Kürzel und WebUntis-Passwort\..*?\x27 \},/text: \x27E-Mail-Adresse und Passwort eingeben. Bei Problemen an den Administrator wenden – dieser kann Konten anlegen und Passwörter zurücksetzen.\x27 },/s' \
+  "Hilfe, Anmeldekarte" node
+mut C8 $J 's/„Zu viele Fehlversuche\. Erneut versuchen in noch … Sekunden\.“ Danach geht es wieder – gesperrt wird nichts\. Eine gelungene Anmeldung setzt die Zählung zurück\.\x27/„Zu viele Fehlversuche.“ Danach geht es wieder – gesperrt wird nichts. Eine gelungene Anmeldung setzt die Zählung zurück.\x27/' \
+  "Hilfe zitiert den Wartesatz" node
+mut C9 $D 's/2\. Anmelden – Lehrkräfte mit WebUntis-Kürzel.*?→ \*\*Anmelden\*\*/2. E-Mail und Passwort eingeben → **Anmelden**/s' \
+  "Handbuch: Handbuch, Schnelleinstieg" suite
+mut C10 $D 's/„Zu viele\nFehlversuche\. Erneut versuchen in noch … Sekunden\.“/„Zu viele\nFehlversuche.“/' \
+  "Handbuch: Handbuch zitiert den Wartesatz" suite
+mut C11 $D 's/Eltern haben keinen Zugang, auch\nnicht mit einem WebUntis-Konto für Eltern\./Eltern haben keinen Zugang: Das Passwort stimmt,\naber der Kontotyp ist nicht freigeschaltet./' \
+  "Handbuch: Handbuch: kein Satz, den es nach FALLSTRICKE 8" suite
+mut C12 $D 's/Anmeldedaten\.“ Nach acht Fehlversuchen/Anmeldedaten.“ Nach fünf Fehlversuchen/' \
+  "Handbuch: Handbuch nennt die Schwelle" suite
+mut C13 $D 's/zeigt die App „Ungültige\nAnmeldedaten\.“/zeigt die App „Ungültige\nZugangsdaten.“/' \
+  "Handbuch: Handbuch zitiert „Ungültige Anmeldedaten.“" suite
+
 # E1 – Einbindung: node-Prüfung rot → Suite rot, an der erwarteten Zeile.
 GELAUFEN=$((GELAUFEN + 1))
 if einbauen E1 "$R/$J" 's/    if \(path === \x27auth\/login\x27\) \{/    if (false) {/'; then
@@ -141,9 +171,11 @@ harmlos() {   # NAME DATEI AUSDRUCK WOMIT
   ruecknahme "$1" "$R/$2"
 }
 harmlos H1 $J 's/ \* Abmelden \(S73\)\. Gelingt es,/ * Abmelden (S73, harmlos geändert). Gelingt es,/' node
+harmlos H3 $J 's/(  const fragen = \[\n    \{ f: \x27Ich habe mich vertippt)/  \/\/ Nie erklären, dass das Passwort stimmte oder der Kontotyp nicht freigeschaltet ist.\n$1/' node
+harmlos H4 $D 's/(\*\*Können Eltern sich anmelden\?\*\*)/<!-- Nie erklären: Passwort stimmt, Kontotyp nicht freigeschaltet. -->\n$1/' suite
 harmlos H2 $H 's/(    <div id="l-msg")/    <!-- früher: <button onclick="doLogin()"> ohne <form> -->\n$1/' suite
 
 echo ""
-[ "$GELAUFEN" -ge 18 ] || { echo "FEHLER: nur $GELAUFEN Mutationen gelaufen, erwartet 18"; exit 1; }
+[ "$GELAUFEN" -ge 33 ] || { echo "FEHLER: nur $GELAUFEN Mutationen gelaufen, erwartet 33"; exit 1; }
 if [ "$FEHLT" -eq 0 ]; then echo "ALLE $GELAUFEN MUTATIONEN BELEGT"; exit 0; fi
 echo "$FEHLT VON $GELAUFEN MUTATION(EN) OHNE BELEG"; exit 1

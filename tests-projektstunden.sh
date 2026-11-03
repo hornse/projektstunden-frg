@@ -1667,6 +1667,25 @@ else
 fi
 
 echo ""
+echo "Benutzerhandbuch zitiert die Anwendung (tests/handbuch_test.php)"
+# S73: Sätze und Schwelle im Handbuch gegen backend/auth/Anmeldebremse.php.
+# Gegenstück zur Hilfe in der App (oben, node). Fehlt PHP: rot.
+if ! command -v php > /dev/null 2>&1; then
+    rot "Handbuch: php fehlt – die Suite lief nicht"
+else
+    HB_AUS=$(php tests/handbuch_test.php 2>/dev/null); HB_EXIT=$?
+    while IFS= read -r z; do
+        case "$z" in
+            "  ✓ "*) gruen "Handbuch: ${z#  ✓ }" ;;
+            "  ✗ "*) rot   "Handbuch: ${z#  ✗ }" ;;
+        esac
+    done <<< "$HB_AUS"
+    if [ "$HB_EXIT" -ne 0 ] && ! printf '%s\n' "$HB_AUS" | grep -q '^  ✗ '; then
+        rot "Handbuch: Suite endete mit $HB_EXIT ohne rote Zeile"
+    fi
+fi
+
+echo ""
 echo "Anmeldemaske ist ein Formular (Quelltext, geparst – RÜCKFALL; die Eingabetaste ist Abnahmepunkt im Browser)"
 # REIHENREGELN 7: Eingabemasken sind <form> mit submit. Ob die Eingabetaste
 # anmeldet, sieht nur der Browser; hier wird die Struktur geprüft, aus der es

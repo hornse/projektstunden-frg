@@ -5,7 +5,9 @@
 ## Schnelleinstieg
 
 1. URL aufrufen: `https://projektstunden.hornse.de`
-2. E-Mail und Passwort eingeben → **Anmelden**
+2. Anmelden – Lehrkräfte mit WebUntis-Kürzel und WebUntis-Passwort, Schüler mit
+   WebUntis-Benutzername und WebUntis-Passwort; wer ein eigenes Konto in der App
+   hat, mit E-Mail-Adresse und Passwort → **Anmelden**
 3. Dashboard zeigt Stundenkontingent aller Schüler
 4. Erste Werkstatt anlegen: Navigation → **Werkstätten** → **+ Neue Werkstatt**
 
@@ -259,6 +261,32 @@ konkreten Erwartungen. Nur lesend – Änderungen über die Datenbank.
 ---
 
 ## Häufige Fragen (FAQ)
+
+<!-- Die Sätze in „…“ sind die der Anwendung (backend/auth/Anmeldebremse.php);
+     tests/handbuch_test.php hält sie gegen den Code. -->
+
+**Ich habe mich vertippt und muss jetzt warten – warum?**
+Bei falschem Benutzernamen oder Passwort zeigt die App „Ungültige
+Anmeldedaten.“ Nach acht Fehlversuchen heißt es 60 Sekunden warten: „Zu viele
+Fehlversuche. Erneut versuchen in noch … Sekunden.“ Danach geht es wieder –
+gesperrt wird nichts. Eine gelungene Anmeldung setzt die Zählung zurück.
+
+**Die App meldet, dass WebUntis nicht erreichbar ist – was tun?**
+Die Anmeldung mit Kürzel oder WebUntis-Benutzername läuft über WebUntis. Ist
+WebUntis gestört, erscheint „WebUntis ist gerade nicht erreichbar. Bitte in ein
+paar Minuten erneut versuchen.“ Dann etwas später noch einmal versuchen. Wer ein
+eigenes Konto in der App hat, kann sich in der Zwischenzeit mit
+E-Mail-Adresse und Passwort anmelden.
+
+**Können Eltern sich anmelden?**
+Nein. Die App ist für Lehrkräfte und Schüler. Eltern haben keinen Zugang, auch
+nicht mit einem WebUntis-Konto für Eltern.
+
+**Worauf ist zu achten, wenn mehrere ein Gerät benutzen?**
+Nach der Arbeit immer „Abmelden“ wählen. Die Seite lädt danach neu, das
+Passwortfeld ist leer. Klappt das Abmelden nicht, meldet die App das am Knopf –
+dann erneut versuchen oder den Browser schließen. Auf gemeinsam genutzten
+Geräten das Passwort nicht im Browser speichern lassen.
 
 **Warum sehe ich keine Stunden im Dashboard?**
 Die Werkstatt muss auf `abgeschlossen` gesetzt sein oder der Schüler

@@ -2641,7 +2641,7 @@ function hilfeSchnellstart() {
     { icon: '📋', titel: 'Was ist Projektstunden NRW?',
       text: 'Eine Web-App zur Verwaltung von Projektstunden an NRW-Schulen. Werkstätten anlegen, Schüler zuordnen, Stunden auf Fächer anrechnen, Kompetenzen aus KLPs und MKR dokumentieren und Rückmeldungen schreiben.' },
     { icon: '🔑', titel: 'Wie melde ich mich an?',
-      text: 'E-Mail-Adresse und Passwort eingeben. Bei Problemen an den Administrator wenden – dieser kann Konten anlegen und Passwörter zurücksetzen.' },
+      text: 'Lehrkräfte: WebUntis-Kürzel und WebUntis-Passwort. Schüler: WebUntis-Benutzername und WebUntis-Passwort. Wer ein eigenes Konto in der App hat: E-Mail-Adresse und Passwort. Bei Problemen an die Administration wenden – dort werden Konten angelegt und Passwörter eigener Konten zurückgesetzt.' },
     { icon: '🏗️', titel: 'Erste Werkstatt anlegen',
       text: 'Navigation → <strong>Werkstätten</strong> → <strong>+ Neue Werkstatt</strong>. Pflichtfelder: Name, mind. eine Klasse, Startdatum, mind. ein Lernbegleiter. Dann Stunden je Fach eintragen und Kompetenzen wählen.' },
     { icon: '👥', titel: 'Schüler zuweisen',
@@ -2683,7 +2683,18 @@ function hilfeSchnellstart() {
 }
 
 function hilfeFaq() {
+  // Die Sätze in „…“ sind die der Anwendung (backend/auth/Anmeldebremse.php);
+  // tests/anmeldung_test.js hält sie gegen den Code. Kein Satz, der erklärt,
+  // dass ein Passwort stimmte und trotzdem abgelehnt wurde (FALLSTRICKE 8).
   const fragen = [
+    { f: 'Ich habe mich vertippt und muss jetzt warten – warum?',
+      a: 'Bei falschem Benutzernamen oder Passwort zeigt die App „Ungültige Anmeldedaten.“ Nach acht Fehlversuchen heißt es 60 Sekunden warten: „Zu viele Fehlversuche. Erneut versuchen in noch … Sekunden.“ Danach geht es wieder – gesperrt wird nichts. Eine gelungene Anmeldung setzt die Zählung zurück.' },
+    { f: 'Die App meldet, dass WebUntis nicht erreichbar ist – was tun?',
+      a: 'Die Anmeldung mit Kürzel oder WebUntis-Benutzername läuft über WebUntis. Ist WebUntis gestört, erscheint „WebUntis ist gerade nicht erreichbar. Bitte in ein paar Minuten erneut versuchen.“ Dann etwas später noch einmal versuchen. Wer ein eigenes Konto in der App hat, kann sich in der Zwischenzeit mit E-Mail-Adresse und Passwort anmelden.' },
+    { f: 'Können Eltern sich anmelden?',
+      a: 'Nein. Die App ist für Lehrkräfte und Schüler. Eltern haben keinen Zugang, auch nicht mit einem WebUntis-Konto für Eltern.' },
+    { f: 'Worauf ist zu achten, wenn mehrere ein Gerät benutzen?',
+      a: 'Nach der Arbeit immer „Abmelden“ wählen. Die Seite lädt danach neu, das Passwortfeld ist leer. Klappt das Abmelden nicht, meldet die App das am Knopf – dann erneut versuchen oder den Browser schließen. Auf gemeinsam genutzten Geräten das Passwort nicht im Browser speichern lassen.' },
     { f: 'Warum sehe ich keine Stunden im Dashboard?',
       a: 'Die Werkstatt muss den Status „abgeschlossen" haben oder der Schüler muss individuell als „absolviert" markiert sein (Details-Modal → Teilnehmer).' },
     { f: 'Warum erscheinen KLP-Tabs nicht beim Anlegen?',
