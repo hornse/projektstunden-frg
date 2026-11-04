@@ -7,6 +7,30 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 
 ## [Unreleased]
 
+### Sicherheit – Filter nach Kontotyp (Z1, Z2; Auftrag koordination 04.11.2026)
+- **Eine Schülersitzung erreicht nur noch, was die Schüleransicht braucht:**
+  `auth` (alle Methoden), `GET schueler-portal`, `PUT selbsteinschaetzung`,
+  `GET einstellungen/logo`. Alles andere: 403 „Für Schülerkonten nicht
+  freigegeben.“ Vorher erreichte sie jede Route – in einer Probe belegt:
+  Schülerliste aller Klassen, Konten der Lehrkräfte, Dashboard, Export,
+  Anlegen und Inaktivieren von Schülern (Z1). Erlaubnisliste, nicht
+  Sperrliste; gefiltert wird jede Sitzung, deren `typ` nicht genau
+  `benutzer` ist. Im Verteiler (`backend/api/kontotyp.php`), nicht in
+  `require_auth()`: die steht in der unversionierten `config.php`.
+- **Wächter `require_lehrkraft()` in jedem Lehrkraft-Handler** (403 „Nur für
+  Konten von Lehrkräften.“). Ein Schüler mit derselben Nummer wie eine
+  Lernbegleitung bekam deren Werkstätten und nicht freigegebene
+  Rückmeldungen (Z2, belegt). Zweite Stufe hinter dem Filter.
+- **Prüfungen 215 → 286** (+47 `tests/kontotyp_test.php` gegen `php -S`,
+  +23 `tests/kontotyp_db_test.sh` mit eigener MariaDB, +1 Browser).
+  Rot vor der Behebung: 250/286; nach dem Filter: 281/286. Mutationsserie
+  `tests/mutationen_kontotyp.sh`: 17 belegt.
+- **Fehlt `mariadbd`, endet die Suite mit Exit 3** („übersprungen“), und
+  `deploy.sh` hält an. Lokal ist dafür MariaDB nötig (Homebrew `mariadb`);
+  `MARIADBD=/pfad` setzt den Server fest.
+- Im Browser beobachtet, nicht behoben: Nach einer Schüleranmeldung wird
+  `#s-schueler-portal` nicht sichtbar (S88 bestätigt).
+
 ### Geändert – Hilfe vor der Anmeldung, Prüfungen im Browser (S73-Nachgang)
 - **„Hilfe zur Anmeldung“ in der Anmeldemaske.** Seit 15.08.2026
   (`4b487ce`) blendete `navSichtbar(false)` vor der Anmeldung die Navigation
