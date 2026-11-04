@@ -413,7 +413,7 @@ function handle_auth(string $method, string $sub, array $body): void {
 //  SCHÜLER
 // ============================================================
 function handle_schueler(string $method, ?int $id, array $body): void {
-    $user = require_auth();
+    $user = require_lehrkraft();
     $db   = get_db();
 
     if ($method === 'GET') {
@@ -494,7 +494,7 @@ function handle_schueler(string $method, ?int $id, array $body): void {
 //  KLASSEN
 // ============================================================
 function handle_klassen(string $method, ?int $id, array $body): void {
-    $user = require_auth();
+    $user = require_lehrkraft();
     $db   = get_db();
 
     if ($method === 'GET') {
@@ -553,7 +553,7 @@ function handle_klassen(string $method, ?int $id, array $body): void {
 //  FÄCHER (nur lesen – werden durch Seed angelegt)
 // ============================================================
 function handle_faecher(string $method): void {
-    $user = require_auth();
+    $user = require_lehrkraft();
     if ($method !== 'GET') json_error('Methode nicht erlaubt.', 405);
     $db   = get_db();
     $stmt = $db->prepare(
@@ -568,7 +568,7 @@ function handle_faecher(string $method): void {
 //  LEHRER (für Dropdown im Projekt-Formular)
 // ============================================================
 function handle_lehrer(string $method): void {
-    $user = require_auth();
+    $user = require_lehrkraft();
     if ($method !== 'GET') json_error('Methode nicht erlaubt.', 405);
     $db   = get_db();
     $stmt = $db->prepare(
@@ -583,7 +583,7 @@ function handle_lehrer(string $method): void {
 //  KOMPETENZRAHMEN
 // ============================================================
 function handle_kompetenzrahmen(string $method): void {
-    $user = require_auth();
+    $user = require_lehrkraft();
     if ($method !== 'GET') json_error('Methode nicht erlaubt.', 405);
     $db   = get_db();
     $stmt = $db->prepare(
@@ -601,7 +601,7 @@ function handle_kompetenzrahmen(string $method): void {
 //  KOMPETENZEN (mit Filter nach Fach und/oder Rahmen)
 // ============================================================
 function handle_kompetenzen(string $method): void {
-    $user     = require_auth();
+    $user     = require_lehrkraft();
     if ($method !== 'GET') json_error('Methode nicht erlaubt.', 405);
     $db       = get_db();
     $fach_id  = (int)($_GET['fach_id']  ?? 0);
@@ -654,7 +654,7 @@ function handle_kompetenzen(string $method): void {
 //  DELETE /api/projekte/{id}         – Löschen (nur Admin)
 // ============================================================
 function handle_projekte(string $method, ?int $id, array $body): void {
-    $user     = require_auth();
+    $user     = require_lehrkraft();
     $db       = get_db();
     $istAdmin = $user['rolle'] === 'admin';
 
@@ -1250,7 +1250,7 @@ function handle_projekte(string $method, ?int $id, array $body): void {
 //  DASHBOARD – Kontingentübersicht je Schüler
 // ============================================================
 function handle_dashboard(string $method): void {
-    $user      = require_auth();
+    $user      = require_lehrkraft();
     if ($method !== 'GET') json_error('Methode nicht erlaubt.', 405);
     $db        = get_db();
     $klasse_id = (int)($_GET['klasse_id']  ?? 0);
@@ -1349,7 +1349,7 @@ function handle_dashboard(string $method): void {
 //  EXPORT CSV
 // ============================================================
 function handle_export(string $method, string $sub): void {
-    $user = require_auth();
+    $user = require_lehrkraft();
     if ($method !== 'GET') json_error('Methode nicht erlaubt.', 405);
     $db        = get_db();
     $klasse_id = (int)($_GET['klasse_id'] ?? 0);
@@ -1453,7 +1453,7 @@ function handle_export(string $method, string $sub): void {
 //  Eine Lehrkraft darf nur ihr eigenes Passwort ändern.
 // ============================================================
 function handle_benutzer(string $method, ?int $id, string $sub, array $body): void {
-    $user = require_auth();
+    $user = require_lehrkraft();
     $db   = get_db();
 
     // ----- GET /benutzer  –  Liste aller Benutzer (nur Admin) -----
@@ -1656,7 +1656,7 @@ function handle_benutzer(string $method, ?int $id, string $sub, array $body): vo
 //  POST   /api/schuljahre/{id}/aktivieren – Schuljahr aktivieren (Admin)
 // ============================================================
 function handle_schuljahre(string $method, ?int $id, string $sub, array $body): void {
-    $user = require_auth();
+    $user = require_lehrkraft();
     $db   = get_db();
 
     // GET /schuljahre – alle Schuljahre mit Statistik
@@ -1833,7 +1833,7 @@ function handle_schuljahre(string $method, ?int $id, string $sub, array $body): 
 //  POST /api/import/ausfuehren – Import bestätigen und ausführen
 // ============================================================
 function handle_import(string $method, string $sub, array $body): void {
-    $user = require_auth();
+    $user = require_lehrkraft();
     require_admin();
     $db = get_db();
 
@@ -2234,7 +2234,7 @@ function fuehre_import_aus(
 //  GET  /api/schueler?klassen=1,2,3    – wird in handle_schueler ergänzt
 // ============================================================
 function handle_werkstatt(string $method, ?int $id, string $sub, array $body): void {
-    $user     = require_auth();
+    $user     = require_lehrkraft();
     $db       = get_db();
     $istAdmin = $user['rolle'] === 'admin';
 
@@ -2372,7 +2372,7 @@ function handle_werkstatt(string $method, ?int $id, string $sub, array $body): v
 //  PUT  /api/bewertung/{projekt_id}       – Bewertung setzen/aktualisieren
 // ============================================================
 function handle_bewertung(string $method, ?int $id, array $body): void {
-    $user     = require_auth();
+    $user     = require_lehrkraft();
     $db       = get_db();
     $istAdmin = $user['rolle'] === 'admin';
 
@@ -2437,7 +2437,7 @@ function handle_bewertung(string $method, ?int $id, array $body): void {
 //  PUT  /api/rueckmeldung/{projekt_id}    – Sichtbarkeit umschalten
 // ============================================================
 function handle_rueckmeldung(string $method, ?int $id, array $body): void {
-    $user     = require_auth();
+    $user     = require_lehrkraft();
     $db       = get_db();
     $istAdmin = $user['rolle'] === 'admin';
 
@@ -2719,7 +2719,8 @@ function handle_einstellungen(string $method, string $sub, array $body): void {
         exit;
     }
 
-    // Ab hier: nur Admin
+    // Ab hier: nur Admin – und nur eine Lehrkraftsitzung (Wächter, Z2)
+    require_lehrkraft();
     $user = require_admin();
     $kuerzel = $_SESSION['wu_kuerzel'] ?? ($_SESSION['benutzer_id'] ? 'lokal' : 'unbekannt');
 

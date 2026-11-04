@@ -68,3 +68,34 @@ function kontotyp_gefiltert(): bool
     if (!isset($_SESSION['benutzer_id'])) return false;
     return ($_SESSION['typ'] ?? null) !== 'benutzer';
 }
+
+// ============================================================
+// Wächter für Lehrkraft-Handler (Z2, Stufe B)
+// ============================================================
+// Anlass: Befund Z2, belegt am 04.11.2026: Die Werkstatt-Prüfungen
+// vergleichen projekt_lehrer.benutzer_id mit $user['id'] ohne Typ. In einer
+// Schülersitzung ist das eine Schülernummer – ein Schüler mit derselben
+// Nummer wie eine Lernbegleitung bekam deren Werkstätten und die nicht
+// freigegebenen Rückmeldungen. Mit dem Wächter am Kopf jedes Handlers ist
+// $user['id'] dort nachweislich eine Benutzernummer – an allen sechs
+// Vergleichsstellen, in jedem INSERT INTO projekt_lehrer, in jedem audit().
+//
+// Zweite Stufe hinter dem Filter: Für die gesperrten Routen schließt schon
+// der Filter. Jede Stufe wird einzeln belegt (tests/kontotyp_db_test.sh,
+// D7/D8), deshalb ein dritter, eigener Satz.
+const KONTOTYP_SATZ_WAECHTER = 'Nur für Konten von Lehrkräften.';
+
+/**
+ * Wie require_auth(), aber nur für eine Sitzung mit typ GENAU 'benutzer'.
+ * Ausgenommen sind nur die Handler, die selbst nach dem Kontotyp verzweigen
+ * oder ihn verlangen: handle_auth, handle_schueler_portal,
+ * handle_selbsteinschaetzung (tests/kontotyp_test.php K9).
+ */
+function require_lehrkraft(): array
+{
+    $user = require_auth();
+    if (($_SESSION['typ'] ?? null) !== 'benutzer') {
+        json_error(KONTOTYP_SATZ_WAECHTER, 403);
+    }
+    return $user;
+}
