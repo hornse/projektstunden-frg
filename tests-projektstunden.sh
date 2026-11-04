@@ -70,6 +70,9 @@ fi
 
 FEHLER=0
 GRUEN=0
+# Schritte, die übersprungen werden können, aber vor einer Auslieferung
+# gelaufen sein müssen (Kontotyp mit Datenbank). >0 → Exit 3.
+PFLICHT_UEBERSPRUNGEN=0
 gruen() { echo "  ✓ $1"; GRUEN=$((GRUEN + 1)); }
 rot()   { echo "  ✗ $1"; FEHLER=$((FEHLER + 1)); }
 
@@ -1647,6 +1650,52 @@ else
 fi
 
 echo ""
+echo "Filter nach Kontotyp (tests/kontotyp_test.php, ausgeführt gegen php -S)"
+# Z1/Z2 (koordination, AUFTRAG-projektstunden-kontotyp): Eine Schülersitzung
+# erreicht nur die Routen der Erlaubnisliste, je Route einzeln aus dem
+# Verteiler ermittelt; eine Lehrkraftsitzung erreicht alles weiter. Ohne
+# Datenbank – der Filter greift vor ihr. Gebaut wie die Sperrliste: jede
+# Zeile zählt einzeln, fehlendes PHP und ein Abbruch ohne rote Zeile sind rot.
+if ! command -v php > /dev/null 2>&1; then
+    rot "Kontotyp: php fehlt – die Suite lief nicht"
+else
+    KT_AUS=$(php tests/kontotyp_test.php 2>/dev/null); KT_EXIT=$?
+    while IFS= read -r z; do
+        case "$z" in
+            "  ✓ "*) gruen "Kontotyp: ${z#  ✓ }" ;;
+            "  ✗ "*) rot   "Kontotyp: ${z#  ✗ }" ;;
+            "      "*) echo "$z" ;;
+        esac
+    done <<< "$KT_AUS"
+    if [ "$KT_EXIT" -ne 0 ] && ! printf '%s\n' "$KT_AUS" | grep -q '^  ✗ '; then
+        rot "Kontotyp: Suite endete mit $KT_EXIT ohne rote Zeile"
+    fi
+fi
+
+echo ""
+echo "Filter nach Kontotyp mit Datenbank (tests/kontotyp_db_test.sh, eigene MariaDB)"
+# Z2 (gleiche Nummer bei Schüler und Lernbegleitung), die Lehrkraftseite mit
+# Inhalt und jede Stufe einzeln. Das Skript startet seine MariaDB selbst.
+# Fehlt mariadbd: Exit 3, sichtbar ÜBERSPRUNGEN – und die ganze Suite endet
+# dann mit 3 statt 0, damit deploy.sh anhält (Entscheidung 04.11.2026).
+KTDB_AUS=$(./tests/kontotyp_db_test.sh 2>/dev/null); KTDB_EXIT=$?
+if [ "$KTDB_EXIT" -eq 3 ]; then
+    printf '%s\n' "$KTDB_AUS" | grep '^  –  ' || echo "  –  ÜBERSPRUNGEN: Kontotyp mit Datenbank"
+    PFLICHT_UEBERSPRUNGEN=$((PFLICHT_UEBERSPRUNGEN + 1))
+else
+    while IFS= read -r z; do
+        case "$z" in
+            "  ✓ "*) gruen "Kontotyp (DB): ${z#  ✓ }" ;;
+            "  ✗ "*) rot   "Kontotyp (DB): ${z#  ✗ }" ;;
+            "      "*) echo "$z" ;;
+        esac
+    done <<< "$KTDB_AUS"
+    if [ "$KTDB_EXIT" -ne 0 ] && ! printf '%s\n' "$KTDB_AUS" | grep -q '^  ✗ '; then
+        rot "Kontotyp (DB): Lauf endete mit $KTDB_EXIT ohne rote Zeile"
+    fi
+fi
+
+echo ""
 echo "Anmelden, Abmelden, Hilfe (tests/anmeldung_test.js, ausgeführt in node)"
 # S73: Die Funktionen werden aus app.js geschnitten und ausgeführt; die Sätze
 # kommen aus Anmeldebremse.php. Fehlt node, läuft der Schritt sichtbar NICHT –
@@ -1716,5 +1765,10 @@ fi
 echo ""
 GESAMT=$((GRUEN + FEHLER))
 echo "$GRUEN/$GESAMT bestanden, $FEHLER rot"
+if [ "$FEHLER" -eq 0 ] && [ "$PFLICHT_UEBERSPRUNGEN" -gt 0 ]; then
+    # Grün, aber nicht vollständig: Exit 3. deploy.sh hält an.
+    echo "GRÜN, ABER $PFLICHT_UEBERSPRUNGEN PFLICHTSCHRITT(E) ÜBERSPRUNGEN – nicht auslieferbar"
+    exit 3
+fi
 if [ "$FEHLER" -eq 0 ]; then echo "ALLES GRÜN"; exit 0; fi
 exit 1

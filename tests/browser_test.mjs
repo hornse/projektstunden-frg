@@ -56,9 +56,19 @@ const srv = http.createServer((q, r) => {
   if (u.startsWith('/api/')) {
     anfragen.push(q.method + ' ' + u);
     const json = (status, body) => { r.writeHead(status, { 'Content-Type': 'application/json' }); r.end(JSON.stringify(body)); };
-    if (u === '/api/auth/login')
+    if (u === '/api/auth/login') {
+      if (LOGIN === 'schueler')    // Schülermodus (Z1): Antwort wie die Schüleranmeldung, Daten ERFUNDEN
+        return json(200, { ok: true, typ: 'schueler', rolle: 'schueler', id: 157, vorname: 'Probe', nachname: 'Schueler' });
       return LOGIN === 'ok' ? json(200, { typ: 'lehrer', rolle: 'lehrer', vorname: 'Erika', nachname: 'Muster' })
                             : json(401, { error: 'Ungültige Anmeldedaten.' });
+    }
+    if (u === '/api/schueler-portal')
+      return json(200, { werkstaetten: [{ id: 71, name: 'Probewerkstatt', datum_von: '2031-09-01', datum_bis: null,
+        status: 'aktiv', kompetenzen_anzahl: 1, abgeschlossen: 0, lernbegleiter: 'Probe' }] });
+    if (u === '/api/schueler-portal/71')
+      return json(200, { id: 71, name: 'Probewerkstatt', datum_von: '2031-09-01', datum_bis: null, status: 'aktiv',
+        kompetenzen: [{ kompetenz_id: 5, code: 'P1', kompetenz_name: 'Probekompetenz', bereich_name: 'Probebereich',
+                        fremd_stufe: null, selbst_stufe: null }], rueckmeldungen: [] });
     if (u === '/api/auth/me') return json(401, { error: 'Nicht angemeldet' });
     if (u === '/api/einstellungen/logo') { r.writeHead(404); return r.end(); }
     return json(200, u === '/api/einstellungen' ? {} : []);
@@ -209,6 +219,45 @@ if (gefunden && await klicke(hilfeWeg)) {
 pruefe(hilfeDa && logins() === 0,
   'Vor der Anmeldung: die Hilfe öffnet sich, mit der Anmeldekarte, ohne Anmeldung',
   gefunden ? `Hilfe ${hilfeDa ? 'sichtbar' : 'nicht sichtbar'} (${hilfeText} Zeichen), ${logins()} × POST` : 'kein Weg (H1)');
+
+// ---- Schüleransicht (Z1) ----------------------------------------------
+// Welche Anfragen stellt die Seite nach einer Schüleranmeldung? Jede muss auf
+// der ERWARTUNG tests/daten/kontotyp_erlaubt.json stehen – Route UND Methode.
+// Gemessen am Ersatz-Server, nicht am Quelltext. Wo möglich, werden Detail
+// und Selbsteinschätzung mit echten Klicks ausgelöst.
+// S88 („Schüleransicht nie eingeblendet“) wird BEOBACHTET und ausgegeben,
+// nicht als Prüfung gezählt und nicht behoben (eigener Auftrag).
+const ERWARTUNG = JSON.parse(fs.readFileSync(new URL('./daten/kontotyp_erlaubt.json', import.meta.url), 'utf8')).erlaubt;
+const erlaubt = (anfrage) => {
+  const [m, pfad] = anfrage.split(' ');
+  const teile = pfad.split('/');            // ['', 'api', route, sub, …]
+  const route = teile[2] || '', sub = teile[3] || '';
+  return ERWARTUNG.some(e => e.route === route && (e.methode === '*' || e.methode === m) && (e.sub === '*' || e.sub === sub));
+};
+LOGIN = 'schueler';
+await frisch();
+await werte(`document.getElementById('l-email').focus()`);
+await tippe('abc'); await taste('Tab'); await tippe('geheim'); await taste('Enter');
+await bis(`!${maskeSichtbar}`, 3000);
+await bis(`(document.getElementById('schueler-portal-liste')?.innerHTML || '').includes('proj-card')`, 3000);
+const sichtbar = (id) => `(() => { const e = document.getElementById('${id}'); if (!e) return false;
+  const r = e.getBoundingClientRect(); return getComputedStyle(e).display !== 'none' && r.width > 0 && r.height > 0; })()`;
+const portalSichtbar = await werte(sichtbar('s-schueler-portal'));
+const karteGeklickt = await klicke(`document.querySelector('#schueler-portal-liste .proj-card')`);
+let chipGeklickt = false;
+if (karteGeklickt && await bis(`!!document.querySelector('#schueler-portal-detail .bew-chip')`, 3000)) {
+  chipGeklickt = await klicke(`document.querySelector('#schueler-portal-detail .bew-chip')`);
+  await bis(`false`, 500);
+}
+const nachAnmeldung = anfragen.slice();
+const fremd = nachAnmeldung.filter(a => !erlaubt(a));
+pruefe(nachAnmeldung.includes('POST /api/auth/login') && nachAnmeldung.includes('GET /api/schueler-portal') && fremd.length === 0,
+  'Schüleransicht: nach der Anmeldung nur Anfragen der Erlaubnisliste (Route und Methode)',
+  `außerhalb: ${fremd.join(', ') || 'keine'}; gesehen: ${nachAnmeldung.join(', ')}`);
+console.log(`  ·  Anfragen der Schüleransicht: ${[...new Set(nachAnmeldung)].join(', ')}`);
+console.log(`  ·  Beobachtung S88: #s-schueler-portal ${portalSichtbar ? 'SICHTBAR' : 'NICHT sichtbar'};`
+  + ` Werkstattkarte per Klick ${karteGeklickt ? 'erreicht' : 'nicht erreichbar'};`
+  + ` Selbsteinschätzung ${chipGeklickt ? 'geklickt' : 'nicht erreicht'}`);
 
 ws.close();
 console.log(`  ${gruen}/${gruen + rot} im Browser bestanden`);

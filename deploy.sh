@@ -39,7 +39,15 @@ echo "== Vor der Auslieferung: nichts Unverfolgtes, nichts ungeprueft Geaenderte
 # als bestanden (REIHENREGELN 2) - ein fehlendes Skript bricht ab, statt
 # den Deploy stillschweigend durchzulassen.
 if [ -x ./tests-projektstunden.sh ]; then
-  ./tests-projektstunden.sh || { echo "Tests rot - kein Deploy." >&2; exit 1; }
+  # Exit 3: gruen, aber ein Pflichtschritt uebersprungen (Kontotyp mit
+  # Datenbank, mariadbd fehlt). Nicht auslieferbar, eigener Satz (Z1/Z2).
+  TESTS=0
+  ./tests-projektstunden.sh || TESTS=$?
+  if [ "$TESTS" -eq 3 ]; then
+    echo "Pflichtpruefung uebersprungen (Kontotyp mit Datenbank) - kein Deploy." >&2
+    exit 1
+  fi
+  [ "$TESTS" -eq 0 ] || { echo "Tests rot - kein Deploy." >&2; exit 1; }
 else
   echo "FEHLER: tests-projektstunden.sh fehlt oder ist nicht ausfuehrbar." >&2
   exit 1

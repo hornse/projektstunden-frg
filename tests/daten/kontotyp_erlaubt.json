@@ -1,0 +1,9 @@
+{
+  "zweck": "ERWARTUNG der Prüfungen, nicht die Liste der Anwendung. Was eine Schülersitzung erreichen darf (Z1, koordination docs/AUFTRAG-projektstunden-kontotyp.md). Belegt aus der Schüleransicht im Frontend am Stand 13fa447 (Bericht koordination docs/berichte/2026-11-04-bericht-projektstunden-kontotyp.md, 3.1). Die Liste der Anwendung steht in backend/api/kontotyp.php und wird gegen diese Datei gemessen (tests/kontotyp_test.php K6). Wer hier etwas einträgt, gibt es frei – deshalb mit Beleg.",
+  "erlaubt": [
+    { "route": "auth",                "methode": "*",   "sub": "*",    "beleg": "app.js checkAuth (auth/me), doLogin (auth/login), doLogout (auth/logout)" },
+    { "route": "schueler-portal",     "methode": "GET", "sub": "*",    "beleg": "app.js ladeSchuelerPortal, schuelerWerkstattDetail" },
+    { "route": "selbsteinschaetzung", "methode": "PUT", "sub": "*",    "beleg": "app.js selbstEinschaetzung" },
+    { "route": "einstellungen",       "methode": "GET", "sub": "logo", "beleg": "index.html <img id=login-logo>, öffentlich" }
+  ]
+}
