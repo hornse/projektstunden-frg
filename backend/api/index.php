@@ -46,6 +46,8 @@
 
 // Konfiguration eine Ebene über dem DocumentRoot laden
 require_once __DIR__ . '/../../backend/config.php';
+// Filter nach Kontotyp (Z1) und Wächter für Lehrkraft-Handler (Z2)
+require_once __DIR__ . '/kontotyp.php';
 
 // ----- CORS-Header -----
 header('Access-Control-Allow-Origin: ' . ALLOWED_ORIGIN);
@@ -79,6 +81,14 @@ $body = [];
 if (in_array($method, ['POST', 'PUT'])) {
     $raw = file_get_contents('php://input');
     $body = json_decode($raw, true) ?? [];
+}
+
+// ----- Filter nach Kontotyp (Z1) -----
+// Eine Sitzung, die nicht nachweislich eine Lehrkraft ist, erreicht nur die
+// Routen der Erlaubnisliste (backend/api/kontotyp.php). Vor dem match, vor
+// jedem Datenbankzugriff. Geprüft: tests/kontotyp_test.php, je Route.
+if (kontotyp_gefiltert() && !schueler_route_erlaubt($method, $route, $sub)) {
+    json_error(KONTOTYP_SATZ_FILTER, 403);
 }
 
 // ----- Routing -----
