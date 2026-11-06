@@ -249,10 +249,19 @@ try {
 // ------------------------------------------------------------------
 // D – was nicht verlorengehen darf: der echte Router, die echten Dateien
 // ------------------------------------------------------------------
-$verfolgt = array_values(array_filter(explode("\n", (string)shell_exec(
-    'git -C ' . escapeshellarg($WURZEL) . ' ls-files frontend 2>/dev/null'))));
+// Ohne Git-Repo (ein Abzug statt Klon oder Worktree) scheitert ls-files.
+// Frueher verschluckte 2>/dev/null den Grund, und die Zeile meldete „alle 0
+// verfolgten Dateien“ – ein Werkzeugfehler, der wie ein leerer Bestand
+// aussah (REIHENREGELN 3). Jetzt: eigener Satz, rot (Auftrag B0).
+$gitAus = [];
+$gitExit = 0;
+exec('git -C ' . escapeshellarg($WURZEL) . ' ls-files frontend 2>&1', $gitAus, $gitExit);
+$verfolgt = $gitExit === 0 ? array_values(array_filter($gitAus)) : [];
 $server = null;
-try {
+if ($gitExit !== 0) {
+    pruefe('echter Router: kein Git-Repo – Voraussetzung fehlt (git ls-files endete mit '
+        . $gitExit . ': ' . trim((string)($gitAus[0] ?? '')) . ')', false);
+} else try {
     [$server, $port] = server_starten($WURZEL);
     $falsch = [];
     foreach ($verfolgt as $f) {

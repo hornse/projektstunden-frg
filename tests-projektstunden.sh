@@ -73,8 +73,13 @@ GRUEN=0
 # Schritte, die übersprungen werden können, aber vor einer Auslieferung
 # gelaufen sein müssen (Kontotyp mit Datenbank). >0 → Exit 3.
 PFLICHT_UEBERSPRUNGEN=0
+# Schritte, die sichtbar übersprungen und gezählt werden, ohne die
+# Auslieferung anzuhalten (REIHENREGELN 2: ein übersprungener Schritt wird
+# gezählt und gemeldet, nie still). Sie zählen nicht in die Gesamtzahl.
+UEBERSPRUNGEN=0
 gruen() { echo "  ✓ $1"; GRUEN=$((GRUEN + 1)); }
 rot()   { echo "  ✗ $1"; FEHLER=$((FEHLER + 1)); }
+uebersprungen() { echo "  –  ÜBERSPRUNGEN: $1"; UEBERSPRUNGEN=$((UEBERSPRUNGEN + 1)); }
 
 # Kommentarentferner fuer /* */, // und <!-- -->. Er erhaelt die Zeilenzahl:
 # Jede Eingabezeile erzeugt genau eine Ausgabezeile, damit eine Fundstelle
@@ -979,12 +984,20 @@ fi
 # Konfiguration zuletzt auseinandergelaufen (secure=false gegen true). Das
 # waere nur mit einer Inhaltspruefung zu fangen, und die ist bei einer Datei
 # mit Zugangsdaten der falsche Weg.
+#
+# OHNE config.php: SICHTBAR UEBERSPRUNGEN, gezaehlt, kein Pflichtschritt
+# (Auftrag B0, koordination, Entscheidung Sebastian 06.11.2026). An einem
+# Commit -- Klon, git worktree -- gibt es nie eine config.php; dort war die
+# Pruefung immer rot und die Suite am committeten Stand nie gruen. Am Rechner
+# laeuft sie weiter, und dort entsteht die Drift, die sie fangen soll. Kein
+# Pflichtschritt, weil die Konfiguration des Servers getrennt liegt: Ein
+# Halt von deploy.sh wegen einer fehlenden lokalen Datei schuetzte nichts.
 BSP=backend/config.example.php
 CFG=backend/config.php
 if [ ! -f "$BSP" ]; then
     rot "$BSP fehlt – Voraussetzung der Konfigurationspruefung"
 elif [ ! -f "$CFG" ]; then
-    rot "$CFG fehlt – Voraussetzung der Konfigurationspruefung, nicht bestanden"
+    uebersprungen "keine $CFG (Baum ohne Konfiguration) – Struktur gegen $BSP nicht verglichen"
 else
     NAMEN=$(perl -0777 -pe 's{/\*.*?\*/}{}gs' "$BSP" | grep -v '^[[:space:]]*//' \
             | grep -oE "define\('[A-Z_0-9]+'|^\\\$[A-Za-z_][A-Za-z_0-9]*" \
@@ -1764,7 +1777,7 @@ fi
 
 echo ""
 GESAMT=$((GRUEN + FEHLER))
-echo "$GRUEN/$GESAMT bestanden, $FEHLER rot"
+echo "$GRUEN/$GESAMT bestanden, $FEHLER rot, $UEBERSPRUNGEN übersprungen (kein Pflichtschritt)"
 if [ "$FEHLER" -eq 0 ] && [ "$PFLICHT_UEBERSPRUNGEN" -gt 0 ]; then
     # Grün, aber nicht vollständig: Exit 3. deploy.sh hält an.
     echo "GRÜN, ABER $PFLICHT_UEBERSPRUNGEN PFLICHTSCHRITT(E) ÜBERSPRUNGEN – nicht auslieferbar"

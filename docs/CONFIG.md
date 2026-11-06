@@ -200,8 +200,15 @@ es zufällig, beim Nachlesen für einen anderen Auftrag.
 
 **`tests-projektstunden.sh` prüft seither die Struktur.** Die Prüfung liest die
 Namen aller Konstanten und globalen Variablen aus `config.example.php` und
-verlangt, dass jeder davon auch in `config.php` vorkommt. Fehlt `config.php`,
-gilt die Prüfung als **nicht bestanden** — nicht als übersprungen.
+verlangt, dass jeder davon auch in `config.php` vorkommt. Fehlt `config.php`
+— an jedem Commit, in einem Klon oder `git worktree` —, wird die Prüfung
+**sichtbar übersprungen und gezählt**, ohne die Auslieferung anzuhalten
+(Auftrag B0 in `koordination`, Entscheidung vom 06.11.2026). Vorher war sie
+dort rot, und die Suite am committeten Stand war nie grün.
+
+```
+–  ÜBERSPRUNGEN: keine backend/config.php (Baum ohne Konfiguration) – Struktur gegen backend/config.example.php nicht verglichen
+```
 
 ```
 ✓ config.php fuehrt alle 12 Namen aus config.example.php
