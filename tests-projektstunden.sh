@@ -1775,9 +1775,97 @@ else
     fi
 fi
 
+# ============================================================
+# Karge Umgebung (REIHENREGELN 2, S103; Auftrag B0 in koordination)
+#
+# „Eine Prüfumgebung darf nicht mehr kennen als der Betrieb – das gilt auch
+# für die Umgebung selbst.“ In antraege war ein Test am Rechner grün und auf
+# dem Server rot, weil `git init` am Rechner `main` aus einer Konfiguration
+# bekam. Deshalb läuft die GANZE Suite ein zweites Mal unter env -i: leeres
+# HOME, keine Git-Konfiguration, System-PATH. Bestanden, rot und übersprungen
+# müssen in beiden Läufen gleich sein.
+#
+# Muster aus antraege tests/pruefe_alles.sh (15aecfb), angepasst an eine
+# Suite aus einem Stück: Der innere Lauf trägt PRUEF_KARG=1 und überspringt
+# diesen Abschnitt, PRUEF_INNEN=1 schaltet Selbstaufruf und Protokoll ab.
+#
+# Zwei Vorprüfungen messen die Umgebung selbst. Drei Prüfungen insgesamt;
+# der innere Lauf zählt nicht in die Gesamtzahl, nur sein Vergleich.
+# ============================================================
+if [ -z "${PRUEF_KARG:-}" ]; then
+    echo ""
+    echo "Karge Umgebung (env -i, leeres HOME, keine Git-Konfiguration, System-PATH)"
+    # Die Zahlen dieses Laufs, bevor die drei Prüfungen hier dazukommen.
+    N_GRUEN=$GRUEN; N_FEHLER=$FEHLER; N_UEBER=$UEBERSPRUNGEN; N_PFLICHT=$PFLICHT_UEBERSPRUNGEN
+    KARG=$(mktemp -d "${TMPDIR:-/tmp}/ps_karg.XXXXXX")
+    # Die Werkzeuge, die der System-PATH nicht hat, kommen über ein eigenes
+    # Verzeichnis mit Verweisen – nicht über einen PATH mit Homebrew vorn,
+    # sonst käme auch Homebrew-git mit, und genau den Unterschied soll der
+    # Lauf sehen (S103). mariadb und mariadb-install-db, weil
+    # tests/kontotyp_db_test.sh sie neben mariadbd sucht.
+    KARG_BIN=$(mktemp -d "${TMPDIR:-/tmp}/ps_karg_bin.XXXXXX")
+    for W in php node mariadbd mariadb mariadb-install-db; do
+        W_PFAD=$(command -v "$W" || true)
+        [ -n "$W_PFAD" ] && ln -s "$W_PFAD" "$KARG_BIN/$W"
+    done
+    K_PFAD="$KARG_BIN:/usr/bin:/bin:/usr/sbin:/sbin"
+    karg() { env -i PATH="$K_PFAD" HOME="$KARG" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 LC_ALL=C "$@"; }
+
+    # Vorprüfung 1: genau diese fünf Variablen, HOME leer, Git ohne init.defaultBranch.
+    K_SOLL=$(printf '%s\n' "GIT_CONFIG_GLOBAL=/dev/null" "GIT_CONFIG_NOSYSTEM=1" \
+             "HOME=$KARG" "LC_ALL=C" "PATH=$K_PFAD" | sort)
+    K_IST=$(karg /usr/bin/env | sort)
+    K_ZWEIG=$(karg git config --get init.defaultBranch || true)
+    K_INHALT=$(ls -A "$KARG")
+    if [ "$K_IST" = "$K_SOLL" ] && [ -z "$K_ZWEIG" ] && [ -z "$K_INHALT" ]; then
+        gruen "Vorprüfung: karg – genau HOME (leer), PATH, GIT_CONFIG_GLOBAL, GIT_CONFIG_NOSYSTEM, LC_ALL; Git kennt kein init.defaultBranch"
+    else
+        rot "Vorprüfung: nicht karg – Variablen $(printf '%s\n' "$K_IST" | sed 's/=.*//' | tr '\n' ' ')· init.defaultBranch '${K_ZWEIG}' · im HOME '${K_INHALT}'"
+    fi
+
+    # Vorprüfung 2: git vom System; jedes Werkzeug, das der normale Lauf hat,
+    # hat auch der karge – php in derselben Fassung.
+    K_GIT=$(karg /bin/sh -c 'command -v git' || true)
+    K_PHP=$(karg /bin/sh -c 'command -v php' || true)
+    K_FEHLT=""
+    for W in php node mariadbd; do
+        if command -v "$W" > /dev/null 2>&1; then
+            karg /bin/sh -c "command -v $W" > /dev/null 2>&1 || K_FEHLT="$K_FEHLT $W"
+        fi
+    done
+    N_PHPV=$(php -r 'echo PHP_VERSION;' 2>&1 || true)
+    K_PHPV=$(karg php -r 'echo PHP_VERSION;' 2>&1 || true)
+    if [ "$K_GIT" = "/usr/bin/git" ] && [ -z "$K_FEHLT" ] && [ "$K_PHP" = "$KARG_BIN/php" ] \
+       && [ "$K_PHPV" = "$N_PHPV" ]; then
+        gruen "Vorprüfung: karg mit git vom System ($K_GIT), php $K_PHPV über das Verweisverzeichnis, node und mariadbd wie im normalen Lauf"
+    else
+        rot "Vorprüfung: Werkzeuge in karger Umgebung – git '${K_GIT}', php '${K_PHP}' Fassung '${K_PHPV}' (normal ${N_PHPV}), fehlt:${K_FEHLT:- nichts}"
+    fi
+
+    # Der Lauf selbst und der Vergleich.
+    K_AUS=$(karg PRUEF_INNEN=1 PRUEF_KARG=1 ./tests-projektstunden.sh 2>&1); K_EXIT=$?
+    K_ZEILE=$(printf '%s\n' "$K_AUS" | grep -E '^[0-9]+/[0-9]+ bestanden, [0-9]+ rot, [0-9]+ übersprungen' | tail -1 || true)
+    if [ -z "$K_ZEILE" ]; then
+        rot "karg: keine Schlusszeile (Exit $K_EXIT) – der Lauf brach ab"
+    else
+        K_GRUEN=$(printf '%s' "$K_ZEILE" | sed -E 's#^([0-9]+)/.*#\1#')
+        K_FEHLER=$(printf '%s' "$K_ZEILE" | sed -E 's#^.* bestanden, ([0-9]+) rot.*#\1#')
+        K_UEBER=$(printf '%s' "$K_ZEILE" | sed -E 's#^.* rot, ([0-9]+) übersprungen.*#\1#')
+        K_PFLICHT=$(printf '%s' "$K_ZEILE" | sed -nE 's#^.*, ([0-9]+) Pflichtschritt.*#\1#p')
+        if [ "$K_GRUEN" = "$N_GRUEN" ] && [ "$K_FEHLER" = "$N_FEHLER" ] \
+           && [ "$K_UEBER" = "$N_UEBER" ] && [ "${K_PFLICHT:-x}" = "$N_PFLICHT" ]; then
+            gruen "karg: dieselben Zahlen ($K_GRUEN bestanden, $K_FEHLER rot, $K_UEBER übersprungen, $K_PFLICHT Pflichtschritte übersprungen)"
+        else
+            rot "karg: $K_GRUEN bestanden, $K_FEHLER rot, $K_UEBER übersprungen, ${K_PFLICHT:-?} Pflicht – normal $N_GRUEN, $N_FEHLER, $N_UEBER, $N_PFLICHT"
+            printf '%s\n' "$K_AUS" | grep -E '^  (✗|–) ' | sed 's/^  /    karg: /'
+        fi
+    fi
+    rm -rf "${KARG:?}" "${KARG_BIN:?}"
+fi
+
 echo ""
 GESAMT=$((GRUEN + FEHLER))
-echo "$GRUEN/$GESAMT bestanden, $FEHLER rot, $UEBERSPRUNGEN übersprungen (kein Pflichtschritt)"
+echo "$GRUEN/$GESAMT bestanden, $FEHLER rot, $UEBERSPRUNGEN übersprungen (kein Pflichtschritt), $PFLICHT_UEBERSPRUNGEN Pflichtschritt(e) übersprungen"
 if [ "$FEHLER" -eq 0 ] && [ "$PFLICHT_UEBERSPRUNGEN" -gt 0 ]; then
     # Grün, aber nicht vollständig: Exit 3. deploy.sh hält an.
     echo "GRÜN, ABER $PFLICHT_UEBERSPRUNGEN PFLICHTSCHRITT(E) ÜBERSPRUNGEN – nicht auslieferbar"
