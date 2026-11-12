@@ -374,7 +374,7 @@ $literale = function (string $code): array {
 pruefe('„Ungültige Anmeldedaten.“ ist eine Konstante der Anmeldebremse und steht im Router nicht mehr als Zeichenkette',
     $da && defined('Anmeldebremse::SATZ_ABGELEHNT') && Anmeldebremse::SATZ_ABGELEHNT === 'Ungültige Anmeldedaten.'
     && !in_array('Ungültige Anmeldedaten.', $literale($router), true));
-$vorlage = (string)file_get_contents("$W/backend/config.example.php");
+$vorlage = (string)file_get_contents("$W/backend/konfiguration.example.php");
 pruefe('die Vorlage nennt keine Schwelle mehr (kein Schlüssel max_failed_logins) – sie würde nicht gelesen',
     $vorlage !== '' && !in_array('max_failed_logins', $literale($vorlage), true));
 

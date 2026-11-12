@@ -16,9 +16,11 @@
  * Eine ERLAUBNISLISTE, keine Sperrliste: Eine neue Route ist für Schüler
  * gesperrt, bis jemand sie hier freigibt.
  *
- * Warum hier und nicht in require_auth(): require_auth() steht in
- * backend/config.php. Die ist nicht versioniert und wird beim Deploy nicht
- * überschrieben – eine Änderung dort käme nie auf den Server.
+ * Warum hier und nicht in require_auth(): Ursprünglich, weil require_auth()
+ * in der unversionierten backend/config.php stand und eine Änderung dort nie
+ * auf den Server gekommen wäre. Seit Auftrag A (E68) steht es versioniert in
+ * backend/kern.php; der Filter bleibt trotzdem hier, als eigene Stufe vor dem
+ * Verteiler – die Stufen A und B werden einzeln belegt (kontotyp_db_test.sh).
  *
  * Die Liste wird gegen eine eigene ERWARTUNG gemessen
  * (tests/daten/kontotyp_erlaubt.json, tests/kontotyp_test.php K6). Wer hier

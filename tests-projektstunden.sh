@@ -992,31 +992,28 @@ fi
 # laeuft sie weiter, und dort entsteht die Drift, die sie fangen soll. Kein
 # Pflichtschritt, weil die Konfiguration des Servers getrennt liegt: Ein
 # Halt von deploy.sh wegen einer fehlenden lokalen Datei schuetzte nichts.
-BSP=backend/config.example.php
-CFG=backend/config.php
-if [ ! -f "$BSP" ]; then
-    rot "$BSP fehlt – Voraussetzung der Konfigurationspruefung"
+#
+# SEIT AUFTRAG A (E68): Wertedatei backend/konfiguration.php, Vorlage
+# backend/konfiguration.example.php. Gemessen wird mit demselben Werkzeug, das
+# die Datei aus der alten config.php ableitet (bin/konfiguration-ableiten.php
+# pruefen) – eine Namenslogik, nicht zwei. Es meldet zusätzlich jede
+# FUNKTION in der Wertedatei: Code dort wäre wieder unversioniert.
+BSP=backend/konfiguration.example.php
+CFG=backend/konfiguration.php
+ABL=bin/konfiguration-ableiten.php
+if [ ! -f "$BSP" ] || [ ! -f "$ABL" ]; then
+    rot "$BSP oder $ABL fehlt – Voraussetzung der Konfigurationspruefung"
 elif [ ! -f "$CFG" ]; then
     uebersprungen "keine $CFG (Baum ohne Konfiguration) – Struktur gegen $BSP nicht verglichen"
 else
-    NAMEN=$(perl -0777 -pe 's{/\*.*?\*/}{}gs' "$BSP" | grep -v '^[[:space:]]*//' \
-            | grep -oE "define\('[A-Z_0-9]+'|^\\\$[A-Za-z_][A-Za-z_0-9]*" \
-            | sed "s/define('//;s/'$//" | sort -u)
-    ANZ=$(printf '%s\n' "$NAMEN" | grep -c . || true)
-    CFG_OHNE=$(perl -0777 -pe 's{/\*.*?\*/}{}gs' "$CFG" | grep -v '^[[:space:]]*//')
+    NAMEN=$(php "$ABL" namen "$BSP")
+    ANZ=$(printf '%s' "$NAMEN" | tr ',' '\n' | grep -c . || true)
     if [ "$ANZ" -eq 0 ]; then
         rot "keine Namen in $BSP gefunden – die Pruefung prueft nichts"
     else
-        FEHLT=""
-        for N in $NAMEN; do
-            case "$N" in
-                \$*) printf '%s' "$CFG_OHNE" | grep -qF "$N" || FEHLT="$FEHLT $N" ;;
-                *)   printf '%s' "$CFG_OHNE" | grep -qF "define('$N'" || FEHLT="$FEHLT $N" ;;
-            esac
-        done
-        [ -z "$FEHLT" ] \
-            && gruen "config.php fuehrt alle $ANZ Namen aus config.example.php" \
-            || rot "config.php fehlen Namen aus config.example.php:$FEHLT"
+        K_AUS=$(php "$ABL" pruefen "$CFG" "$NAMEN" 2>&1) \
+            && gruen "konfiguration.php fuehrt alle $ANZ Namen aus konfiguration.example.php und keine Funktion" \
+            || rot "konfiguration.php: $(printf '%s' "$K_AUS" | grep '^HALT' || echo 'Pruefung brach ab')"
     fi
 fi
 
@@ -1637,6 +1634,27 @@ else
     done <<< "$BREMSE_AUS"
     if [ "$BREMSE_EXIT" -ne 0 ] && ! printf '%s\n' "$BREMSE_AUS" | grep -q '^  ✗ '; then
         rot "Anmeldebremse: Suite endete mit $BREMSE_EXIT ohne rote Zeile"
+    fi
+fi
+
+echo ""
+echo "Kern und Konfiguration (tests/kern_test.php, Ableitung ausgeführt)"
+# Auftrag A, Paket 1 (E68): Code in backend/kern.php, Werte in
+# backend/konfiguration.php. Gebaut wie die Anmeldebremse: jede Zeile zählt
+# einzeln, fehlendes PHP und ein Abbruch ohne rote Zeile sind rot.
+if ! command -v php > /dev/null 2>&1; then
+    rot "Kern: php fehlt – die Suite lief nicht"
+else
+    KERN_AUS=$(php tests/kern_test.php 2>&1); KERN_EXIT=$?
+    while IFS= read -r z; do
+        case "$z" in
+            "  ✓ "*) gruen "Kern: ${z#  ✓ }" ;;
+            "  ✗ "*) rot   "Kern: ${z#  ✗ }" ;;
+            "      "*) echo "$z" ;;
+        esac
+    done <<< "$KERN_AUS"
+    if [ "$KERN_EXIT" -ne 0 ] && ! printf '%s\n' "$KERN_AUS" | grep -q '^  ✗ '; then
+        rot "Kern: Suite endete mit $KERN_EXIT ohne rote Zeile"
     fi
 fi
 

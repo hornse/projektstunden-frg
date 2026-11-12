@@ -3,7 +3,10 @@ backup_*
 backups/
 
 # Serverseitige Konfiguration (enthält Passwörter – NIE in git!)
+# Seit Auftrag A (E68) backend/konfiguration.php; config.php bleibt hier,
+# solange die alte Datei auf einem Rechner oder Server liegen kann.
 backend/config.php
+backend/konfiguration.php
 
 # Datenbankdatei (wird nicht genutzt, aber sicherheitshalber ausschließen)
 backend/datenbank.sqlite
@@ -34,6 +37,7 @@ NEUES_PROJEKT_PROMPT.md
 
 # Sicherungen der Konfiguration – enthalten Passwörter
 backend/config.php.*
+backend/konfiguration.php.*
 
 # Python-Zwischenstaende der Erzeuger (sql/gen/)
 __pycache__/

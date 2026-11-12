@@ -12,7 +12,7 @@
 # einem Wegwerfverzeichnis, nur 127.0.0.1, Schema aus sql/, Probebestand
 # tests/daten/kontotyp_probedaten.sql (ERFUNDEN). Drei Probebäume unter
 # php -S: vollständig, ohne A, ohne B. Ausgehängt wird nur in der KOPIE.
-# Die echte backend/config.php wird nicht kopiert.
+# Die echte Konfiguration (konfiguration.php, alte config.php) wird nicht kopiert.
 #
 # Exit 0 grün, 1 rot, 3 ÜBERSPRUNGEN (kein mariadbd). Übersprungen ist
 # sichtbar und hält deploy.sh an (Entscheidung Sebastian, 04.11.2026).
@@ -104,7 +104,9 @@ mkdir -p "$T/sess"
 baum() { # NAME
     local b="$T/$1"
     mkdir -p "$b"
-    (cd "$R" && find backend -type f ! -name 'config.php*' -print) | while IFS= read -r f; do
+    # Ohne die echte Konfiguration: konfiguration.php, die alte config.php und
+    # ihre Sicherungen tragen Zugangsdaten (tests/kern_test.php K5).
+    (cd "$R" && find backend -type f ! -name 'config.php*' ! -name 'konfiguration.php*' -print) | while IFS= read -r f; do
         mkdir -p "$b/$(dirname "$f")"; cp "$R/$f" "$b/$f"
     done
     php -r '
@@ -118,7 +120,7 @@ baum() { # NAME
           "define(\x27WEBUNTIS_ENABLED\x27, true);" => "define(\x27WEBUNTIS_ENABLED\x27, false);",
         ] as $a => $z) { $k = str_replace($a, $z, $k, $c); $n += $c; }
         file_put_contents($argv[2], $k); exit($n === 6 ? 0 : 1);' \
-        "$R/backend/config.example.php" "$b/backend/config.php" "$T/sess" "$DBPORT"
+        "$R/backend/konfiguration.example.php" "$b/backend/konfiguration.php" "$T/sess" "$DBPORT"
 }
 # aushaengen NAME DATEI MUSTER(perl) AUSDRUCK → 0, wenn genau ein Treffer und angekommen
 aushaengen() {

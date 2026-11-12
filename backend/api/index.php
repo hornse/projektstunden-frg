@@ -44,8 +44,8 @@
  * ============================================================
  */
 
-// Konfiguration eine Ebene über dem DocumentRoot laden
-require_once __DIR__ . '/../../backend/config.php';
+// Kern des Backends; er lädt die Werte aus backend/konfiguration.php (E68)
+require_once __DIR__ . '/../kern.php';
 // Filter nach Kontotyp (Z1) und Wächter für Lehrkraft-Handler (Z2)
 require_once __DIR__ . '/kontotyp.php';
 

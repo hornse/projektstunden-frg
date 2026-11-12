@@ -200,6 +200,16 @@ foreach ($dateien as $p => $kennung) {
     if (!is_dir(dirname("$T/frontend/$p"))) mkdir(dirname("$T/frontend/$p"), 0700, true);
     file_put_contents("$T/frontend/$p", $kennung);
 }
+// Die Wertedatei (Auftrag A, E68): Sie liegt unter backend/, nicht unter
+// frontend/, und die Sperrliste nennt .php nicht – sie kann es nicht, /api
+// ist PHP. Geschützt ist sie dadurch, dass der Router nur frontend/
+// ausliefert. Gemessen wird der Inhalt, nicht der Statuscode (REIHENREGELN 6):
+// weder der Quelltext (Kennung im Kommentar) noch eine Ausgabe der
+// ausgeführten Datei (Kennung im echo) darf ankommen.
+$KONF_KENNUNG = 'KONFPROBE-' . getmypid();
+$konfInhalt = "<?php /* {$KONF_KENNUNG}-quelle */ echo '{$KONF_KENNUNG}-lief';\n";
+file_put_contents("$T/backend/konfiguration.php", $konfInhalt);
+file_put_contents("$T/backend/konfiguration.php.bak", $konfInhalt);
 
 /** 404 und keine Zeichenfolge aus der Datei (REIHENREGELN 6: Inhalt, nicht nur Code). */
 $verweigert = function (int $port, string $uri, string $kennung): bool {
@@ -239,6 +249,11 @@ try {
         $geliefert($port, '/.well-known/probe.css', $dateien['.well-known/probe.css']));
     pruefe('Router: /kontrolle.css → 200 mit Inhalt (Kontrolle)',
         $geliefert($port, '/kontrolle.css', $dateien['kontrolle.css']));
+    foreach (['/backend/konfiguration.php', '/backend/konfiguration.php.bak',
+              '/frontend/../backend/konfiguration.php', '/%2E%2E/backend/konfiguration.php'] as $u) {
+        pruefe("Router: $u → kein Inhalt aus der Wertedatei, weder Quelltext noch Ausgabe",
+            $ohneInhalt($port, $u, $KONF_KENNUNG));
+    }
 } catch (RuntimeException $e) {
     pruefe('Probebaum: ' . $e->getMessage(), false);
 } finally {

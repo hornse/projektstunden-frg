@@ -192,18 +192,20 @@ function baum_loeschen(string $d): void
 $T = sys_get_temp_dir() . '/ps-kontotyp-' . getmypid();
 baum_loeschen($T);
 mkdir("$T/sess", 0700, true);
-// backend/ ohne die echte Konfiguration: config.php und ihre Sicherungen
-// enthalten Zugangsdaten und gehören nicht in einen Probebaum.
+// backend/ ohne die echte Konfiguration: konfiguration.php, die alte
+// config.php und ihre Sicherungen enthalten Zugangsdaten und gehören nicht in
+// einen Probebaum (tests/kern_test.php K5).
 $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$WURZEL/backend", FilesystemIterator::SKIP_DOTS));
 foreach ($it as $x) {
     $rel = substr((string)$x, strlen($WURZEL) + 1);
     if (str_starts_with(basename($rel), 'config.php')) continue;
+    if (str_starts_with(basename($rel), 'konfiguration.php')) continue;
     if (!is_dir(dirname("$T/$rel"))) mkdir(dirname("$T/$rel"), 0700, true);
     copy((string)$x, "$T/$rel");
 }
-// Konfiguration aus der Vorlage: die Funktionen wörtlich, drei Werte ersetzt.
+// Werte aus der Vorlage, drei ersetzt; der Code kommt mit backend/kern.php.
 // Die Datenbank zeigt auf einen Port, auf dem nichts lauscht.
-$vorlage = (string)file_get_contents("$WURZEL/backend/config.example.php");
+$vorlage = (string)file_get_contents("$WURZEL/backend/konfiguration.example.php");
 $ersetzt = 0;
 $konfig = $vorlage;
 foreach ([
@@ -215,11 +217,11 @@ foreach ([
     $ersetzt += $n;
 }
 if ($ersetzt !== 3) {
-    pruefe("Probekonfiguration: 3 Ersetzungen in config.example.php, gefunden $ersetzt", false);
+    pruefe("Probekonfiguration: 3 Ersetzungen in konfiguration.example.php, gefunden $ersetzt", false);
     baum_loeschen($T);
     exit(1);
 }
-file_put_contents("$T/backend/config.php", $konfig);
+file_put_contents("$T/backend/konfiguration.php", $konfig);
 
 // Sitzungen – dieselben Schlüssel wie die Anmeldung, Nummern erfunden.
 $SITZUNG = [

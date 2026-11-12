@@ -107,7 +107,7 @@ mut S22 $A 's/                    Anmeldebremse::abschliessen\(\$db, \$versuch, 
 # S73 (03.11.2026): Schwelle als Konstante (M56), eigener Satz bei Ausfall,
 # eine Quelle je Satz. N2 und N3 bauen jeweils die frühere, belegte Fassung
 # wieder ein (REIHENREGELN 2: die falsche Fassung ausdrücklich suchen).
-V=backend/config.example.php
+V=backend/konfiguration.example.php
 mut N1 $B 's/public const SCHWELLE = 8;/public const SCHWELLE = 5;/' "Schwelle: acht Fehlversuche"
 mut N2 $A 's/        Anmeldebremse::SCHWELLE,\n/        (int)(\$WEBUNTIS_CONFIG[\x27max_failed_logins\x27] ?? 8),\n/' \
   "Konfiguration sagt max_failed_logins 5"

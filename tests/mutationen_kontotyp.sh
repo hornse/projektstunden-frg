@@ -197,11 +197,11 @@ fi
 GELAUFEN=$((GELAUFEN + 1))
 KL="$SICH/klon"
 git clone -q "$R" "$KL" && for g in $(git -C "$KL" remote); do git -C "$KL" remote remove "$g"; done
-# backend/config.php ist nicht versioniert, die Suite verlangt sie
+# backend/konfiguration.php ist nicht versioniert, die Suite verlangt sie
 # (Konfigurationsprüfung). Im Klon aus der Vorlage – ohne Zugangsdaten.
 # Ohne sie war die Suite im Klon aus diesem Grund rot, und deploy.sh hielt
 # mit „Tests rot“ an statt am Übersprung (erster Lauf der Serie, 04.11.2026).
-[ -d "$KL" ] && cp "$KL/backend/config.example.php" "$KL/backend/config.php"
+[ -d "$KL" ] && cp "$KL/backend/konfiguration.example.php" "$KL/backend/konfiguration.php"
 if [ -d "$KL" ] && [ -z "$(git -C "$KL" remote)" ]; then
   KOPF=$(git -C "$KL" rev-parse HEAD)
   (cd "$KL" && MARIADBD=/gibt/es/nicht ./deploy.sh "Probe E3" > "$SICH/e3.txt" 2>&1); e=$?
