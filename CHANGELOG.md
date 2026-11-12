@@ -7,6 +7,24 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 
 ## [Unreleased]
 
+### Hinzugefügt – Spanisch Sek I (Auftrag `docs/AUFTRAG-spanisch-sek1.md`, E67)
+- **`sql/21_seed_spanisch_klp.sql`** aus `sql/gen/gen_spanisch_klp.py`:
+  Rahmen `SPA_KLP`, Präfix `ES_`, Anlage wie Französisch (E63) — drei
+  Bildungsgänge als Wurzel. **144 Kompetenzen** (41 / 52 / 51), **60 Knoten**,
+  48 Blätter. Rinne gemessen: 292.44 … 302.91 pt, 207 Trennungen an vier
+  Rändern. Interkulturelle Kompetenz 1/1/1, 1/1/2, 1/1/2.
+- **Zeilenbildung im Spanisch-Erzeuger** vergleicht mit jedem Wort der Zeile;
+  mit `zeile[0]` waren ES_2FS_S2_TMK_05/06 falsch geschnitten, bei stimmiger
+  Summe. Englisch und Französisch führen noch `zeile[0]`, ihre Seeds ändert
+  die Behebung gemessen nicht (gemeldet, nicht geändert).
+- **Silbentrennung kennt `ñ á é í ó ú`** in allen sechs Erzeugern. Die fünf
+  alten liefern byteweise dieselben Seeds — in keiner ihrer linken Spalten
+  steht eines der Zeichen, die Gegenprobe konnte also nichts finden.
+- `docs/curricula/STRUKTUR.md` Zeile 15 berichtigt (`•` kein
+  Erwartungsmarker), Legende zu `+N`, Spaltengrenze gemessen.
+- **Prüfungen 289 → 289.** Der Seed fällt unter die bestehenden
+  Fachdatenprüfungen (6 Seeds, 1066 Kompetenztexte statt 922).
+
 ### Sicherheit – Filter nach Kontotyp (Z1, Z2; Auftrag koordination 04.11.2026)
 - **Eine Schülersitzung erreicht nur noch, was die Schüleransicht braucht:**
   `auth` (alle Methoden), `GET schueler-portal`, `PUT selbsteinschaetzung`,

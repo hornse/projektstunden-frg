@@ -62,6 +62,15 @@ und 6 hat. Dort steht der Marker `•` statt `à`.
 `✓` = gelesen und durch beide Zählwege gestützt. `?` = unsicher, siehe den
 Abschnitt zum Plan.
 
+**Legende zur Markerspalte: `+N` ist der Abstand HINTER dem Marker** — die Zahl
+der Leerzeichen zwischen Zeichen und Text im `-layout`-Text —, **nicht die
+Einrückung davor und keine Gliederungsebene.** Mehrere Werte (`+4/+3/+1`,
+`+3/+4/+5`, `+1/+3`) entstehen aus dem Blocksatz. Bei Spanisch Sek I gemessen
+(E67): Alle 144 `à` stehen in Spalte 0, in `-bbox-layout` als eigenes Wort bei
+x = 70.8, der Text bei x = 88.7; dahinter folgen 4 (70×), 3 (66×) oder 1 (8×)
+Leerzeichen. Wer `+N` für Ebenen hält, untersucht bei jedem Fach dasselbe
+Nichts — beim Spanisch-Auftrag ist genau das geschehen.
+
 | # | Datei | Fach | Stufe | Marker (Zeichen+Abstand) | Spalten | Tiefe | Erwartungen | |
 |---|---|---|---|---|---|---|---|---|
 | 1 | `g9_bi_klp_-3413_…` | Biologie | Sek I | `à`+3 · Tabelle | ein | 2 | 146 | ✓ |
@@ -78,7 +87,7 @@ Abschnitt zum Plan.
 | 12 | `g9_m_klp_3401_…` | Mathematik | Sek I | **`(n)`** | ein | 2 | 181 | ? |
 | 13 | `g9_mu_klp_3406_…` | Musik | Sek I | `à`+3 · `\x83`+3/+4 | ? | ? | 126 | **?** |
 | 14 | `g9_ph_klp_3411_…` | Physik | Sek I | `à`+3 · Tabelle | ein | 2 | 178 | ✓ |
-| 15 | `g9_s_klp_3416_…` | Spanisch | Sek I | `à`+4/+3/+1 · `•`+3 | **zwei** | **3** | 144 | ? |
+| 15 | `g9_s_klp_3416_…` | Spanisch | Sek I | `à`+4/+3/+1 | **zwei** | **3** | 144 | ✓ |
 | 16 | `g9_sp_klp_3426_…` | Sport | Sek I | `à`+4/+3 | ein | 2 | **120** | ✓ |
 | 17 | `g9_wipo_klp_3429_…` | Wirtschaft-Politik | Sek I | `à`+3/+4/+5 · `\x83`+3 | ein | 2 | 148 | ✓ |
 | 18 | `g9_wpif_klp_2023_…` | Informatik (WP) | Sek I | `•`+3 | ein | 2 | 54 | ✓ |
@@ -125,6 +134,24 @@ Damit steht die Frage im Raum, ob weitere gelesene Pläne in dieser Tabelle
 ungeprüfte Zahlen tragen. Für Englisch Sek I stimmten sie (177) — das ist ein
 Datenpunkt, keine Gewähr. Bei jedem weiteren Fachimport ist die Zeile hier
 gegen die Messung zu halten und, wo sie abweicht, zu berichtigen.
+
+**Berichtigt am 12.11.2026, Spanisch Sek I (Zeile 15):** Dort stand `•`+3 als
+zweiter Marker. Beim Import gemessen (E67), mit derselben Begründung wie bei
+Französisch:
+
+* **`•` ist hier kein Erwartungsmarker.** 34-mal im Dokument, keinmal in einem
+  der drei Erwartungskapitel: 22-mal in Kapitel 1, sechsmal in Kapitel 2.3 als
+  Aufzählung innerhalb eines Satzes, sechsmal in Kapitel 3.
+* **`à`+4/+3/+1 bestätigt** — als Abstand hinter dem Marker, nicht als
+  Einrückung (siehe Legende zur Übersicht).
+* **144 bestätigt**, 41 / 52 / 51 auf die drei Bildungsgänge. Anders als bei
+  Französisch fallen hier Zeichen- und Markerzählung zusammen: `à` steht
+  144-mal am Zeilenanfang und 144-mal im ganzen Text.
+* **Die Spaltengrenze ist gemessen:** freier Korridor 292.44 bis 302.91 pt,
+  an Blöcken, nicht an rohen Wortkanten.
+* **Gelesen**, nicht mehr nur an den Überschriften abgeglichen: Tiefe 3 unter
+  dem Bildungsgang, die Interkulturelle Kompetenz teilt sich 1/1/1, 1/1/2,
+  1/1/2. Der Eintrag unter „Weitere unsichere Pläne" entfällt deshalb.
 
 ---
 
@@ -173,7 +200,7 @@ Kompetenzmarkern**:
 
 | Plan | Anteil | rechts steht | Spaltengrenze |
 |---|---|---|---|
-| Spanisch Sek I | 27 % | Fachliche Konkretisierungen (`−`) | x ≈ 300 pt |
+| Spanisch Sek I | 27 % | Fachliche Konkretisierungen (`−`) | **302.0 pt, gemessen** (Korridor 292.44–302.91) |
 | Englisch GOSt | 28 % | Fachliche Konkretisierungen (`−`) | x ≈ 300 pt |
 | Englisch Sek I | 23 % | Fachliche Konkretisierungen (`−`) | x ≈ 300 pt |
 | Französisch Sek I | 18 % | Fachliche Konkretisierungen (`−`) | **302.9 pt, gemessen** |
@@ -228,8 +255,7 @@ der fünf Kompetenzbereiche eine dritte Ebene:
 | Sprachbewusstheit | — | 1 |
 
 **Französisch Sek I** und **Spanisch Sek I** führen dieselben Überschriften in
-derselben Anordnung; Französisch ist gelesen und bestätigt, Spanisch nur an den
-Überschriften abgeglichen und deshalb als unsicher geführt.
+derselben Anordnung; beide sind gelesen und bestätigt (E63, E67).
 
 Ob die drei Fremdsprachen der **GOSt** ebenfalls Tiefe 3 haben, ist offen —
 ihre Marker (`U+F0FA`) und ihre Spaltigkeit stimmen mit den Sek-I-Plänen
@@ -321,7 +347,6 @@ nichts oder alles gefunden.
 | Plan | offene Frage |
 |---|---|
 | Latein Sek I | Die Inhaltsfelder tragen inhaltliche Schwerpunkte, unter denen unmittelbar Erwartungen stehen — ob der Schwerpunkt eine Gliederungsebene ist oder nur eine Aufzählung, ist nicht entschieden. Zählwege 94/94. |
-| Spanisch Sek I | Struktur nur an den Überschriften mit Englisch abgeglichen, nicht gelesen. Zählwege 144/86 (zweispaltig). |
 | Wirtschaft (WP) | Zwei PUA-Marker, `U+F0FA` (42) und `U+F0A7` (26). Ob beide Erwartungen markieren oder einer die Schwerpunkte, ist nicht entschieden. In E13 ohnehin als „Lehrplan liegt nicht vor" geführt — er liegt vor, ist aber nicht ausgewertet. |
 | alle GOSt außer Deutsch | Marker, Spaltigkeit, Steuerzeichen und Zählwerte sind erhoben; die Gliederung ist **nicht gelesen**. Die Kapitelstruktur (`2.x` Einführungsphase, `2.3.1` Grundkurs, `2.3.2` Leistungskurs) stimmt bei allen mit Deutsch GOSt überein, die Ebenen darunter sind offen. |
 

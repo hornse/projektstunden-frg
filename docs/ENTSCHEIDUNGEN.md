@@ -2623,3 +2623,130 @@ am 07.07.2026 aus schulprozesse, und ein Vorfahr von `webuntis-auth-php`
 (09.07.2026) – keine Kopie. Deshalb wird hier umgebaut statt im Modul;
 so entschieden in koordination am 21.10.2026.
 
+---
+
+## E67 — Spanisch Sek I: Präfix, Rinne, Aufteilung, und eine Zeile, die zwei Erwartungen vertauschte (12.11.2026)
+
+**Vorbemerkung zur Nummer:** Vor dem Anfügen nachgesehen, höchste vergebene
+Nummer war E66 (E30).
+
+**Anlass:** `docs/AUFTRAG-spanisch-sek1.md`, Schritt 3 bis 6. Schritt 2 lief im
+September in einer verlorenen Sitzung; seine Ergebnisse und Freigaben stehen im
+Nachtrag des Auftrags und sind hier nicht wiederholt, nur, was daraus wurde.
+
+**Präfix `ES_`, Rahmen `SPA_KLP`.** Dem Muster der anderen Sprachen folgend:
+`DEU_KLP`/`DE_`, `ENG_KLP`/`EN_`, `FRA_KLP`/`FR_` — zwei Buchstaben aus dem
+Sprachcode im Kompetenzcode, das Fachkürzel im Rahmen. Codeschema wie E63:
+`ES_2FS_S1_HOR_01`, `ES_2FS_S2_VSM_GRA_01`, `ES_3FS_IKK_VER_02`.
+
+**Die Rinne, am Block gemessen (E47), am 12.11. nachgemessen:** 178
+Markerblöcke nach Verwerfen von 40 Seitenzahlzeilen, davon 57 zweispaltig.
+Deren freier Korridor ist **292.44 bis 302.91 pt**, `RINNE = (293.0, 302.0)`,
+`SPALTE_RECHTS = 302.0` — dieselben Werte wie bei Französisch, gemessen und
+nicht übernommen. **207 Trennungen** an genau vier rechten Rändern (302.9: 2,
+303.0: 69, 320.8: 45, 320.9: 91), ohne Ausreißer; den Rand 331.3 aus
+Französisch gibt es hier nicht. Vier einspaltige Blöcke haben eine Lücke von
+mindestens 8 pt vor einem Wort ab 300 und bleiben wegen der Entscheidung am
+Block ganz.
+
+**Die Interkulturelle Kompetenz teilt sich 1/1/1 (2FS Erste Stufe), 1/1/2
+(2FS Zweite Stufe) und 1/1/2 (3FS)** — ein drittes Verhältnis neben Englisch
+(1/2/4) und Französisch (1/3/3). Nicht ableitbar, ausgezählt.
+
+**Ergebnis:** 144 Erwartungen (41 / 52 / 51), 60 Knoten, 48 Blätter; je
+Ebene 3 / 15 / 21 / 21.
+
+---
+
+**Die Silbentrennung kennt die spanischen Zeichen — und die Gegenprobe dazu
+konnte nichts finden.** Der Wortausdruck (`WORT`, `folge`, `vorn`) ist in allen
+fünf vorhandenen Erzeugern und im neuen um `ñ á é í ó ú` erweitert (`ü` war
+schon darin), vor dem Bau des Spanisch-Erzeugers, wie freigegeben. Die fünf
+alten Erzeuger liefern danach byteweise dieselben Seeds und dieselbe Ausgabe
+einschließlich der Regel-4-Listen.
+
+Das ist **kein starker Beleg**, und das gehört dazu (REIHENREGELN 2: Wo eine
+Gegenprobe zwei Ergebnisse vergleicht, gehört der Nachweis dazu, dass sie sich
+überhaupt unterscheiden können): In vier der fünf Quellen kommt keines der neuen
+Zeichen vor; im Französisch-Plan stehen 18 `é`, alle in der rechten Spalte, die
+den Wortschatz nie erreicht. Auch bei Spanisch stehen die zehn Vorkommen
+(`artículo`, `perifrástico`, `después`, `además`, `ñ`) ausschließlich rechts.
+**Die Erweiterung hat damit heute in keinem Fach eine Wirkung.** Sie ist
+richtig für den Fall, dass ein spanisches Wort in einer Erwartung über den
+Zeilenumbruch getrennt wird — der Fall ist im Bestand nicht belegt.
+
+---
+
+**Die Zeilenbildung hat zwei Erwartungen vertauscht, und keine Zählung konnte
+es sehen.** Im ersten Lauf trafen alle Sollzahlen. Der vollständige Abgleich
+gegen einen zweiten, koordinatenfreien Schnitt (`pdftotext -raw`) fand trotzdem
+einen Fehler auf Seite 30:
+
+```
+ES_2FS_S2_TMK_05  … kritisch und zielentsprechend einsetzen, produktionsorientierte oder kreative
+ES_2FS_S2_TMK_06  Texte zum persönlichen Lebensumfeld, auch digital, erstellen, umformen und ergänzen
+```
+
+Richtig ist: `… einsetzen` und `produktionsorientierte oder kreative Texte zum
+persönlichen Lebensumfeld …`.
+
+**Ursache:** `zu_zeilen()` vergleicht ein Wort nur mit dem **ersten** Wort einer
+Zeile (`zeile[0]`), Toleranz 3.0 pt. Auf Seite 30 sitzt die rechte Spalte rund
+3 pt höher. Ihr `−` bei y = 578.35 eröffnete die Zeile;
+`produktionsorientierte` bei 581.34 fiel mit 2.99 hinein, das `à` bei 581.42
+mit 3.07 nicht mehr. Die Markerzeile blieb leer, ihr Text hing als Fortsetzung
+an der vorigen Erwartung. **Die Summe stimmte, weil das `à` erhalten blieb** —
+es eröffnete nur die falsche Erwartung.
+
+**Behebung im Spanisch-Erzeuger:** Ein Wort gehört zu einer Zeile, wenn es
+**irgendeinem** ihrer Wörter innerhalb der Toleranz nahekommt. Gemessen ändert
+das bei Spanisch genau diese zwei Einträge, sonst nichts.
+
+**Dieselbe Zeile steht in `gen_englisch_klp.py` und `gen_franzoesisch_klp.py`**
+— gemeldet, nicht geändert. Mit der behobenen Zeilenbildung liefern beide
+byteweise ihre ausgelieferten Seeds; der Fehler ist dort also nicht
+eingetreten. Die Schwäche bleibt: Sie hängt an einem Versatz von 3 pt zwischen
+den Spalten, und ob er auftritt, entscheidet der Satz der Seite. Die beiden
+Erzeuger nachzuziehen ist ein eigener Vorgang; er ändert nach dieser Messung
+keinen Seed.
+
+**Was es gefunden hätte und was nicht:** Die Zählung je Blatt stimmte, die
+Endeprüfung aus E64 war grün (`einsetzen, produktionsorientierte oder kreative`
+endet auf einem Buchstaben, `ergänzen` ebenso). Der Selbstvergleich 2.2.2 gegen
+2.4 hätte beide Einträge als Unterschied gemeldet — 2.4 führt dieselben zwei
+Erwartungen richtig getrennt —, aber als zwei von rund zwanzig, und
+`Texte zum persönlichen Lebensumfeld …` gegen `produktionsorientierte oder
+kreative Texte …` liest sich wie einer der inhaltlichen Unterschiede („ein
+Satzteil weniger"). Erkannt hat ihn der Abgleich jeder Erwartung gegen einen
+Schnitt aus einem anderen Verfahren — die Bauform aus REIHENREGELN 2: „Ein
+Eintrag, der mitten im Satz auf einem heilen Wort abbricht, besteht jede
+Einzelprüfung."
+
+**Der Abgleich, und was er nicht kann:** Verglichen wird die Buchstabenfolge,
+blind für Trennentscheidungen (die deckt die Regel-4-Liste) und für Ziffern
+(eigens gezählt: kein Seedtext enthält eine). 106 der 144 Erwartungen sind
+gleich; bei 32 läuft der `-raw`-Schnitt in die nächste Überschrift, eine
+Fußnotenziffer oder die rechte Spalte weiter — einzeln durchgesehen; bei sechs
+endet er an einem Seitenumbruch früher, und der Rest steht zusammenhängend im
+Dokument — die sechs Texte sind vollständig durchgesehen. Das Werkzeug ist
+nicht im Repo; es ist ein Abgleich für diesen Lauf, keine Prüfung.
+
+---
+
+**Selbstvergleich 2.2.2 gegen 2.4:** 52 gegen 51 Erwartungen, **32 wortgleich**
+(Französisch: 62 von 73). Die übrigen sind sämtlich inhaltlich — ein Wort mehr
+(`längeren`, `auch spontan`, `grundlegende`, `kurze`), ein Satzteil mehr oder
+weniger (`und diese in den Kontext der Gesamtaussage einordnen`, `und einen
+Perspektivwechsel vollziehen`), zwei Kommata, die das PDF so setzt
+(`individueller, sowie`, `erstellten, Produkten` in 2.4). 2.2.2 führt eine
+Erwartung mehr, `auffällige sprachlich-stilistische Gestaltungsmittel …` unter
+Text- und Medienkompetenz. Kein Unterschied hat die Form eines Abbruchs; wo
+2.4 kürzer endet, steht im `-raw`-Text danach der Satzpunkt.
+
+**Regel 4:** 166 Trennstellen, 47 nach Regel 4, als 22 verschiedene Paare —
+alle durchgesehen und richtig aufgelöst (`Ebe-nen`, `Lebensum-feld`,
+`hispanoamerikani-sche`, `dif-ferenzierteres` …). Regel 6 hat nicht
+entschieden.
+
+**Was das nicht heißt:** Die Werte gelten für dieses Dokument. Für Spanisch
+GOSt ist die Rinne neu zu messen, und der Marker dort ist `U+F0FA`, nicht `à`.

@@ -312,7 +312,7 @@ def linke_spalte(seiten):
 # ---------------------------------------------------------------------------
 # 3 -- Wortschatz und Silbentrennung (E22, E28, E45, E48)
 # ---------------------------------------------------------------------------
-WORT = re.compile(r"[A-Za-zÄÖÜäöüß]+(?:-[A-Za-zÄÖÜäöüß]+)*")
+WORT = re.compile(r"[A-Za-zÄÖÜäöüßñáéíóú]+(?:-[A-Za-zÄÖÜäöüßñáéíóú]+)*")
 
 
 def baue_wortschatz(zeilen) -> collections.Counter:
@@ -348,9 +348,9 @@ def fuege_zusammen(rohzeilen, schatz, linke_haelften, kennung, protokoll):
         if stelle == 0:
             text = zeile
             continue
-        folge = re.match(r"[A-Za-zÄÖÜäöüß]+", zeile)
+        folge = re.match(r"[A-Za-zÄÖÜäöüßñáéíóú]+", zeile)
         folge = folge.group() if folge else ""
-        vorn = re.search(r"([A-Za-zÄÖÜäöüß]+)-$", text)
+        vorn = re.search(r"([A-Za-zÄÖÜäöüßñáéíóú]+)-$", text)
         if not vorn:
             text += " " + zeile
             continue

@@ -128,6 +128,8 @@ Quelldatei (E19/E20).
 | `gen_sport_klp.py` | `sql/12_seed_sport_klp.sql` | `g9_sp_klp_3426_2019_06_23.pdf` |
 | `gen_deutsch_klp.py` | `sql/10_seed_deutsch_klp.sql` | `g9_d_klp_3409_2019_06_23.pdf` |
 | `gen_englisch_klp.py` | `sql/19_seed_englisch_klp.sql` | `g9_e_klp_3417_2019_06_23.pdf` |
+| `gen_franzoesisch_klp.py` | `sql/20_seed_franzoesisch_klp.sql` | `g9_f_klp_3410_2019_06_23.pdf` |
+| `gen_spanisch_klp.py` | `sql/21_seed_spanisch_klp.sql` | `g9_s_klp_3416_2019_06_23.pdf` |
 
 Damit führt **jede** Datei mit Fachdaten einen Quellennachweis; der Rückstand
 aus E21 ist erledigt. Das Testskript prüft beides: dass eine Quelle deklariert
@@ -180,6 +182,7 @@ oder einen **Vergleich** gefunden, nie durch Hinsehen:
   |---|---|---|---|---|
   | Englisch Sek I | 293 … 300 | 300.0 | 117 | 302, 303, 320, 331 |
   | Französisch Sek I | 292.65 … 302.89 | 302.0 | 129 | 302.9, 303.0, 320.8, 331.3 |
+  | Spanisch Sek I | 292.44 … 302.91 | 302.0 | 207 | 302.9, 303.0, 320.8, 320.9 |
 
   **Und sie ist am BLOCK zu messen, nicht an den rohen Wortkanten.** Eine
   Messung über alle linken Wortkanten fand für Französisch die Zone 293–301
@@ -216,6 +219,16 @@ oder einen **Vergleich** gefunden, nie durch Hinsehen:
   stillen Fehlzuordnung.
 - **Kapitälchen kommen zerlegt an** (E47): `I NTERKULTURELLE KOMMUNIKATIVE
   K OMPETENZ`. Zwei Ersetzungen bauen sie zurück.
+- **Die Zeilenbildung vergleicht mit jedem Wort der Zeile, nicht nur mit dem
+  ersten** (E67). Bei Spanisch sitzt die rechte Spalte auf Seite 30 rund 3 pt
+  höher; mit `zeile[0]` fiel der Text einer Erwartung in die Zeile der rechten
+  Spalte, ihr `à` in eine eigene, und zwei Erwartungen waren falsch
+  geschnitten — bei stimmiger Summe. Englisch und Französisch führen noch
+  `zeile[0]`; dort ändert die Behebung gemessen keinen Seed.
+- **Die Summe sieht keinen falschen Schnitt.** Gefunden hat ihn bei Spanisch
+  erst der Abgleich jeder Erwartung gegen einen Schnitt aus einem zweiten
+  Verfahren (`pdftotext -raw`, Buchstabenfolge). Bei einem Fach ohne Bestand
+  gehört ein solcher Abgleich in den Lauf.
 
 Die Formregeln — Codeschema, Kürzungsgrenze, Sortierung, Behandlung des
 Schlusszeichens — werden aus dem Bestand rekonstruiert und gegen ihn geprüft,

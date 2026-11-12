@@ -172,6 +172,7 @@ VALUES (1, 'Vorname', 'Nachname', 'deine@email.de', '$HASH', 'admin');"
 | `18_migration_verwaiste_rueckmeldungen.sql` | verwaiste Rückmeldungen entfernen (E37) |
 | `19_seed_englisch_klp.sql` | Englisch, Kernlehrplan Sek I (G9) |
 | `20_seed_franzoesisch_klp.sql` | Französisch, Kernlehrplan Sek I (G9) |
+| `21_seed_spanisch_klp.sql` | Spanisch, Kernlehrplan Sek I (G9) |
 
 Die Inhalte stammen aus dem Kopf der jeweiligen Datei. Die Tabelle ist von
 Hand gepflegt: Kommt eine Migration dazu, gehört sie hierher.
