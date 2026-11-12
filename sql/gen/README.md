@@ -237,3 +237,30 @@ selbst innerhalb eines Fachs: Deutsch **GOSt** behält den Schlusspunkt,
 Deutsch **Sek I** und Sport entfernen ihn. Die Kürzungsgrenze liegt bei allen
 dreien bei 120 Zeichen — geprüft, nicht angenommen. Wo dagegen der Lehrplan
 selbst etwas sagt, gilt der Lehrplan, auch gegen den Bestand (E26).
+
+## Der vollständige Abgleich gehört zu jedem Fachimport
+
+Nach E64 wird jeder Seed **vollständig** gegen die Quelle gehalten, nicht in
+Stichproben. Ein Text, der auf einem heilen Wort abbricht oder an der falschen
+Stelle geschnitten ist, besteht jede Zählung und die Endeprüfung — bei Englisch
+waren es zwei von neun beschädigten Einträgen, bei Spanisch zwei von 144
+(E67). Wo es einen geprüften Bestand gibt, ist der Wortlautvergleich dieser
+Abgleich. **Wo es keinen gibt, tritt `abgleich.py` an seine Stelle:**
+
+```bash
+python3 sql/gen/abgleich.py sql/21_seed_spanisch_klp.sql
+```
+
+Er schneidet die Erwartungen ein zweites Mal aus, mit `pdftotext -raw` statt
+über Koordinaten, ordnet jede einem Seedtext zu und meldet hart, was nicht
+aufgeht — Text ohne Gegenstück, ein Ende mitten im Satz, eine Ziffer im Text.
+Exit 0 heißt kein harter Befund; **die Liste der Überhänge ist trotzdem
+durchzusehen**, das Werkzeug prüft an ihnen nur das Satzende. Was es nicht
+prüft (Trennentscheidungen, Zuordnung zu Blättern), steht in seinem Kopf.
+
+**Es hängt an Spanisch Sek I:** Kapitelmarken, Marker und die Zeilen, an denen
+eine Erwartung endet, sind für diesen Plan belegt und im Kopf unter
+„Planabhängig“ benannt. Für ein anderes Fach sind sie neu zu bestimmen und
+mit eigenen Gegenproben zu belegen; das Werkzeug zu verallgemeinern ist ein
+eigener Schritt. Bis dahin gilt für jedes neue Fach: ein Abgleich gegen ein
+zweites Verfahren, und sein Ergebnis im Bericht.

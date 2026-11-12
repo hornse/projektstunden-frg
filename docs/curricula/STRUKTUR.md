@@ -87,7 +87,7 @@ Nichts — beim Spanisch-Auftrag ist genau das geschehen.
 | 12 | `g9_m_klp_3401_…` | Mathematik | Sek I | **`(n)`** | ein | 2 | 181 | ? |
 | 13 | `g9_mu_klp_3406_…` | Musik | Sek I | `à`+3 · `\x83`+3/+4 | ? | ? | 126 | **?** |
 | 14 | `g9_ph_klp_3411_…` | Physik | Sek I | `à`+3 · Tabelle | ein | 2 | 178 | ✓ |
-| 15 | `g9_s_klp_3416_…` | Spanisch | Sek I | `à`+4/+3/+1 | **zwei** | **3** | 144 | ✓ |
+| 15 | `g9_s_klp_3416_…` | Spanisch | Sek I | `à`+4/+3/+1 | **zwei** | **3** | **144** | ✓ |
 | 16 | `g9_sp_klp_3426_…` | Sport | Sek I | `à`+4/+3 | ein | 2 | **120** | ✓ |
 | 17 | `g9_wipo_klp_3429_…` | Wirtschaft-Politik | Sek I | `à`+3/+4/+5 · `\x83`+3 | ein | 2 | 148 | ✓ |
 | 18 | `g9_wpif_klp_2023_…` | Informatik (WP) | Sek I | `•`+3 | ein | 2 | 54 | ✓ |
@@ -111,8 +111,12 @@ Nichts — beim Spanisch-Auftrag ist genau das geschehen.
 | 36 | `gost_klp_sp_…` | Sport | GOSt | **`−`**+1 | ein | ? | 234 | **?** |
 | 37 | `gost_klp_sw_…` | Sozialwiss./Wirtschaft | GOSt | `•`+3 | ein | ? | 596 / 435 | **?** |
 
-Die vier fett gesetzten Zahlen sind gegen die Datenbank belegt: Deutsch Sek I
-226, Deutsch GOSt 197, Sport Sek I 120 — und die Bereichszahlen 28, 30, 54.
+Die fett gesetzten Zahlen der Spalte „Erwartungen“ sind gegen die Datenbank
+belegt: Deutsch Sek I 226, Deutsch GOSt 197, Sport Sek I 120, Französisch
+Sek I 202 und Spanisch Sek I 144 (die beiden letzten gezählt am 12.11.2026,
+nach dem Einspielen von Seed 21) — und die Bereichszahlen 28, 30, 54. Bis zum
+12.11. hieß es hier „die vier fett gesetzten Zahlen“; die 202 war bei E63 fett
+geworden, ohne dass dieser Satz nachgezogen wurde.
 
 **Berichtigt am 11.09.2026, Französisch Sek I (Zeile 7):** Dort standen 204
 Erwartungen und `•`+4 als zweiter Marker. Beides ist beim Import gemessen
