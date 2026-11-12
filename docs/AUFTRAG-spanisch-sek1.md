@@ -227,3 +227,134 @@ beauftragt wird.
 - Vermutungen als Vermutungen kennzeichnen, mit dem Versuch dazu.
 - „Ich weiß es nicht" statt einer plausiblen Vermutung.
 - Bei Unklarheit nachfragen statt vermuten.
+
+---
+
+## Nachtrag — Ergebnisse aus Schritt 2 und Freigaben (nachgetragen 12.11.2026)
+
+Schritt 2 wurde im September in einer Sitzung durchgeführt, die danach verloren
+ging. Ihre Ergebnisse und die Freigaben stehen deshalb hier, damit eine neue
+Sitzung sie findet. **Schritt 2 ist abgeschlossen; eine neue Sitzung beginnt
+mit Schritt 0 und setzt dann bei Schritt 3 fort.**
+
+**Zwischen Schritt 2 und der Fortsetzung liegen zwei Monate.** Das Regelwerk
+ist von v1.9.0 auf v2.4.0 gewandert, die Suite läuft seit B0 ein zweites Mal
+unter `env -i`, E65 und E66 sind dazugekommen. Was dieser Auftrag über
+Prüfungszahl, Laufzeit und Regelnummern sagt, stammt aus dem September und ist
+in Schritt 0 neu zu messen, nicht zu übernehmen. Die Messungen am PDF unten —
+Rinne, IKK-Aufteilung, Sollzahlen — hängen nicht an diesem Stand und gelten.
+
+### Ausgangsstand im September, nicht heute
+
+Damals 77/77 grün. Die Prüfsumme der Quelle stimmte. Spanisch hatte
+`fach_id = 18`, Kürzel `SPA`. Einen Rahmen `SPA_KLP` gab es nicht, ebenso keinen
+Code `ES_%` oder `SPA_%`. Zuweisungen: 190, alle am MKR. **Alles davon in
+Schritt 0 nachmessen.**
+
+### Lücke 1 — `à+4/+3/+1` ist der Abstand hinter dem Marker
+
+Nicht die Einrückung davor. Im `-layout`-Text stehen alle 144 `à` in Spalte 0,
+drei davon mit einem Seitenumbruch davor. Dahinter folgen 4 Leerzeichen (70×),
+3 (66×) oder 1 (8×). Die Werte stammen aus dem Blocksatz und haben mit der
+Gliederung nichts zu tun.
+
+In `-bbox-layout` eindeutig: alle 144 Marker als eigenes Wort bei x = 70,8,
+der Text bei x = 88,7. **Eine Erkennung über die Einrückung ist nicht nötig;
+das Zeichen am Zeilenanfang genügt.**
+
+### Lücke 2 — die Aufteilung der Interkulturellen Kompetenz
+
+| Bildungsgang | Soziokult. Orientierungswissen | Einstellungen und Bewusstheit | Verstehen und Handeln |
+|---|---|---|---|
+| 2FS Erste Stufe | 1 | 1 | 1 |
+| 2FS Zweite Stufe | 1 | 1 | 2 |
+| 3FS | 1 | 1 | 2 |
+
+Ein drittes Verhältnis neben Englisch (1/2/4) und Französisch (1/3/3). Alle drei
+Unterüberschriften stehen in allen drei Bildungsgängen mit Doppelpunkt; die
+mittlere ist überall über den Zeilenumbruch getrennt — diese Form fängt der
+Französisch-Erzeuger bereits ab.
+
+### Lücke 3 — die Rinne, am Block gemessen
+
+178 Markerblöcke nach Verwerfen von 40 Seitenzahlzeilen: 57 zweispaltig, 30
+einspaltig über die ganze Breite, 91 ohne rechte Spalte. Freier Korridor in den
+zweispaltigen Blöcken **292,44 bis 302,91 pt**; dort liegt in keinem der 57 ein
+Wort, in allen 30 einspaltigen schon.
+
+Rechte Ränder: 302,9 (13×), 303,0 (159×), 320,8 (99×), 320,9 (185×). Den Rand
+331,3 aus Französisch gibt es hier nicht.
+
+**`RINNE = (293.0, 302.0)`, `SPALTE_RECHTS = 302.0`** — dieselben Werte wie bei
+Französisch, aber gemessen und nicht übernommen.
+
+Vier Blöcke haben eine Lücke von mindestens 8 pt vor einem Wort ab 300 und sind
+trotzdem einspaltig, dreimal bei Sprachmittlung („situationsangemessen in die
+jeweilige Zielsprache"). Weil dort ein Wort die Rinne überdeckt, behandelt die
+Entscheidung am Block sie richtig; eine Entscheidung je Zeile hätte sie
+zerschnitten.
+
+### Sollzahlen je Blatt
+
+Unabhängig gezählt aus `pdftotext -layout`, nicht über Koordinaten wie der
+Erzeuger.
+
+| Blatt | 2FS S1 | 2FS S2 | 3FS |
+|---|---|---|---|
+| HOR | 4 | 3 | 3 |
+| LES | 2 | 3 | 3 |
+| SAG | 3 | 3 | 3 |
+| ZUS | 3 | 4 | 4 |
+| SCH | 2 | 4 | 4 |
+| SPM | 2 | 2 | 2 |
+| VSM · WOR | 3 | 5 | 5 |
+| VSM · GRA | 1 | 1 | 1 |
+| VSM · AUS | 3 | 3 | 3 |
+| VSM · ORT | 2 | 2 | 2 |
+| IKK · SOW | 1 | 1 | 1 |
+| IKK · EIN | 1 | 1 | 1 |
+| IKK · VER | 1 | 2 | 2 |
+| TMK | 5 | 8 | 7 |
+| SLK | 4 | 5 | 5 |
+| SBW | 4 | 5 | 5 |
+| **Σ** | **41** | **52** | **51** |
+
+In den drei Erwartungskapiteln steht kein `•`.
+
+### Freigegeben
+
+- **Präfix `ES_`, Rahmen `SPA_KLP`.** Das Muster ist gesetzt: `DEU_KLP` trägt
+  `DE_`, `ENG_KLP` trägt `EN_`, `FRA_KLP` trägt `FR_`. Beispiele:
+  `ES_2FS_S1_HOR_01`, `ES_3FS_IKK_VER_02`.
+- **Seed Nr. 21**, Erzeuger `sql/gen/gen_spanisch_klp.py`, abgeleitet aus dem
+  Französisch-Erzeuger mit dem Seitenzahlfilter vor der Blockbildung.
+- **Baum:** 3 Bildungsgänge × 20 Knoten = 60 Knoten, 48 Blätter.
+- Die Rinne, die IKK-Aufteilung und die Sollzahlen oben.
+
+### Freigegeben mit Auflage — vor dem Bauen
+
+**Den Wortausdruck der Silbentrennung um die spanischen Zeichen erweitern** —
+`ñ`, `á`, `é`, `í`, `ó`, `ú`, `ü` —, bevor der Erzeuger gebaut wird, nicht
+danach beobachten. Ein Ausdruck, der sie nicht kennt, findet den Beleg aus E22
+Regel 2 und 3 nicht und lässt den Fall auf Regel 4 durchfallen, den
+ungestützten Zweig. Die Liste der Regel-4-Fälle zeigt nur, was durchgefallen
+ist; sie zeigt nicht, was mit dem richtigen Ausdruck eine Ebene höher
+entschieden worden wäre.
+
+**Das ist eine Regeländerung im Sinne von E45 und E48.** Die **fünf**
+vorhandenen Erzeuger — `gen_deutsch_klp.py`, `gen_deutsch_sii.py`,
+`gen_sport_klp.py`, `gen_englisch_klp.py`, `gen_franzoesisch_klp.py` — mit dem
+erweiterten Ausdruck laufen lassen und gegen die ausgelieferten Seeds halten.
+Bei der Freigabe im Chat stand „vier"; das war falsch. Erwartet ist keine Abweichung; kommt eine,
+anhalten statt ausliefern. Bei E48 kam eine, und sie hätte `Autorschaft`
+zurückgedreht.
+
+### Zusätzlich in `STRUKTUR.md`
+
+Eine **Legende**, die sagt, was `+N` hinter einem Marker bedeutet: den Abstand
+dahinter, nicht die Einrückung davor. Zeile 17 führt `+3/+4/+5`, Zeile 25
+`+1/+3`. Wer das für Gliederungsebenen hält, untersucht bei jedem Fach dasselbe
+Nichts — beim Spanisch-Auftrag ist genau das geschehen.
+
+Dazu, wie in Schritt 5 vorgesehen, Zeile 15 berichtigen: `•`+3 als
+Erwartungsmarker streichen, die gemessene Spaltengrenze eintragen.
