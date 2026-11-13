@@ -41,7 +41,9 @@ const CHROME = findeChrome();
 if (!CHROME) { console.log('  ÜBERSPRUNGEN: kein Chromium gefunden ($CHROME setzen)'); process.exit(3); }
 
 let gruen = 0, rot = 0;
+let letzte = 'vor der ersten Prüfung';   // für die Meldung eines Hängers
 const pruefe = (ok, text, warum = '') => {
+  letzte = text;
   if (ok) { gruen++; console.log('  ✓ ' + text); }
   else    { rot++;   console.log('  ✗ ' + text + (warum ? ' – ' + warum : '')); }
 };
@@ -93,8 +95,29 @@ const wsUrl = await new Promise((res, rej) => {
   let b = ''; const t = setTimeout(() => rej(new Error('Chromium startet nicht')), 15000);
   chrome.stderr.on('data', d => { b += d; const m = b.match(/ws:\/\/\S+/); if (m) { clearTimeout(t); res(m[0]); } });
 });
+// Zeitgrenze je Aufruf des DevTools-Protokolls (Auftrag A, Paket 2): Ein
+// Aufruf, auf den keine Antwort kommt, ließ die Datei früher ohne Ende warten –
+// und mit ihr die Suite, die dann weder rot noch grün melden konnte (unter der
+// Mutation M3 und einmal ohne Mutation, 13.11.2026). Jetzt wird ein Hänger rot,
+// mit Methode, Ausdruck und der letzten gemeldeten Prüfung, und die Datei endet.
+// 20 s: Kein einzelner Aufruf soll warten – gewartet wird in bis() aus vielen
+// kurzen Aufrufen, höchstens 5 s; ein Aufruf dauert sonst Millisekunden. Das
+// Vierfache der längsten gewollten Wartezeit trägt einen langsamen Rechner und
+// lässt einen Hänger nach 20 s statt nie auffallen.
+const GRENZE_MS = 20000;
+let gehaengt = false;
+const haenger = (was) => {
+  if (gehaengt) return new Promise(() => {});
+  gehaengt = true;
+  console.log(`  ✗ Browser hängt: ${was} antwortet nicht in ${GRENZE_MS / 1000} s – zuletzt gemeldet: „${letzte}“`);
+  rot++; ende(1);
+  return new Promise(() => {});      // nichts läuft weiter, ende() beendet
+};
 const ws = new WebSocket(wsUrl);
-await new Promise(r => ws.onopen = r);
+await new Promise(r => {
+  const t = setTimeout(() => haenger('Verbindung zu Chromium (WebSocket)'), GRENZE_MS);
+  ws.onopen = () => { clearTimeout(t); r(); };
+});
 let nr = 0; const offen = {}; const fehler = [];
 ws.onmessage = e => {
   const m = JSON.parse(e.data);
@@ -102,7 +125,13 @@ ws.onmessage = e => {
   else if (m.method === 'Runtime.exceptionThrown') fehler.push(m.params.exceptionDetails?.exception?.description || 'Ausnahme');
 };
 let S;
-const cdp = (method, params = {}) => new Promise(r => { const i = ++nr; offen[i] = r; ws.send(JSON.stringify({ id: i, method, params, sessionId: S })); });
+const cdp = (method, params = {}) => new Promise(r => {
+  const i = ++nr;
+  const was = `CDP ${method}` + (params.expression ? ` (${params.expression.replace(/\s+/g, ' ').slice(0, 60)})` : '');
+  const t = setTimeout(() => { delete offen[i]; haenger(was); }, GRENZE_MS);
+  offen[i] = (m) => { clearTimeout(t); r(m); };
+  ws.send(JSON.stringify({ id: i, method, params, sessionId: S }));
+});
 const werte = async (ausdruck) => {
   const m = await cdp('Runtime.evaluate', { expression: ausdruck, awaitPromise: true, returnByValue: true });
   return m.result?.result?.value;
