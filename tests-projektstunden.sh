@@ -355,50 +355,10 @@ perl -0777 -ne 'exit(!(/id="nav-logo"[^>]*alt=""/s))' "$HTML" \
 grep -q -- '--text3:var(--ci-text-schwach)' "$CSS" \
     && gruen "--text3 erreicht AA (4.62 statt 2.76)" || rot "--text3 mit eigenem Wert"
 
-echo ""
-echo "Anmeldung"
-# Nachdem ein Passwort geprueft wurde, darf kein Fehlschlag anders aussehen
-# als ein falsches Passwort. Sonst unterscheidet ein Angreifer "Passwort
-# falsch" von "Passwort richtig, kein Datensatz" — hier auf Konten
-# Minderjaehriger. FALLSTRICKE.md Abschnitt 8.
-#
-# Der Bereich wird ueber CODE abgegrenzt, nicht ueber einen Kommentar: ab dem
-# Aufruf, der das Passwort prueft, bis zum Ende des Login-Zweigs. Eine
-# Abgrenzung an einer Ueberschrift wuerde die Beschreibung der Regel messen
-# statt der Sache (REIHENREGELN.md 2).
-#
-# Rechtepruefungen an einer bestehenden Sitzung liegen ausserhalb und
-# duerfen unterscheiden — dort war kein Passwort im Spiel.
-API=backend/api/index.php
-ZWEIG=$(awk '
-    /if \(\$method === .POST. && \$sub === .login.\) \{/ { f = 1 }
-    f {
-        buf = buf $0 "\n"
-        n = gsub(/\{/, "{"); m = gsub(/\}/, "}"); tiefe += n - m
-        if (tiefe == 0) { printf "%s", buf; exit }
-    }' "$API" 2>/dev/null)
-NACH_PASSWORT=$(printf '%s\n' "$ZWEIG" | awk '/authenticateAndGetDetails\(/ {f=1} f {print}' | tr '\n' ' ')
-if [ -z "$NACH_PASSWORT" ]; then
-    rot "Anmeldung: Login-Zweig oder Passwortpruefung nicht gefunden – die Pruefung fand ihre Voraussetzung nicht"
-else
-    ALLE=$(printf '%s' "$NACH_PASSWORT" | awk '{
-        n = split($0, t, /json_error\(/)
-        for (i = 2; i <= n; i++) {
-            u = t[i]; sub(/\);.*/, "", u)
-            if (match(u, /[0-9][0-9][0-9][ \t]*$/)) print substr(u, RSTART, 3)
-        }
-    }' | sort -u)
-    VIERER=$(printf '%s\n' "$ALLE" | grep '^4' | tr '\n' ' ' | sed 's/ *$//')
-    FUENFER=$(printf '%s\n' "$ALLE" | grep '^5' | tr '\n' ' ' | sed 's/ *$//')
-    if [ -z "$VIERER" ]; then
-        rot "Anmeldung: kein 4xx nach der Passwortpruefung gefunden – prueft die Pruefung noch etwas?"
-    elif [ "$VIERER" = "401" ]; then
-        gruen "Anmeldung lehnt einheitlich mit 401 ab${FUENFER:+ (unberührt: $FUENFER)}"
-    else
-        rot "Anmeldung lehnt uneinheitlich ab (Statuscodes: $VIERER)"
-    fi
-fi
-
+# (Der frühere Abschnitt „Anmeldung“ – eine awk-Prüfung am Quelltext, ob
+# nach der Passwortprüfung nur 401 vorkommt – entfiel mit Auftrag A, E68.
+# An seine Stelle tritt die AUSGEFÜHRTE Anmeldung, je Fall Statuscode und
+# Satz: tests/anmeldung_db_test.sh, Abschnitt „Anmeldung ausgeführt“ unten.)
 echo ""
 echo "Fachdaten"
 # E19: erzeugte Fachdaten fuehren Quelle, Pruefsumme und Erzeuger im Kopf.
@@ -1723,6 +1683,28 @@ else
     done <<< "$KTDB_AUS"
     if [ "$KTDB_EXIT" -ne 0 ] && ! printf '%s\n' "$KTDB_AUS" | grep -q '^  ✗ '; then
         rot "Kontotyp (DB): Lauf endete mit $KTDB_EXIT ohne rote Zeile"
+    fi
+fi
+
+echo ""
+echo "Anmeldung ausgeführt (tests/anmeldung_db_test.sh, php -S, eigene MariaDB, WebUntis-Ersatz)"
+# Auftrag A, Paket 2: je Fall Statuscode, Satz und ob der Versuch zählt –
+# ersetzt die awk-Prüfung „einheitlich 401“ am Quelltext (Befund §5).
+# Pflichtschritt wie Kontotyp mit Datenbank: Fehlt mariadbd, Exit 3.
+ANDB_AUS=$(./tests/anmeldung_db_test.sh 2>/dev/null); ANDB_EXIT=$?
+if [ "$ANDB_EXIT" -eq 3 ]; then
+    printf '%s\n' "$ANDB_AUS" | grep '^  –  ' || echo "  –  ÜBERSPRUNGEN: Anmeldung mit Datenbank"
+    PFLICHT_UEBERSPRUNGEN=$((PFLICHT_UEBERSPRUNGEN + 1))
+else
+    while IFS= read -r z; do
+        case "$z" in
+            "  ✓ "*) gruen "Anmeldung (DB): ${z#  ✓ }" ;;
+            "  ✗ "*) rot   "Anmeldung (DB): ${z#  ✗ }" ;;
+            "      "*) echo "$z" ;;
+        esac
+    done <<< "$ANDB_AUS"
+    if [ "$ANDB_EXIT" -ne 0 ] && ! printf '%s\n' "$ANDB_AUS" | grep -q '^  ✗ '; then
+        rot "Anmeldung (DB): Lauf endete mit $ANDB_EXIT ohne rote Zeile"
     fi
 fi
 

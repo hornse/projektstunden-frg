@@ -17,7 +17,7 @@
 // jede andere null, wie der Browser. Sonst verdeckte der Ersatz eine
 // Kennung, die das HTML gar nicht hat (REIHENREGELN 7).
 //
-// DIE SÄTZE KOMMEN AUS PHP (backend/auth/Anmeldebremse.php), nicht aus
+// DIE SÄTZE KOMMEN AUS PHP (backend/auth/anmeldung.php), nicht aus
 // einer Abschrift: Was der Server sagt, muss der Browser zeigen.
 //
 // Was hier NICHT gemessen wird und deshalb Abnahmepunkt im Browser bleibt:
@@ -53,13 +53,12 @@ const html  = fs.readFileSync(path.join(W, 'frontend/index.html'), 'utf8');
 let saetze = null;
 try {
   saetze = JSON.parse(execFileSync('php', ['-r', `
-    require ${JSON.stringify(path.join(W, 'backend/auth/Anmeldebremse.php'))};
-    $w = Anmeldebremse::urteil(['fehlversuche' => Anmeldebremse::SCHWELLE, 'seit' => 0], Anmeldebremse::SCHWELLE);
+    require ${JSON.stringify(path.join(W, 'backend/auth/anmeldung.php'))};
     echo json_encode([
-      'abgelehnt' => Anmeldebremse::SATZ_ABGELEHNT,
-      'ausfall'   => Anmeldebremse::SATZ_AUSFALL,
-      'warten'    => $w['meldung'],
-      'schwelle'  => Anmeldebremse::SCHWELLE,
+      'abgelehnt' => Anmeldung::SATZ_ABGELEHNT,
+      'ausfall'   => Anmeldung::SATZ_AUSFALL,
+      'warten'    => Anmeldung::satzWarten(Anmeldung::WARTEZEIT_S),
+      'schwelle'  => Anmeldung::SCHWELLE,
     ]);`], { encoding: 'utf8' }));
 } catch (e) {
   saetze = null;
@@ -77,7 +76,7 @@ const apiBase = (appJs.match(/^const API_BASE = .*;$/m) || [null])[0];
 // GET, POST, DELETE sind Pfeilfunktionen in const, keine Deklarationen.
 const kurz = (appJs.match(/^const (GET|POST|DELETE) +=.*;$/gm) || []);
 
-pruefe('Voraussetzung: api, GET/POST/DELETE, doLogin, doLogout, showMsg und API_BASE aus app.js gelesen, Sätze aus Anmeldebremse.php',
+pruefe('Voraussetzung: api, GET/POST/DELETE, doLogin, doLogout, showMsg und API_BASE aus app.js gelesen, Sätze aus anmeldung.php',
   teile.every(Boolean) && apiBase !== null && kurz.length === 3 && saetze !== null
   && typeof saetze.abgelehnt === 'string' && typeof saetze.ausfall === 'string');
 
@@ -209,7 +208,7 @@ async function fall(antworten, vorbereiten, aufruf, ...arg) {
   const ZAHLWORT = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn', 'elf', 'zwölf'];
   const vorFehl = [...text.matchAll(/(\S+) Fehlversuch/gi)].map(m => m[1].toLowerCase());
   const zahlen = vorFehl.filter(w => ZAHLWORT.includes(w) || /^\d+$/.test(w));
-  pruefe('Hilfe nennt die Schwelle als „' + ZAHLWORT[saetze.schwelle] + ' Fehlversuch…“ wie Anmeldebremse::SCHWELLE – und keine andere Zahl davor',
+  pruefe('Hilfe nennt die Schwelle als „' + ZAHLWORT[saetze.schwelle] + ' Fehlversuch…“ wie Anmeldung::SCHWELLE – und keine andere Zahl davor',
     zahlen.length >= 1 && zahlen.every(w => w === ZAHLWORT[saetze.schwelle] || w === String(saetze.schwelle)));
   // FALLSTRICKE 8: Kein Satz, der erklärt, dass das Passwort stimmte und
   // trotzdem abgelehnt wurde (Befund koordination 2026-11-03-doku-hilfe §8).

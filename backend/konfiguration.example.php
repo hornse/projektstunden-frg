@@ -59,12 +59,12 @@ $WEBUNTIS_CONFIG = [
     'allowed_person_types' => [2, 16, 5],
     'connect_timeout'      => 5,
     'timeout'              => 10,
-    // Anmeldebremse (backend/auth/Anmeldebremse.php): ab acht Fehlversuchen
-    // 60 Sekunden Wartezeit, nie eine Sperre. Die Schwelle steht im Code
-    // (Anmeldebremse::SCHWELLE, M56 der Reihe), nicht hier. lockout_minutes
-    // heisst aus Gewohnheit so und ist das ZAEHLFENSTER – gezaehlt werden
-    // Fehlversuche der letzten 15 Minuten, seit der letzten gelungenen Anmeldung.
-    'lockout_minutes'      => 15,
+    // Anmeldebremse (Modul webuntis-auth-php, backend/auth/Anmeldebremse.php):
+    // ab acht Fehlversuchen 60 Sekunden Wartezeit, nie eine Sperre, gezählt
+    // über 15 Minuten. Schwelle und Wartezeit stehen im Code (Anmeldung::
+    // SCHWELLE, M56), das Fenster im Modul – nichts davon hier. Ein Eintrag
+    // lockout_minutes oder max_failed_logins in einer älteren Datei wird nicht
+    // mehr gelesen und kann entfallen (E68).
 
     // Zusätzlich: Lehrer-Kürzel (personType 2) die auch Admin werden sollen.
     // WebUntis-Admins (personType 16) werden automatisch Admin ohne diese Liste.

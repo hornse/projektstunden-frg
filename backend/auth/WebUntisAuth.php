@@ -38,12 +38,22 @@ class WebUntisAuth
 
     private string $sessionCookie = ''; // aktive Session-Cookie
     private ?string $grund = null;
+    /** Ob der letzte jsonRpc() an einem Transportfehler scheiterte (M55). */
+    private bool $transportfehler = false;
 
     /**
-     * Warum die letzte Anmeldung nicht gelang: 'leer', 'falsches_passwort'
-     * (WebUntis hat abgelehnt), 'falsche_rolle' (Passwort stimmte, Kontotyp
-     * nicht zugelassen) oder 'ohne_entscheid' (WebUntis antwortete nicht –
-     * kein Passwort hat entschieden, der Versuch zählt nicht).
+     * Warum die letzte Anmeldung nicht gelang:
+     *   'leer'              Kennung oder Passwort leer
+     *   'falsches_passwort' WebUntis antwortete mit einem Fehlercode – jeder
+     *                       Code außer -8500, auch ein unbekannter (M55)
+     *   'http_abgelehnt'    WebUntis antwortete mit HTTP außer 200 und 5xx –
+     *                       eine Antwort, kein Transportfehler: zählt (Z. 8)
+     *   'schule_unbekannt'  -8500: Schule unbekannt oder Instanz gewechselt.
+     *                       Hat über kein Passwort entschieden, zählt nicht,
+     *                       eigener Satz (FALLSTRICKE 6, Z. 7)
+     *   'falsche_rolle'     Passwort stimmte, Kontotyp nicht zugelassen
+     *   'ohne_entscheid'    Transportfehler: nicht erreichbar, Zeitüber-
+     *                       schreitung, HTTP 5xx, keine JSON-Antwort (M55)
      */
     public function grund(): ?string
     {
@@ -76,10 +86,18 @@ class WebUntisAuth
         ], true); // true = Cookie aus Response speichern
 
         if ($authResponse === null) {
-            $this->grund = 'ohne_entscheid';
+            // Ohne Entscheid NUR bei einem Transportfehler. Eine Antwort mit
+            // HTTP 4xx hat WebUntis gegeben – im Zweifel zählt der Versuch (M55).
+            $this->grund = $this->transportfehler ? 'ohne_entscheid' : 'http_abgelehnt';
             return null;
         }
         if (isset($authResponse['error'])) {
+            if ((int)($authResponse['error']['code'] ?? 0) === -8500) {
+                // Der Code gehört ins Protokoll, nicht in die Antwort (FALLSTRICKE 6).
+                error_log('WebUntisAuth: -8500 bei authenticate – Schule unbekannt oder Instanz gewechselt');
+                $this->grund = 'schule_unbekannt';
+                return null;
+            }
             $this->grund = 'falsches_passwort';
             return null;
         }
@@ -178,6 +196,7 @@ class WebUntisAuth
      */
     private function jsonRpc(string $method, array $params, bool $saveCookie = false): ?array
     {
+        $this->transportfehler = false;
         $baseUrl = rtrim($this->config['base_url'], '/');
 
         if (!str_starts_with($baseUrl, 'https://')) {
@@ -215,10 +234,18 @@ class WebUntisAuth
         $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
         curl_close($ch);
 
+        // Transportfehler: Hier hat WebUntis über nichts entschieden (M55).
         if ($raw === false) {
             error_log("WebUntisAuth: cURL-Fehler bei method={$method}: {$curlErr}");
+            $this->transportfehler = true;
             return null;
         }
+        if ($httpCode >= 500 && $httpCode <= 599) {
+            error_log("WebUntisAuth: HTTP {$httpCode} bei method={$method}");
+            $this->transportfehler = true;
+            return null;
+        }
+        // Jede andere Antwort außer 200 ist eine Antwort (Z. 8): kein Transportfehler.
         if ($httpCode !== 200) {
             error_log("WebUntisAuth: HTTP {$httpCode} bei method={$method}");
             return null;
@@ -237,6 +264,7 @@ class WebUntisAuth
         $decoded = json_decode($raw, true);
         if (!is_array($decoded)) {
             error_log("WebUntisAuth: Ungültige JSON-Antwort bei method={$method}");
+            $this->transportfehler = true;
             return null;
         }
 

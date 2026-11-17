@@ -5,7 +5,7 @@
  *
  * docs/BENUTZERHANDBUCH.md nennt die Sätze der Anmeldung und die Schwelle
  * der Anmeldebremse. Diese Prüfung hält beide an backend/auth/
- * Anmeldebremse.php: Ändert sich einer, wird sie rot – dann veraltet das
+ * anmeldung.php (vor Auftrag A: Anmeldebremse.php): Ändert sich einer, wird sie rot – dann veraltet das
  * Handbuch nicht mehr still. Gegenstück für die Hilfe in der App:
  * tests/anmeldung_test.js (ausgeführt in node).
  *
@@ -28,19 +28,19 @@ function pruefe(string $name, bool $ok): void
 }
 
 $W = dirname(__DIR__);
-require_once "$W/backend/auth/Anmeldebremse.php";
+require_once "$W/backend/auth/anmeldung.php";
 $roh = (string)file_get_contents("$W/docs/BENUTZERHANDBUCH.md");
 // HTML-Kommentare sind Beschreibung, nicht Text, den jemand liest – sie
 // werden vor dem Vergleich entfernt (REIHENREGELN 2).
 $md = (string)preg_replace('/<!--.*?-->/s', '', $roh);
 $text = (string)preg_replace('/\s+/u', ' ', $md);
 
-$abgelehnt = Anmeldebremse::SATZ_ABGELEHNT;
-$ausfall   = Anmeldebremse::SATZ_AUSFALL;
-$warten    = Anmeldebremse::urteil(['fehlversuche' => Anmeldebremse::SCHWELLE, 'seit' => 0], Anmeldebremse::SCHWELLE)['meldung'];
+$abgelehnt = Anmeldung::SATZ_ABGELEHNT;
+$ausfall   = Anmeldung::SATZ_AUSFALL;
+$warten    = Anmeldung::satzWarten(Anmeldung::WARTEZEIT_S);
 $prefix    = (string)preg_replace('/\d+ Sekunden?\.$/u', '', $warten);
 
-pruefe('Voraussetzung: Handbuch gelesen, Sätze aus Anmeldebremse.php, Wartesatz mit Zahl am Ende',
+pruefe('Voraussetzung: Handbuch gelesen, Sätze aus anmeldung.php, Wartesatz mit Zahl am Ende',
     strlen($md) > 1000 && $prefix !== $warten && $abgelehnt !== '' && $ausfall !== '');
 pruefe("Handbuch zitiert „{$abgelehnt}“ wie der Server", str_contains($text, "„{$abgelehnt}“"));
 pruefe("Handbuch zitiert „{$ausfall}“ wie der Server", str_contains($text, "„{$ausfall}“"));
@@ -50,9 +50,9 @@ $ZAHLWORT = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben',
 preg_match_all('/(\S+) Fehlversuch/iu', $text, $m);
 $zahlen = array_values(array_filter(array_map(fn($w) => mb_strtolower($w), $m[1]),
     fn($w) => in_array($w, $ZAHLWORT, true) || ctype_digit($w)));
-$soll = $ZAHLWORT[Anmeldebremse::SCHWELLE];
-pruefe("Handbuch nennt die Schwelle als „{$soll} Fehlversuch…“ wie Anmeldebremse::SCHWELLE – und keine andere Zahl davor",
-    count($zahlen) >= 1 && count(array_filter($zahlen, fn($w) => $w !== $soll && $w !== (string)Anmeldebremse::SCHWELLE)) === 0);
+$soll = $ZAHLWORT[Anmeldung::SCHWELLE];
+pruefe("Handbuch nennt die Schwelle als „{$soll} Fehlversuch…“ wie Anmeldung::SCHWELLE – und keine andere Zahl davor",
+    count($zahlen) >= 1 && count(array_filter($zahlen, fn($w) => $w !== $soll && $w !== (string)Anmeldung::SCHWELLE)) === 0);
 
 pruefe('Handbuch: kein Satz, den es nach FALLSTRICKE 8 nicht geben darf (Passwort stimmte, Kontotyp, Datensatz …)',
     preg_match('/Passwort (stimmt|stimmte|war richtig|ist richtig|korrekt)|Kontotyp|freigeschaltet|Schild-ID|Datensatz|nicht zugelassen/iu', $text) === 0);

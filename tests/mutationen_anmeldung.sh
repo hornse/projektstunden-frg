@@ -120,7 +120,7 @@ mut M5 $H 's/    <form id="login-form" onsubmit="event\.preventDefault\(\); doLo
 # C – Hilfe und Handbuch zitieren die Anwendung. Je Seite: der Text ändert
 # sich, der Code ändert sich, die alte Fassung kommt zurück, ein verbotener
 # Satz kommt dazu.
-B=backend/auth/Anmeldebremse.php
+B=backend/auth/anmeldung.php   # Sätze und Schwelle seit Auftrag A (E68)
 D=docs/BENUTZERHANDBUCH.md
 mut C1 $J 's/zeigt die App „Ungültige Anmeldedaten\.“ Nach acht/zeigt die App „Ungültige Anmeldedaten!“ Nach acht/' \
   "Hilfe zitiert „Ungültige Anmeldedaten.“" node
