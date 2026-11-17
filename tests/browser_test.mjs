@@ -85,7 +85,13 @@ const BASIS = `http://127.0.0.1:${srv.address().port}/`;
 
 // ---- Browser ---------------------------------------------------------
 const profil = fs.mkdtempSync(path.join(os.tmpdir(), 'ps-browser-'));
-const chrome = spawn(CHROME, ['--headless=new', '--remote-debugging-port=0', '--no-first-run',
+// --use-mock-keychain: Chrome benutzt nicht den macOS-Schlüsselbund. Ohne den
+// Schalter erschien im kargen Durchgang (leeres HOME), während ein anderes
+// Chrome lief, ein Fenster „kein Schlüsselbund … Chrome Safe Storage“, und der
+// Test hing beim ersten Page.navigate, bis die Zeitgrenze griff (17.11.2026,
+// 1 von 1). Mit dem Schalter unter denselben Bedingungen: kein Fenster, kein
+// Hänger (3 von 3).
+const chrome = spawn(CHROME, ['--headless=new', '--use-mock-keychain', '--remote-debugging-port=0', '--no-first-run',
   '--user-data-dir=' + profil, '--window-size=1280,900', 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
 const ende = (code) => {
   chrome.kill(); srv.close();
