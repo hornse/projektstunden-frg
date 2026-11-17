@@ -51,8 +51,12 @@ $INDEX  = "$W/backend/api/index.php";
 $ABL    = "$W/bin/konfiguration-ableiten.php";
 $BEILAGE = __DIR__ . '/daten/config.example-0e80957.php';
 const BEILAGE_SHA256 = '1f1e8e484e4332e173135eb2530b831ff2894b43632d391a398c810311ec6aea';
-const ACHT = ['audit', 'clean', 'get_db', 'json_error', 'json_response', 'require_admin',
-              'require_auth', 'session_start_secure'];
+// Die acht aus config.php (Paket 1) und audit_grenze: Frist des audit_log,
+// gehört zu audit(), Paket 3 (E68). Die Festlegung „acht Funktionen“ aus
+// Schritt 2 ist damit bewusst auf neun geändert. K4 zählt weiter acht – dort
+// ist der Maßstab die Vorlage vor Auftrag A, in der es audit_grenze nicht gab.
+const KERNFUNKTIONEN = ['audit', 'audit_grenze', 'clean', 'get_db', 'json_error', 'json_response',
+                        'require_admin', 'require_auth', 'session_start_secure'];
 
 /** Namen der Funktionsdeklarationen (keine Closures), über den Tokenizer. */
 function funktionen(string $quelle): array
@@ -130,8 +134,8 @@ function einbindungen(string $quelle): array
 // ------------------------------------------------------------------
 echo "Aufbau" . PHP_EOL;
 $kern = is_file($KERN) ? (string)file_get_contents($KERN) : '';
-pruefe('K1 backend/kern.php definiert genau die acht Funktionen des Kerns',
-    funktionen($kern) === ACHT,
+pruefe('K1 backend/kern.php definiert genau die neun Funktionen des Kerns',
+    funktionen($kern) === KERNFUNKTIONEN,
     'gefunden: ' . (is_file($KERN) ? implode(', ', funktionen($kern)) : 'Datei fehlt'));
 $vorl = is_file($VORL) ? (string)file_get_contents($VORL) : '';
 $vorlNamen = wertnamen($vorl);

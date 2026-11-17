@@ -9,6 +9,8 @@
  * standen (Befund Z. 5, koordination 06.11.2026; E68). Dort liefen sie
  * zwischen Rechner und Server auseinander, ohne dass etwas warnte: Im
  * September hing die lokale Fassung drei Generationen hinter der des Servers.
+ * Dazu kam in Paket 3 eine neunte: audit_grenze(), die Frist des audit_log,
+ * die zu audit() gehört (tests/kern_test.php K1 zählt die neun).
  *
  * Die WERTE stehen in backend/konfiguration.php (nicht versioniert, Vorlage
  * backend/konfiguration.example.php). Diese Datei lädt sie, genau hier und
@@ -102,18 +104,41 @@ function clean(string $s): string {
 // ============================================================
 // Audit-Log
 // ============================================================
+// Frist „Schuljahr + 1“ (E68): Ein Eintrag bleibt das laufende und das
+// vorige Schuljahr. Die Grenze ist der 01.08. des vorletzten
+// Schuljahresbeginns – vom 01.08. an gerechnet, nicht vom Kalenderjahr:
+// Stichtag 15.01.2031 → 01.08.2029, Stichtag 15.11.2031 → 01.08.2030.
+function audit_grenze(DateTimeImmutable $jetzt): DateTimeImmutable {
+    $jahr   = (int)$jetzt->format('Y');
+    $beginn = (int)$jetzt->format('n') >= 8 ? $jahr : $jahr - 1;   // letzter Schuljahresbeginn
+    return $jetzt->setDate($beginn - 1, 8, 1)->setTime(0, 0, 0);
+}
+
+// Ohne Adresse (E68): Hinter dem Proxy war REMOTE_ADDR der Proxy, und eine
+// Adresse braucht das Protokoll nicht. Der Zeitpunkt kommt aus der PHP-Uhr,
+// wie die Grenze (FALLSTRICKE 4). Aufgeräumt wird bei jedem Eintrag.
+// Ein Fehler hält die Anwendung nicht an, aber er schweigt nicht: Gefangen
+// wird nur der Betriebsfehler (Exception, nicht Throwable), mit Grund im
+// Protokoll (FALLSTRICKE 3).
 function audit(int|null $benutzer_id, string $tabelle, int|null $datensatz_id,
-               string $aktion, mixed $alt = null, mixed $neu = null): void {
+               string $aktion, mixed $alt = null, mixed $neu = null,
+               ?DateTimeImmutable $jetzt = null): void {
+    $jetzt ??= new DateTimeImmutable('now');
     try {
         $db = get_db();
         $db->prepare(
-            'INSERT INTO audit_log (benutzer_id, tabelle, datensatz_id, aktion, alt_wert, neu_wert, ip_adresse)
+            'INSERT INTO audit_log (benutzer_id, tabelle, datensatz_id, aktion, alt_wert, neu_wert, erstellt_am)
              VALUES (?, ?, ?, ?, ?, ?, ?)'
         )->execute([
             $benutzer_id, $tabelle, $datensatz_id, $aktion,
             $alt !== null ? json_encode($alt) : null,
             $neu !== null ? json_encode($neu) : null,
-            $_SERVER['REMOTE_ADDR'] ?? null,
+            $jetzt->format('Y-m-d H:i:s'),
         ]);
-    } catch (Throwable) {}
+        $db->prepare('DELETE FROM audit_log WHERE erstellt_am < ?')
+           ->execute([audit_grenze($jetzt)->format('Y-m-d H:i:s')]);
+    } catch (Exception $e) {
+        error_log('projektstunden: audit_log nicht geschrieben oder nicht aufgeräumt ('
+                  . get_class($e) . ' ' . $e->getCode() . ', Tabelle ' . $tabelle . ')');
+    }
 }

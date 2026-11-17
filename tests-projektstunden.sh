@@ -1709,6 +1709,28 @@ else
 fi
 
 echo ""
+echo "Fristen und sql/24 ausgeführt (tests/fristen_db_test.sh, eigene MariaDB)"
+# Auftrag A, Paket 3 (E68): audit_log „Schuljahr + 1“ ohne ip_adresse,
+# anmeldeverlauf 30 Tage; audit() schreibt vor UND nach sql/24.
+# Pflichtschritt wie die Anmeldung mit Datenbank: Fehlt mariadbd, Exit 3.
+FRDB_AUS=$(./tests/fristen_db_test.sh 2>/dev/null); FRDB_EXIT=$?
+if [ "$FRDB_EXIT" -eq 3 ]; then
+    printf '%s\n' "$FRDB_AUS" | grep '^  –  ' || echo "  –  ÜBERSPRUNGEN: Fristen mit Datenbank"
+    PFLICHT_UEBERSPRUNGEN=$((PFLICHT_UEBERSPRUNGEN + 1))
+else
+    while IFS= read -r z; do
+        case "$z" in
+            "  ✓ "*) gruen "Fristen (DB): ${z#  ✓ }" ;;
+            "  ✗ "*) rot   "Fristen (DB): ${z#  ✗ }" ;;
+            "      "*) echo "$z" ;;
+        esac
+    done <<< "$FRDB_AUS"
+    if [ "$FRDB_EXIT" -ne 0 ] && ! printf '%s\n' "$FRDB_AUS" | grep -q '^  ✗ '; then
+        rot "Fristen (DB): Lauf endete mit $FRDB_EXIT ohne rote Zeile"
+    fi
+fi
+
+echo ""
 echo "Anmelden, Abmelden, Hilfe (tests/anmeldung_test.js, ausgeführt in node)"
 # S73: Die Funktionen werden aus app.js geschnitten und ausgeführt; die Sätze
 # kommen aus Anmeldebremse.php. Fehlt node, läuft der Schritt sichtbar NICHT –

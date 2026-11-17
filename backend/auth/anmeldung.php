@@ -33,6 +33,7 @@ final class Anmeldung
     public const SCHWELLE = 8;
     /** Sekunden zwischen zwei Versuchen ab der Schwelle. */
     public const WARTEZEIT_S = 60;
+    public const FRIST_VERLAUF_TAGE = 30;   // Frist des Verlaufs (E68)
 
     /** Jede Ablehnung, bei der ein Passwort entschieden hat. Immer 401 (FALLSTRICKE 8). */
     public const SATZ_ABGELEHNT = 'Ungültige Anmeldedaten.';
@@ -74,12 +75,20 @@ final class Anmeldung
                                    ?string $grund, ?Closure $uhr = null): void
     {
         $jetzt = $uhr !== null ? $uhr() : time();
+        // Frist 30 Tage (E68), aufgeräumt bei jedem Eintrag, ohne Bedingung.
+        // Die Grenze über das Datum, nicht über 30 × 86 400 s – über eine
+        // Zeitumstellung läge sie sonst eine Stunde daneben (FALLSTRICKE 4).
+        $grenze = (new DateTimeImmutable('@' . $jetzt))
+            ->setTimezone(new DateTimeZone(date_default_timezone_get()))
+            ->modify('-' . self::FRIST_VERLAUF_TAGE . ' days');
         try {
             $db->prepare('INSERT INTO anmeldeverlauf (benutzername, ziel, erfolgreich, grund, zeitpunkt)
                           VALUES (?, ?, ?, ?, ?)')
                ->execute([$kennung, $ziel, $erfolgreich ? 1 : 0, $grund, date('Y-m-d H:i:s', $jetzt)]);
+            $db->prepare('DELETE FROM anmeldeverlauf WHERE zeitpunkt < ?')
+               ->execute([$grenze->format('Y-m-d H:i:s')]);
         } catch (Exception $e) {
-            error_log('projektstunden: Verlauf nicht geschrieben (' . get_class($e) . ' ' . $e->getCode() . ')');
+            error_log('projektstunden: Verlauf nicht geschrieben oder nicht aufgeräumt (' . get_class($e) . ' ' . $e->getCode() . ')');
         }
     }
 }
