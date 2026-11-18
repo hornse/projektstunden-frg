@@ -149,7 +149,8 @@ function freier_port(): int
 function server_starten(string $wurzel): array
 {
     $port = freier_port();
-    $p = proc_open([PHP_BINARY, '-S', "127.0.0.1:$port", 'backend/router.php'],
+    // Der Speicherort über -d, wie auf dem Server über sessions.ini (E68, Paket 4).
+    $p = proc_open([PHP_BINARY, '-d', 'session.save_path=' . $wurzel . '/sess', '-S', "127.0.0.1:$port", 'backend/router.php'],
         [0 => ['file', '/dev/null', 'r'], 1 => ['file', '/dev/null', 'w'],
          2 => ['file', '/dev/null', 'w']], $rohre, $wurzel);
     if (!is_resource($p)) throw new RuntimeException("php -S in $wurzel nicht gestartet");
@@ -209,15 +210,14 @@ $vorlage = (string)file_get_contents("$WURZEL/backend/konfiguration.example.php"
 $ersetzt = 0;
 $konfig = $vorlage;
 foreach ([
-    "ini_set('session.save_path', '/home/hornse/tmp/sessions');" => "ini_set('session.save_path', '$T/sess');",
     "define('DB_PORT',    3306);"                                  => "define('DB_PORT',    " . freier_port() . ");",
     "define('WEBUNTIS_ENABLED', true);"                            => "define('WEBUNTIS_ENABLED', false);",
 ] as $alt => $neu) {
     $konfig = str_replace($alt, $neu, $konfig, $n);
     $ersetzt += $n;
 }
-if ($ersetzt !== 3) {
-    pruefe("Probekonfiguration: 3 Ersetzungen in konfiguration.example.php, gefunden $ersetzt", false);
+if ($ersetzt !== 2) {
+    pruefe("Probekonfiguration: 2 Ersetzungen in konfiguration.example.php, gefunden $ersetzt", false);
     baum_loeschen($T);
     exit(1);
 }

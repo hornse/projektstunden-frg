@@ -112,14 +112,13 @@ baum() { # NAME
     php -r '
         $k = file_get_contents($argv[1]); $n = 0;
         foreach ([
-          "ini_set(\x27session.save_path\x27, \x27/home/hornse/tmp/sessions\x27);" => "ini_set(\x27session.save_path\x27, \x27$argv[3]\x27);",
           "define(\x27DB_PORT\x27,    3306);" => "define(\x27DB_PORT\x27,    $argv[4]);",
           "define(\x27DB_NAME\x27,    \x27hornse_projektstunden\x27);" => "define(\x27DB_NAME\x27,    \x27kt\x27);",
           "define(\x27DB_USER\x27,    \x27hornse\x27);" => "define(\x27DB_USER\x27,    \x27kt\x27);",
           "define(\x27DB_PASS\x27,    \x27DEIN_DATENBANKPASSWORT\x27);" => "define(\x27DB_PASS\x27,    \x27kt\x27);",
           "define(\x27WEBUNTIS_ENABLED\x27, true);" => "define(\x27WEBUNTIS_ENABLED\x27, false);",
         ] as $a => $z) { $k = str_replace($a, $z, $k, $c); $n += $c; }
-        file_put_contents($argv[2], $k); exit($n === 6 ? 0 : 1);' \
+        file_put_contents($argv[2], $k); exit($n === 5 ? 0 : 1);' \
         "$R/backend/konfiguration.example.php" "$b/backend/konfiguration.php" "$T/sess" "$DBPORT"
 }
 # aushaengen NAME DATEI MUSTER(perl) AUSDRUCK → 0, wenn genau ein Treffer und angekommen
@@ -133,7 +132,9 @@ aushaengen() {
 }
 starten() { # NAME → setzt PORT_<NAME>
     local p; p=$(freier_port)
-    (cd "$T/$1" && exec php -S "127.0.0.1:$p" backend/router.php > /dev/null 2>&1) &
+    # Der Speicherort über php -d, wie auf dem Server über sessions.ini –
+    # nicht in der Konfiguration (E68, Paket 4).
+    (cd "$T/$1" && exec php -d session.save_path="$T/sess" -S "127.0.0.1:$p" backend/router.php > /dev/null 2>&1) &
     PIDS="$PIDS $!"
     for _ in $(seq 1 50); do
         curl -s -o /dev/null "http://127.0.0.1:$p/api/auth/me" && break

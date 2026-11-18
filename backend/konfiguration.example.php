@@ -17,7 +17,9 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-ini_set('session.save_path', '/home/hornse/tmp/sessions');
+// Kein Speicherort für Sitzungen: maßgeblich ist die PHP-Konfiguration des
+// Servers, ~/etc/php.d/sessions.ini (FALLSTRICKE 1). Name und Dauer der
+// Sitzung stehen in backend/kern.php (E68, Paket 4) – hier stünden sie doppelt.
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
@@ -31,10 +33,6 @@ define('DB_CHARSET', 'utf8mb4');
 
 // ----- Schule (Mandant) -----
 define('SCHULE_ID', 1);
-
-// ----- Session -----
-define('SESSION_NAME',     'proj_session');
-define('SESSION_LIFETIME', 8 * 3600);
 
 // ----- CORS -----
 define('ALLOWED_ORIGIN', 'https://projektstunden.hornse.de');

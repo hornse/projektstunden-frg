@@ -18,6 +18,8 @@
  *          Vorlage vom Stand vor Auftrag A (tests/daten/config.example-0e80957.php,
  *          byte-gleich aus git show 0e80957:backend/config.example.php)
  *   K5     die Probebäume anderer Prüfungen kopieren keine konfiguration.php
+ *   K6     die Sitzung an genau einer Stelle: Name und Dauer in kern.php,
+ *          kein session.save_path im Projekt, Router ohne die alte Fassung
  *          (Quelltext – die Bäume entstehen in fremden Skripten)
  *
  * Werte, die hier stehen, sind ERFUNDEN.
@@ -111,6 +113,88 @@ function wertnamen(string $quelle): array
     $namen = array_values(array_unique($namen));
     sort($namen);
     return $namen;
+}
+
+/** Index des nächsten Tokens ab $i, das weder Leerraum noch Kommentar ist. */
+function naechster(array $t, int $i): int
+{
+    for ($n = count($t); $i < $n; $i++) {
+        if (is_array($t[$i]) && in_array($t[$i][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) continue;
+        return $i;
+    }
+    return $n;
+}
+
+/** Index des vorigen Tokens ab $i rückwärts, das weder Leerraum noch Kommentar ist (−1: keines). */
+function voriger(array $t, int $i): int
+{
+    for (; $i >= 0; $i--) {
+        if (is_array($t[$i]) && in_array($t[$i][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) continue;
+        return $i;
+    }
+    return -1;
+}
+
+/**
+ * Aufrufe einer Funktion im Code (Tokenizer: Kommentar und Zeichenkette zählen
+ * nicht, Methoden und Deklarationen auch nicht). Je Aufruf das erste Argument,
+ * wenn es eine Zeichenkette ist, sonst ''.
+ */
+function aufrufe(string $quelle, string $fn): array
+{
+    $t = token_get_all($quelle);
+    $erg = [];
+    for ($i = 0, $n = count($t); $i < $n; $i++) {
+        $x = $t[$i];
+        if (!is_array($x) || !in_array($x[0], [T_STRING, T_NAME_FULLY_QUALIFIED], true)) continue;
+        if (strtolower(ltrim($x[1], '\\')) !== $fn) continue;
+        $v = voriger($t, $i - 1);
+        if ($v >= 0 && is_array($t[$v]) && in_array($t[$v][0],
+                [T_FUNCTION, T_OBJECT_OPERATOR, T_NULLSAFE_OBJECT_OPERATOR, T_DOUBLE_COLON, T_NEW, T_CONST], true)) continue;
+        $k = naechster($t, $i + 1);
+        if (($t[$k] ?? null) !== '(') continue;
+        $a = naechster($t, $k + 1);
+        $erg[] = (is_array($t[$a] ?? null) && $t[$a][0] === T_CONSTANT_ENCAPSED_STRING) ? substr($t[$a][1], 1, -1) : '';
+    }
+    return $erg;
+}
+
+/** Wie oft eine Konstante definiert wird: define('NAME', …) und const NAME = …. */
+function definitionen(string $quelle, string $name): int
+{
+    $zahl = count(array_filter(aufrufe($quelle, 'define'), fn($a) => $a === $name));
+    $t = token_get_all($quelle);
+    for ($i = 0, $n = count($t); $i < $n; $i++) {
+        if (!is_array($t[$i]) || $t[$i][0] !== T_CONST) continue;
+        for ($j = $i + 1; $j < $n && $t[$j] !== ';'; $j++) {
+            if (is_array($t[$j]) && $t[$j][0] === T_STRING && $t[$j][1] === $name
+                && ($t[naechster($t, $j + 1)] ?? null) === '=') $zahl++;
+        }
+    }
+    return $zahl;
+}
+
+/** ini_set('session.save_path', …) im Code, gleich in welcher Schreibweise. */
+function speicherort_setzungen(string $quelle): int
+{
+    return count(array_filter(aufrufe($quelle, 'ini_set'), fn($a) => $a === 'session.save_path'));
+}
+
+/** Zuweisungen an $_SERVER['HTTPS'] im Code (die alte Fassung des Routers). */
+function https_zuweisungen(string $quelle): int
+{
+    $t = token_get_all($quelle);
+    $zahl = 0;
+    for ($i = 0, $n = count($t); $i < $n; $i++) {
+        if (!is_array($t[$i]) || $t[$i][0] !== T_VARIABLE || $t[$i][1] !== '$_SERVER') continue;
+        $a = naechster($t, $i + 1);
+        $b = naechster($t, $a + 1);
+        $c = naechster($t, $b + 1);
+        $d = naechster($t, $c + 1);
+        if (($t[$a] ?? null) === '[' && is_array($t[$b] ?? null) && $t[$b][0] === T_CONSTANT_ENCAPSED_STRING
+            && strtoupper(substr($t[$b][1], 1, -1)) === 'HTTPS' && ($t[$c] ?? null) === ']' && ($t[$d] ?? null) === '=') $zahl++;
+    }
+    return $zahl;
 }
 
 /** Ziele der require/include-Anweisungen einer Datei: die Zeichenketten im Ausdruck. */
@@ -256,6 +340,73 @@ if (!is_file($ABL)) {
     pruefe('K4 abweichende Funktion (clean): hält an, keine Datei, nennt „clean: abweichend“',
         $n2 === 1 && $c !== 0 && !file_exists("$T/konfiguration.php") && str_contains($aus, 'clean: abweichend'),
         "Ersetzung $n2, Exit $c");
+
+    // Paket 4 (E68): Die Sitzung steht im Kern. Die Ableitung übernimmt den
+    // Speicherort (ini_set, maßgeblich ist sessions.ini des Servers) und die
+    // beiden Sitzungswerte nicht – stünden sie zusätzlich in konfiguration.php,
+    // warnte PHP bei jeder Anfrage („already defined“).
+    $SITZUNG_NAMEN = ['SESSION_NAME', 'SESSION_LIFETIME'];
+    $ohne = function (string $erg) use ($SITZUNG_NAMEN): array {
+        $rest = [];
+        if (speicherort_setzungen($erg) > 0) $rest[] = 'ini_set session.save_path';
+        foreach ($SITZUNG_NAMEN as $s) if (definitionen($erg, $s) > 0) $rest[] = $s;
+        return $rest;
+    };
+    @unlink("$T/konfiguration.php");
+    file_put_contents("$T/config.php", $quelle);
+    [$c, $aus] = lauf(['ableiten', "$T/config.php", "$T/konfiguration.php", $namen, $finger], true);
+    $erg = is_file("$T/konfiguration.php") ? (string)file_get_contents("$T/konfiguration.php") : '';
+    pruefe('K4 Speicherort: die Beilage setzt ihn mit ini_set (1×), das Ergebnis nicht – der Kopfkommentar davor bleibt',
+        speicherort_setzungen($quelle) === 1 && $c === 0 && $erg !== '' && speicherort_setzungen($erg) === 0
+        && str_contains($erg, ' * Projektstunden NRW – Konfiguration'),
+        sprintf('Quelle %d×, Exit %d, Ergebnis %d×, Kopf %s', speicherort_setzungen($quelle), $c,
+            speicherort_setzungen($erg), str_contains($erg, ' * Projektstunden NRW – Konfiguration') ? 'da' : 'fehlt'));
+    pruefe('K4 Sitzungswerte: SESSION_NAME und SESSION_LIFETIME stehen in der Beilage, im Ergebnis nicht; '
+        . 'die Ausgabe nennt alle drei als entfallen, ohne Wert',
+        definitionen($quelle, 'SESSION_NAME') === 1 && definitionen($quelle, 'SESSION_LIFETIME') === 1
+        && $erg !== '' && $ohne($erg) === []
+        && preg_match('/^entfällt: .*session\.save_path.*SESSION_LIFETIME.*SESSION_NAME/m', $aus) === 1
+        && !str_contains($aus, 'proj_session') && !str_contains($aus, '3600') && !str_contains($aus, '/home/'),
+        'im Ergebnis noch: ' . implode(', ', $ohne($erg)) . ' | Ausgabe: ' . str_replace("\n", ' | ', trim($aus)));
+
+    // Eingepflanzt in anderer Schreibweise: doppelte Anführungszeichen,
+    // Leerraum, über zwei Zeilen – der Tokenizer, nicht der Wortlaut, entscheidet.
+    @unlink("$T/konfiguration.php");
+    $gepflanzt = str_replace("ini_set('session.save_path', '/home/hornse/tmp/sessions');",
+        "ini_set ( \"session.save_path\" ,\n    '/probe/gepflanzt' ) ;", $quelle, $n4);
+    file_put_contents("$T/config.php", $gepflanzt);
+    [$c, $aus] = lauf(['ableiten', "$T/config.php", "$T/konfiguration.php", $namen, $finger], true);
+    $erg = is_file("$T/konfiguration.php") ? (string)file_get_contents("$T/konfiguration.php") : '';
+    pruefe('K4 Speicherort in anderer Schreibweise eingepflanzt: das Ergebnis setzt ihn nicht',
+        $n4 === 1 && speicherort_setzungen($gepflanzt) === 1 && $c === 0 && $erg !== ''
+        && speicherort_setzungen($erg) === 0 && !str_contains($erg, '/probe/gepflanzt'),
+        "Eingepflanzt {$n4}×, Exit $c, im Ergebnis " . speicherort_setzungen($erg) . '×');
+
+    // Zweite Stufe: Was nicht als eigene Anweisung dasteht, entfernt die
+    // Ableitung nicht – dann hält sie an, statt es stehen zu lassen.
+    @unlink("$T/konfiguration.php");
+    $bedingt = str_replace("ini_set('session.save_path', '/home/hornse/tmp/sessions');",
+        "if (true) ini_set('session.save_path', '/probe/bedingt');", $quelle, $n5);
+    file_put_contents("$T/config.php", $bedingt);
+    [$c, $aus] = lauf(['ableiten', "$T/config.php", "$T/konfiguration.php", $namen, $finger], true);
+    pruefe('K4 Speicherort in einer Bedingung (nicht entfernbar): hält an, keine Datei, nennt ihn, ohne Wert',
+        $n5 === 1 && $c !== 0 && !file_exists("$T/konfiguration.php") && str_contains($aus, 'session.save_path')
+        && !str_contains($aus, '/probe/bedingt'),
+        "Eingepflanzt {$n5}×, Exit $c; " . str_replace("\n", ' | ', trim($aus)));
+
+    // pruefen (Suite, server-pruefen): eine zweite Definition in
+    // konfiguration.php hält an und nennt den Namen.
+    $sauber = $erg;
+    file_put_contents("$T/zweite.php", $sauber . "\ndefine('SESSION_NAME', 'probe_zweite');\n");
+    [$c, $aus] = lauf(['pruefen', "$T/zweite.php", $namen], false);
+    pruefe('K4 pruefen: definiert konfiguration.php SESSION_NAME, hält es an und nennt den Namen, ohne Wert',
+        $sauber !== '' && $c !== 0 && str_contains($aus, 'SESSION_NAME') && !str_contains($aus, 'probe_zweite'),
+        "Exit $c; " . str_replace("\n", ' | ', trim($aus)));
+    file_put_contents("$T/speicherort.php", $sauber . "\nini_set('session.save_path', '/probe/zweite');\n");
+    [$c, $aus] = lauf(['pruefen', "$T/speicherort.php", $namen], false);
+    pruefe('K4 pruefen: setzt konfiguration.php session.save_path, hält es an und nennt es, ohne Wert',
+        $sauber !== '' && $c !== 0 && str_contains($aus, 'session.save_path') && !str_contains($aus, '/probe/zweite'),
+        "Exit $c; " . str_replace("\n", ' | ', trim($aus)));
 }
 foreach (glob("$T/*") ?: [] as $f) unlink($f);
 @rmdir($T);
@@ -271,5 +422,47 @@ pruefe("K5 tests/kontotyp_test.php lässt konfiguration.php* und config.php* aus
     && str_contains($kt, "str_starts_with(basename(\$rel), 'config.php')"));
 pruefe("K5 tests/kontotyp_db_test.sh lässt konfiguration.php* und config.php* aus dem Probebaum (Quelltext)",
     str_contains($ktdb, "! -name 'konfiguration.php*'") && str_contains($ktdb, "! -name 'config.php*'"));
+
+// ------------------------------------------------------------------
+// K6 Sitzung an genau einer Stelle (Paket 4, E68)
+// ------------------------------------------------------------------
+// Name und Dauer der Sitzung stehen in kern.php, eingerichtet wird sie nur
+// in session_start_secure(). Stünde ein Wert zusätzlich in der Vorlage oder
+// im Router, gewänne still einer oder PHP warnte. Der Speicherort steht in
+// keiner Datei des Projekts: maßgeblich ist sessions.ini des Servers
+// (FALLSTRICKE 1). Gelesen werden die versionierten PHP-Dateien unter
+// backend/ (ohne config.php*, konfiguration.php – Werte, nie gelesen; die
+// unversionierte konfiguration.php prüft „pruefen“, K4).
+echo PHP_EOL . "Sitzung an einer Stelle (Tokenizer)" . PHP_EOL;
+$QUELLEN = [];
+$it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$W/backend", FilesystemIterator::SKIP_DOTS));
+foreach ($it as $x) {
+    $rel = substr((string)$x, strlen($W) + 1);
+    $b = basename($rel);
+    if (!str_ends_with($rel, '.php') || str_starts_with($b, 'config.php') || str_starts_with($b, 'konfiguration.php')) continue;
+    $QUELLEN[$rel] = (string)file_get_contents((string)$x);
+}
+ksort($QUELLEN);
+$wo = function (callable $zaehle) use ($QUELLEN): array {
+    $w = [];
+    foreach ($QUELLEN as $rel => $q) { $z = $zaehle($q); if ($z > 0) $w[] = $z === 1 ? $rel : "$rel ({$z}×)"; }
+    return $w;
+};
+$router = $QUELLEN['backend/router.php'] ?? '';
+pruefe('K6 Router ohne die alte Fassung: keine Zuweisung an $_SERVER[\'HTTPS\'], kein session_name()',
+    $router !== '' && https_zuweisungen($router) === 0 && aufrufe($router, 'session_name') === [],
+    sprintf('HTTPS %d×, session_name %d×', https_zuweisungen($router), count(aufrufe($router, 'session_name'))));
+foreach (['SESSION_NAME', 'SESSION_LIFETIME'] as $s) {
+    $stellen = $wo(fn($q) => definitionen($q, $s));
+    pruefe("K6 $s ist genau einmal definiert, in backend/kern.php",
+        $stellen === ['backend/kern.php'], 'definiert in: ' . (implode(', ', $stellen) ?: 'keiner Datei'));
+}
+$stellen = $wo('speicherort_setzungen');
+pruefe('K6 keine Datei unter backend/ setzt session.save_path (maßgeblich ist sessions.ini, ' . count($QUELLEN) . ' Dateien gelesen)',
+    count($QUELLEN) > 0 && $stellen === [], 'gesetzt in: ' . implode(', ', $stellen));
+$stellen = array_merge($wo(fn($q) => count(aufrufe($q, 'session_name'))),
+                       $wo(fn($q) => count(aufrufe($q, 'session_set_cookie_params'))));
+pruefe('K6 session_name() und session_set_cookie_params() je einmal, nur in backend/kern.php',
+    $stellen === ['backend/kern.php', 'backend/kern.php'], 'gefunden: ' . implode(', ', $stellen));
 
 exit($fehler === 0 ? 0 : 1);

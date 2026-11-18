@@ -41,6 +41,18 @@ function get_db(): PDO {
 // ============================================================
 // Session
 // ============================================================
+// Name und Dauer der Sitzung stehen hier und nirgends sonst (E68, Paket 4;
+// tests/kern_test.php K6) – bis dahin in der unversionierten Konfiguration,
+// der Name zusätzlich im Router. Der Name ist der des Betriebs: ein anderer
+// meldete beim Ausliefern alle ab (tests/anmeldung_db_test.sh S5). Der
+// Speicherort steht in keiner Datei des Projekts; maßgeblich ist die
+// PHP-Konfiguration des Servers, ~/etc/php.d/sessions.ini (FALLSTRICKE 1).
+const SESSION_NAME     = 'proj_session';
+const SESSION_LIFETIME = 8 * 3600;
+
+// Hier und nur hier wird die Sitzung eingerichtet: Name und Cookie vor dem
+// ersten Zugriff, secure/httponly/samesite ausdrücklich (FALLSTRICKE 1).
+// $_SERVER['HTTPS'] hat darauf keinen Einfluss.
 function session_start_secure(): void {
     if (session_status() === PHP_SESSION_ACTIVE) return;
     session_name(SESSION_NAME);

@@ -50,7 +50,12 @@ Zwei Remotes: `github` und `uberspace`. `deploy.sh` pusht auf beide.
 
 - **`session.save_path` steht in `~/etc/php.d/sessions.ini`**, nicht in
   einem `ini_set()`. Nach einer Änderung `uberspace tools restart php`.
-  Die Sitzungsdateien liegen in `~/tmp/sessions`.
+  Die Sitzungsdateien liegen in `~/tmp/sessions`. Die alte `config.php`
+  setzte den Speicherort zusätzlich mit `ini_set`, auf dem Server mit
+  demselben Wert (gezählt 18.11.2026, ohne Werte). Mit Auftrag A entfällt
+  das: Die Ableitung übernimmt es nicht in `konfiguration.php`, maßgeblich
+  ist allein `sessions.ini` (E68). Name und Dauer der Sitzung stehen seither
+  in `backend/kern.php`, nirgends sonst.
 - **Der Schlüssel in der Sitzung heißt `benutzer_id`**, und
   WebUntis-Lehrkräfte ohne lokalen Datenbankeintrag bekommen dort die
   `0`. Sichtbar wurde das erst durch ein

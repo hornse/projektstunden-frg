@@ -23,6 +23,13 @@
  *   - das Ergebnis hat keine Funktion, alle Namen der Quelle, alle NAMEN
  *     der Vorlage, und php -l ist sauber (geprüft über die Standardeingabe,
  *     ohne Zwischendatei).
+ * Seit Paket 4 (E68) entfallen dabei auch drei Anweisungen, je als ganze
+ * Anweisung auf oberster Ebene: ini_set('session.save_path', …) – maßgeblich
+ * ist sessions.ini des Servers – und define('SESSION_NAME'|'SESSION_LIFETIME',
+ * …), die jetzt in backend/kern.php stehen. Stünden sie zusätzlich in der
+ * Wertedatei, warnte PHP bei jeder Anfrage. Die Ausgabe nennt sie beim Namen;
+ * steht danach noch einer im Ergebnis, ist das ein HALT. „pruefen“ hält an,
+ * wenn eine Wertedatei einen davon setzt.
  * ZIEL wird nie überschrieben. Geschrieben wird mit Rechten 0600.
  *
  * AUSGEGEBEN WERDEN NUR NAMEN UND ZAHLEN, NIE EIN WERT (REIHENREGELN 9).
@@ -77,6 +84,93 @@ function deklarationen(array $t): array
 }
 
 function text(array|string $x): string { return is_array($x) ? $x[1] : $x; }
+
+/** Index des nächsten Tokens ab $i, das weder Leerraum noch Kommentar ist. */
+function naechster(array $t, int $i): int
+{
+    for ($n = count($t); $i < $n; $i++) {
+        if (is_array($t[$i]) && in_array($t[$i][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) continue;
+        return $i;
+    }
+    return $n;
+}
+
+/** Was seit Paket 4 der Kern definiert (E68). Der Speicherort kommt aus sessions.ini. */
+const SITZUNG = ['SESSION_LIFETIME', 'SESSION_NAME'];
+const SPEICHERORT = 'session.save_path';
+
+/**
+ * Aufrufe von ini_set und define, die einen Sitzungswert setzen, gleich wo:
+ * je ['name', 'i' (Index des Funktionsnamens), 'k' (Index der öffnenden Klammer)].
+ */
+function sitzungsaufrufe(array $t): array
+{
+    $erg = [];
+    for ($i = 0, $n = count($t); $i < $n; $i++) {
+        $x = $t[$i];
+        if (!is_array($x) || !in_array($x[0], [T_STRING, T_NAME_FULLY_QUALIFIED], true)) continue;
+        $fn = strtolower(ltrim($x[1], '\\'));
+        if ($fn !== 'ini_set' && $fn !== 'define') continue;
+        $k = naechster($t, $i + 1);
+        if (($t[$k] ?? null) !== '(') continue;
+        $a = naechster($t, $k + 1);
+        if (!is_array($t[$a] ?? null) || $t[$a][0] !== T_CONSTANT_ENCAPSED_STRING) continue;
+        $arg = substr($t[$a][1], 1, -1);
+        if ($fn === 'ini_set' && $arg === SPEICHERORT) $erg[] = ['name' => SPEICHERORT, 'i' => $i, 'k' => $k];
+        if ($fn === 'define' && in_array($arg, SITZUNG, true)) $erg[] = ['name' => $arg, 'i' => $i, 'k' => $k];
+    }
+    return $erg;
+}
+
+/** Welche Sitzungswerte eine Datei setzt (Aufrufe überall, dazu const NAME = …): Namen, nie Werte. */
+function sitzung_gesetzt(array $t): array
+{
+    $namen = array_map(fn($a) => $a['name'], sitzungsaufrufe($t));
+    for ($i = 0, $n = count($t); $i < $n; $i++) {
+        if (!is_array($t[$i]) || $t[$i][0] !== T_CONST) continue;
+        for ($j = $i + 1; $j < $n && $t[$j] !== ';'; $j++) {
+            if (is_array($t[$j]) && $t[$j][0] === T_STRING && in_array($t[$j][1], SITZUNG, true)) $namen[] = $t[$j][1];
+        }
+    }
+    return sitzung_ordnen($namen);
+}
+
+/** Der Speicherort zuerst, dann die Konstanten nach dem Alphabet – ohne Doppelte. */
+function sitzung_ordnen(array $namen): array
+{
+    $namen = array_values(array_unique($namen));
+    usort($namen, fn($a, $b) => [$a !== SPEICHERORT, $a] <=> [$b !== SPEICHERORT, $b]);
+    return $namen;
+}
+
+/**
+ * Die Sitzungsanweisungen, die „ableiten“ entfernt: Aufruf am Anfang einer
+ * Anweisung auf oberster Ebene, bis zum Semikolon (Tokenindizes).
+ * @return list<array{name:string, von:int, bis:int}>
+ */
+function sitzungsanweisungen(array $t): array
+{
+    $tiefe = [];
+    $d = 0;
+    foreach ($t as $i => $x) {
+        if ($x === '{' || (is_array($x) && in_array($x[0], [T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES], true))) $d++;
+        if ($x === '}') $d--;
+        $tiefe[$i] = $d;
+    }
+    $erg = [];
+    foreach (sitzungsaufrufe($t) as $a) {
+        if ($tiefe[$a['i']] !== 0 || !anweisungsbeginn($t, $a['i'])) continue;
+        $p = 0;
+        for ($j = $a['k'], $n = count($t); $j < $n; $j++) {
+            if ($t[$j] === '(') $p++;
+            if ($t[$j] === ')') { $p--; if ($p === 0) break; }
+        }
+        $e = naechster($t, $j + 1);
+        if (($t[$e] ?? null) !== ';') continue;   // kein eigener Satz: bleibt stehen, der HALT danach fängt es
+        $erg[] = ['name' => $a['name'], 'von' => $a['i'], 'bis' => $e];
+    }
+    return $erg;
+}
 
 function fingerabdruck(array $t, int $von, int $bis): string
 {
@@ -172,6 +266,8 @@ if ($art === 'pruefen' && isset($argv[2], $argv[3])) {
     $funk = array_map(fn($d) => $d['name'], deklarationen(token_get_all($q)));
     echo 'geprüft: ', basename($argv[2]), ', ', count(liste($argv[3])), " Namen der Vorlage\n";
     if ($funk !== []) halt('Funktionen in einer Wertedatei: ' . implode(', ', $funk));
+    $sitz = sitzung_gesetzt(token_get_all($q));
+    if ($sitz !== []) halt('setzt, was im Kern oder in sessions.ini steht (E68): ' . implode(', ', $sitz));
     if ($fehlen !== []) halt('es fehlen: ' . implode(', ', $fehlen));
     echo "in Ordnung: alle Namen da, keine Funktion\n";
     exit(0);
@@ -203,14 +299,23 @@ if ($art === 'ableiten' && isset($argv[2], $argv[3], $argv[4], $argv[5])) {
     }
     if ($halt !== []) halt(implode('; ', $halt));
 
+    // Die Sitzungsanweisungen (Paket 4): genannt beim Namen, nie mit Wert.
+    $sitzung = sitzungsanweisungen($t);
+    $entf = sitzung_ordnen(array_map(fn($s) => $s['name'], $sitzung));
+    echo 'entfällt: ', $entf === [] ? 'nichts' : implode(', ', $entf),
+         " – die Sitzung steht im Kern, der Speicherort in sessions.ini (E68)\n";
+
     // Ergebnis: die Deklarationen weg, ein Doc-Kommentar direkt davor mit,
-    // ebenso der Zeilenumbruch danach. Alles andere byte-gleich.
+    // ebenso der Zeilenumbruch danach. Ebenso die Sitzungsanweisungen. Alles
+    // andere byte-gleich.
     $weg = [];
-    foreach ($dekl as $d) {
+    foreach (array_merge($dekl, $sitzung) as $d) {
         $von = $d['von'];
         $j = $von - 1;
         while ($j >= 0 && is_array($t[$j]) && $t[$j][0] === T_WHITESPACE) $j--;
-        if ($j >= 0 && is_array($t[$j]) && $t[$j][0] === T_DOC_COMMENT) $von = $j;
+        // Der Doc-Kommentar gehört nur zu einer Funktion. Vor einer
+        // Sitzungsanweisung ist er der Kopf der Datei und bleibt stehen.
+        if (in_array($d, $dekl, true) && $j >= 0 && is_array($t[$j]) && $t[$j][0] === T_DOC_COMMENT) $von = $j;
         $bis = $d['bis'];
         if (isset($t[$bis + 1]) && is_array($t[$bis + 1]) && $t[$bis + 1][0] === T_WHITESPACE) $bis++;
         for ($i = $von; $i <= $bis; $i++) $weg[$i] = true;
@@ -226,7 +331,9 @@ if ($art === 'ableiten' && isset($argv[2], $argv[3], $argv[4], $argv[5])) {
 
     $ergT = token_get_all($erg);
     if (deklarationen($ergT) !== []) halt('das Ergebnis enthält noch eine Funktion');
-    $verloren = array_values(array_diff(wertnamen($q), wertnamen($erg)));
+    $rest = sitzung_gesetzt($ergT);
+    if ($rest !== []) halt('nicht als eigene Anweisung entfernbar, das Ergebnis setzt noch: ' . implode(', ', $rest));
+    $verloren = array_values(array_diff(wertnamen($q), wertnamen($erg), SITZUNG));
     if ($verloren !== []) halt('im Ergebnis fehlen Namen der Quelle: ' . implode(', ', $verloren));
     $fehlen = array_values(array_diff($namen, wertnamen($erg)));
     if ($fehlen !== []) halt('im Ergebnis fehlen Namen der Vorlage: ' . implode(', ', $fehlen));

@@ -7,17 +7,16 @@
  *   directory=/home/hornse/projektstunden
  *   command=php -S 0.0.0.0:8082 /home/hornse/projektstunden/backend/router.php
  *
- * KRITISCH (NEUES_PROJEKT_PROMPT.md, Abschnitt 5): Die beiden Zeilen
- * unten müssen VOR jedem require stehen. Uberspace terminiert SSL vor
- * PHP – ohne $_SERVER['HTTPS'] = 'on' fehlt das Secure-Flag am
- * Session-Cookie, ohne session_name() geht die Sitzung nach dem Login
- * verloren. In der bis August 2026 laufenden Fassung fehlten beide.
+ * Die Sitzung richtet allein session_start_secure() in backend/kern.php
+ * ein: Name, secure, httponly und samesite ausdrücklich, vor dem ersten
+ * Zugriff (FALLSTRICKE 1). Bis Auftrag A, Paket 4 standen hier zusätzlich
+ * eine Zuweisung an $_SERVER['HTTPS'] und session_name() – die erste ohne
+ * Wirkung auf das Cookie, die zweite eine zweite Stelle für denselben Namen
+ * (E68). tests/kern_test.php K6 hält die alte Fassung fern,
+ * tests/anmeldung_db_test.sh S1 misst das Cookie.
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
-
-$_SERVER['HTTPS'] = 'on';
-session_name('proj_session');
 
 $uri  = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $root = dirname(__DIR__);                 // /home/hornse/projektstunden

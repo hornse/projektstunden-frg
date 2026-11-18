@@ -154,10 +154,13 @@ RT_OHNE=$(perl -0777 -pe 's{/\*.*?\*/}{}gs' "$RT" | grep -v '^\s*//')
 printf '%s' "$RT_OHNE" | grep -q "tempnam" \
     && rot "tempnam-Block noch vorhanden (Anfragekörper landete in /tmp)" \
     || gruen "kein tempnam-Block mehr"
-grep -q "\$_SERVER\['HTTPS'\] = 'on'" "$RT" \
-    && gruen "HTTPS-Flag gesetzt" || rot "HTTPS-Flag fehlt (kein Secure am Cookie)"
-grep -q "session_name('proj_session')" "$RT" \
-    && gruen "session_name gesetzt" || rot "session_name fehlt"
+# Bis Auftrag A, Paket 4 standen hier zwei Vorkommensprüfungen: „HTTPS-Flag
+# gesetzt“ und „session_name gesetzt“ im Router (E68). Seit Paket 4 richtet
+# allein session_start_secure() in backend/kern.php die Sitzung ein. An ihre
+# Stelle treten: tests/kern_test.php K6 (Router ohne die alte Fassung, Name
+# und Dauer genau einmal, kein session.save_path) und, ausgeführt,
+# tests/anmeldung_db_test.sh S1 (Set-Cookie mit secure, HttpOnly, Lax),
+# S2 (benutzer_id 0 über zwei Anfragen) und S5 (Ausliefern meldet niemanden ab).
 
 echo ""
 echo "Keine Rohfarben außerhalb des :root-Blocks"

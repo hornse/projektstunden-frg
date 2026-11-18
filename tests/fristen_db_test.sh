@@ -86,17 +86,16 @@ mkdir -p "$T/sess"
 php -r '
   $k = file_get_contents($argv[1]); $n = 0;
   foreach ([
-    "ini_set(\x27session.save_path\x27, \x27/home/hornse/tmp/sessions\x27);" => "ini_set(\x27session.save_path\x27, \x27$argv[3]\x27);",
     "define(\x27DB_PORT\x27,    3306);" => "define(\x27DB_PORT\x27,    $argv[4]);",
     "define(\x27DB_NAME\x27,    \x27hornse_projektstunden\x27);" => "define(\x27DB_NAME\x27,    \x27fr\x27);",
     "define(\x27DB_USER\x27,    \x27hornse\x27);" => "define(\x27DB_USER\x27,    \x27fr\x27);",
     "define(\x27DB_PASS\x27,    \x27DEIN_DATENBANKPASSWORT\x27);" => "define(\x27DB_PASS\x27,    \x27fr\x27);",
   ] as $a => $z) { $k = str_replace($a, $z, $k, $c); $n += $c; }
-  file_put_contents($argv[2], $k); exit($n === 5 ? 0 : 1);' \
+  file_put_contents($argv[2], $k); exit($n === 4 ? 0 : 1);' \
   backend/konfiguration.example.php "$B/backend/konfiguration.php" "$T/sess" "$DBPORT"
 KONF=$?
 pr "$([ -z "$schema_fehler" ] && [ "$schema_zahl" -gt 0 ] && [ "$KONF" = 0 ] && [ "$SPALTE" = 1 ] && echo 1 || echo 0)" \
-    "Voraussetzung: $schema_zahl Schemadateien ohne sql/24, audit_log mit ip_adresse, Konfiguration (5 Ersetzungen)" \
+    "Voraussetzung: $schema_zahl Schemadateien ohne sql/24, audit_log mit ip_adresse, Konfiguration (4 Ersetzungen)" \
     "gescheitert:${schema_fehler:- nichts}, Konfiguration Exit $KONF, Spalte ip_adresse: ${SPALTE:-?}"
 
 # ---- vor sql/24 -----------------------------------------------------------
