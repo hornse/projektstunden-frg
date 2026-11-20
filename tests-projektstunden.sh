@@ -79,7 +79,29 @@ PFLICHT_UEBERSPRUNGEN=0
 UEBERSPRUNGEN=0
 gruen() { echo "  ✓ $1"; GRUEN=$((GRUEN + 1)); }
 rot()   { echo "  ✗ $1"; FEHLER=$((FEHLER + 1)); }
-uebersprungen() { echo "  –  ÜBERSPRUNGEN: $1"; UEBERSPRUNGEN=$((UEBERSPRUNGEN + 1)); }
+# Jeder übersprungene Schritt geht durch diese eine Funktion (Auftrag A,
+# Paket 6). Mit „pflicht“ zählt er als Pflichtschritt (fehlt mariadbd:
+# Exit 3, deploy.sh hält an), sonst als übersprungen; die Schlusszeile nennt
+# beide Zahlen getrennt. Das Zeichen steht nur hier – die Prüfung
+# „Übersprungene Schritte an einer Stelle“ hält es so.
+UEB_ZEICHEN="  –  ÜBERSPRUNGEN: "
+uebersprungen() {   # TEXT [pflicht]
+    echo "${UEB_ZEICHEN}$1"
+    if [ "${2:-}" = pflicht ]; then
+        PFLICHT_UEBERSPRUNGEN=$((PFLICHT_UEBERSPRUNGEN + 1))
+    else
+        UEBERSPRUNGEN=$((UEBERSPRUNGEN + 1))
+    fi
+}
+# Der Grund aus einem Teilskript, das mit Exit 3 übersprungen hat: dessen
+# Zeile ohne das Zeichen, sonst der Ersatztext. Durchgereicht wird nichts.
+ueb_grund() {       # AUSGABE ERSATZTEXT
+    local z g=""
+    while IFS= read -r z; do
+        case "$z" in "$UEB_ZEICHEN"*) g="${g:+$g / }${z#"$UEB_ZEICHEN"}" ;; esac
+    done <<< "$1"
+    printf '%s' "${g:-$2}"
+}
 
 # Kommentarentferner fuer /* */, // und <!-- -->. Er erhaelt die Zeilenzahl:
 # Jede Eingabezeile erzeugt genau eine Ausgabezeile, damit eine Fundstelle
@@ -123,13 +145,13 @@ if command -v node > /dev/null 2>&1; then
     node --check "$JS" > /dev/null 2>&1 \
         && gruen "app.js ist syntaktisch fehlerfrei" || rot "app.js hat einen Syntaxfehler"
 else
-    echo "  –  node nicht vorhanden"
+    uebersprungen "node nicht vorhanden – app.js nicht auf Syntax geprüft"
 fi
 if command -v php > /dev/null 2>&1; then
     php -l "$RT" > /dev/null 2>&1 \
         && gruen "router.php ist syntaktisch fehlerfrei" || rot "router.php hat einen Syntaxfehler"
 else
-    echo "  –  php nicht vorhanden"
+    uebersprungen "php nicht vorhanden – router.php nicht auf Syntax geprüft"
 fi
 
 echo ""
@@ -1674,8 +1696,7 @@ echo "Filter nach Kontotyp mit Datenbank (tests/kontotyp_db_test.sh, eigene Mari
 # dann mit 3 statt 0, damit deploy.sh anhält (Entscheidung 04.11.2026).
 KTDB_AUS=$(./tests/kontotyp_db_test.sh 2>/dev/null); KTDB_EXIT=$?
 if [ "$KTDB_EXIT" -eq 3 ]; then
-    printf '%s\n' "$KTDB_AUS" | grep '^  –  ' || echo "  –  ÜBERSPRUNGEN: Kontotyp mit Datenbank"
-    PFLICHT_UEBERSPRUNGEN=$((PFLICHT_UEBERSPRUNGEN + 1))
+    uebersprungen "$(ueb_grund "$KTDB_AUS" "Kontotyp mit Datenbank")" pflicht
 else
     while IFS= read -r z; do
         case "$z" in
@@ -1696,8 +1717,7 @@ echo "Anmeldung ausgeführt (tests/anmeldung_db_test.sh, php -S, eigene MariaDB,
 # Pflichtschritt wie Kontotyp mit Datenbank: Fehlt mariadbd, Exit 3.
 ANDB_AUS=$(./tests/anmeldung_db_test.sh 2>/dev/null); ANDB_EXIT=$?
 if [ "$ANDB_EXIT" -eq 3 ]; then
-    printf '%s\n' "$ANDB_AUS" | grep '^  –  ' || echo "  –  ÜBERSPRUNGEN: Anmeldung mit Datenbank"
-    PFLICHT_UEBERSPRUNGEN=$((PFLICHT_UEBERSPRUNGEN + 1))
+    uebersprungen "$(ueb_grund "$ANDB_AUS" "Anmeldung mit Datenbank")" pflicht
 else
     while IFS= read -r z; do
         case "$z" in
@@ -1718,8 +1738,7 @@ echo "Fristen und sql/24 ausgeführt (tests/fristen_db_test.sh, eigene MariaDB)"
 # Pflichtschritt wie die Anmeldung mit Datenbank: Fehlt mariadbd, Exit 3.
 FRDB_AUS=$(./tests/fristen_db_test.sh 2>/dev/null); FRDB_EXIT=$?
 if [ "$FRDB_EXIT" -eq 3 ]; then
-    printf '%s\n' "$FRDB_AUS" | grep '^  –  ' || echo "  –  ÜBERSPRUNGEN: Fristen mit Datenbank"
-    PFLICHT_UEBERSPRUNGEN=$((PFLICHT_UEBERSPRUNGEN + 1))
+    uebersprungen "$(ueb_grund "$FRDB_AUS" "Fristen mit Datenbank")" pflicht
 else
     while IFS= read -r z; do
         case "$z" in
@@ -1739,7 +1758,7 @@ echo "Anmelden, Abmelden, Hilfe (tests/anmeldung_test.js, ausgeführt in node)"
 # kommen aus Anmeldebremse.php. Fehlt node, läuft der Schritt sichtbar NICHT –
 # die Zeile unten sagt es, und die Prüfungszahl ist um diese Prüfungen kleiner.
 if ! command -v node > /dev/null 2>&1; then
-    echo "  –  ÜBERSPRUNGEN: node fehlt – Anmelden, Abmelden und Hilfe nicht ausgeführt"
+    uebersprungen "node fehlt – Anmelden, Abmelden und Hilfe nicht ausgeführt"
 else
     ANM_AUS=$(node tests/anmeldung_test.js 2>/dev/null); ANM_EXIT=$?
     while IFS= read -r z; do
@@ -1782,11 +1801,11 @@ echo "Anmeldung und Hilfe im Browser (tests/browser_test.mjs, Chromium ohne Fens
 # Fehlt node oder Chromium, läuft der Schritt sichtbar NICHT – die Zeile
 # sagt es, und die Prüfungszahl ist um diese Prüfungen kleiner.
 if ! command -v node > /dev/null 2>&1; then
-    echo "  –  ÜBERSPRUNGEN: node fehlt – Eingabetaste und Hilfe vor der Anmeldung nicht im Browser geprüft"
+    uebersprungen "node fehlt – Eingabetaste und Hilfe vor der Anmeldung nicht im Browser geprüft"
 else
     BR_AUS=$(node tests/browser_test.mjs 2>/dev/null); BR_EXIT=$?
     if [ "$BR_EXIT" -eq 3 ]; then
-        echo "  –  ÜBERSPRUNGEN: kein Chromium – Eingabetaste und Hilfe vor der Anmeldung nicht im Browser geprüft"
+        uebersprungen "kein Chromium – Eingabetaste und Hilfe vor der Anmeldung nicht im Browser geprüft"
     else
         while IFS= read -r z; do
             case "$z" in
@@ -1798,6 +1817,32 @@ else
             rot "Browser: Lauf endete mit $BR_EXIT ohne rote Zeile"
         fi
     fi
+fi
+
+echo ""
+echo "Übersprungene Schritte an einer Stelle (Auftrag A, Paket 6)"
+# Jeder übersprungene Schritt geht durch uebersprungen() und wird gezählt
+# (REIHENREGELN 2; Engstelle, REIHENREGELN 1). Bis Paket 6 gaben „node nicht
+# vorhanden“, „php nicht vorhanden“, die beiden „node fehlt“, „kein Chromium“
+# und die weitergereichten Zeilen der DB-Skripte ihre Zeile selbst aus, und
+# nur die Konfigurationsprüfung zählte: Ohne node meldete der Lauf
+# „0 übersprungen“ (B0, G5). Geprüft am Quelltext: Außer der einen Festlegung
+# des Zeichens beginnt keine Zeichenkette mit zwei Leerzeichen und dem
+# Gedankenstrich – auch kein Suchmuster, das Zeilen eines Teilskripts
+# durchreicht. Reine Kommentarzeilen zählen nicht. Das Zeichen im Muster wird
+# zur Laufzeit gebaut, sonst fände die Prüfung sich selbst (REIHENREGELN 3).
+# Was sie nicht sieht: eine Zeichenkette, die den Strich erst zusammensetzt.
+# Die Wirkung belegt G5 (tests/mutationen_uebersprungen.sh).
+UEB_STRICH=$(printf '\342\200\223')
+UEB_STELLEN=$(grep -n -E "[\"']\\^?  ${UEB_STRICH}" tests-projektstunden.sh | grep -v -E '^[0-9]+:[[:space:]]*#' || true)
+UEB_SOLL=$(grep -n -E "^UEB_ZEICHEN=\"  ${UEB_STRICH}  ÜBERSPRUNGEN: \"\$" tests-projektstunden.sh || true)
+UEB_FKT=$(sed -n '/^uebersprungen() {/,/^}/p' tests-projektstunden.sh)
+if [ -z "$UEB_SOLL" ]; then
+    rot "übersprungen: die Festlegung UEB_ZEICHEN fehlt – die Prüfung hat keinen Gegenstand"
+elif [ "$UEB_STELLEN" = "$UEB_SOLL" ] && printf '%s\n' "$UEB_FKT" | grep -q 'echo "${UEB_ZEICHEN}$1"'; then
+    gruen "übersprungen: jede Zeile „–  ÜBERSPRUNGEN“ kommt aus uebersprungen(), keine Ausgabe daneben (Quelltext)"
+else
+    rot "übersprungen: Zeilen mit „–“ außerhalb von uebersprungen() – Zeile $(printf '%s\n' "$UEB_STELLEN" | grep -v -F -x "$UEB_SOLL" | cut -d: -f1 | paste -sd ' ' -)"
 fi
 
 # ============================================================
