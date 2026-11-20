@@ -45,11 +45,15 @@ final class Anmeldung
     /** WebUntis meldet -8500: Schule unbekannt oder Instanz gewechselt. 503, zählt nicht; Warten behebt es nicht (FALLSTRICKE 6). */
     public const SATZ_SCHULE_UNBEKANNT = 'Die Anmeldung ist gerade nicht möglich. Bitte der Schule Bescheid geben.';
 
-    /** Der Satz bei Wartezeit, mit den Sekunden aus der Bremse. */
+    /**
+     * Der Satz bei Wartezeit, mit den Sekunden aus der Bremse – dieselbe Zahl
+     * wie im Kopf Retry-After (backend/api/index.php; tests/anmeldung_db_test.sh
+     * A9). Wortlaut nach FALLSTRICKE 8; bei 1 die Einzahl (anmeldebremse_test W1–W3).
+     */
     public static function satzWarten(int $sekunden): string
     {
-        return 'Zu viele Fehlversuche. Erneut versuchen in noch ' . $sekunden
-            . ($sekunden === 1 ? ' Sekunde.' : ' Sekunden.');
+        return 'Zu viele Fehlversuche. Bitte in ' . $sekunden
+            . ($sekunden === 1 ? ' Sekunde' : ' Sekunden') . ' erneut versuchen.';
     }
 
     /** Die Bremse – die eine Stelle, an der sie entsteht. Die Uhr ist für die Prüfungen übergebbar. */

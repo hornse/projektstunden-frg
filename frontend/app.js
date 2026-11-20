@@ -2701,7 +2701,7 @@ function hilfeFaq() {
   // dass ein Passwort stimmte und trotzdem abgelehnt wurde (FALLSTRICKE 8).
   const fragen = [
     { f: 'Ich habe mich vertippt und muss jetzt warten – warum?',
-      a: 'Bei falschem Benutzernamen oder Passwort zeigt die App „Ungültige Anmeldedaten.“ Nach acht Fehlversuchen heißt es 60 Sekunden warten: „Zu viele Fehlversuche. Erneut versuchen in noch … Sekunden.“ Danach geht es wieder – gesperrt wird nichts. Eine gelungene Anmeldung setzt die Zählung zurück.' },
+      a: 'Bei falschem Benutzernamen oder Passwort zeigt die App „Ungültige Anmeldedaten.“ Nach acht Fehlversuchen heißt es 60 Sekunden warten: „Zu viele Fehlversuche. Bitte in … Sekunden erneut versuchen.“ Danach geht es wieder – gesperrt wird nichts. Eine gelungene Anmeldung setzt die Zählung zurück.' },
     { f: 'Die App meldet, dass WebUntis nicht erreichbar ist – was tun?',
       a: 'Die Anmeldung mit Kürzel oder WebUntis-Benutzername läuft über WebUntis. Ist WebUntis gestört, erscheint „WebUntis ist gerade nicht erreichbar. Bitte in ein paar Minuten erneut versuchen.“ Dann etwas später noch einmal versuchen. Wer ein eigenes Konto in der App hat, kann sich in der Zwischenzeit mit E-Mail-Adresse und Passwort anmelden.' },
     { f: 'Können Eltern sich anmelden?',

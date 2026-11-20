@@ -38,13 +38,16 @@ $text = (string)preg_replace('/\s+/u', ' ', $md);
 $abgelehnt = Anmeldung::SATZ_ABGELEHNT;
 $ausfall   = Anmeldung::SATZ_AUSFALL;
 $warten    = Anmeldung::satzWarten(Anmeldung::WARTEZEIT_S);
-$prefix    = (string)preg_replace('/\d+ Sekunden?\.$/u', '', $warten);
+// Das Handbuch zitiert den Wartesatz mit „…“ an der Stelle der Zahl; die
+// Zahl (Anmeldung::WARTEZEIT_S) steht genau einmal im Satz.
+$zahlen_w  = preg_match_all('/\d+/', $warten, $zw) ? $zw[0] : [];
+$zitat     = (string)preg_replace('/\d+/', '…', $warten, 1);
 
-pruefe('Voraussetzung: Handbuch gelesen, Sätze aus anmeldung.php, Wartesatz mit Zahl am Ende',
-    strlen($md) > 1000 && $prefix !== $warten && $abgelehnt !== '' && $ausfall !== '');
+pruefe('Voraussetzung: Handbuch gelesen, Sätze aus anmeldung.php, Wartesatz mit genau einer Zahl',
+    strlen($md) > 1000 && $zahlen_w === [(string)Anmeldung::WARTEZEIT_S] && $abgelehnt !== '' && $ausfall !== '');
 pruefe("Handbuch zitiert „{$abgelehnt}“ wie der Server", str_contains($text, "„{$abgelehnt}“"));
 pruefe("Handbuch zitiert „{$ausfall}“ wie der Server", str_contains($text, "„{$ausfall}“"));
-pruefe("Handbuch zitiert den Wartesatz „{$prefix}… Sekunden.“ wie der Server", str_contains($text, "„{$prefix}… Sekunden.“"));
+pruefe("Handbuch zitiert den Wartesatz „{$zitat}“ wie der Server", str_contains($text, "„{$zitat}“"));
 
 $ZAHLWORT = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn', 'elf', 'zwölf'];
 preg_match_all('/(\S+) Fehlversuch/iu', $text, $m);

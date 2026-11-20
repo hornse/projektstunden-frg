@@ -59,6 +59,7 @@ try {
       'ausfall'   => Anmeldung::SATZ_AUSFALL,
       'warten'    => Anmeldung::satzWarten(Anmeldung::WARTEZEIT_S),
       'schwelle'  => Anmeldung::SCHWELLE,
+      'wartezeit' => Anmeldung::WARTEZEIT_S,
     ]);`], { encoding: 'utf8' }));
 } catch (e) {
   saetze = null;
@@ -198,13 +199,16 @@ async function fall(antworten, vorbereiten, aufruf, ...arg) {
   const sichtbar = h => h.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/\s+/g, ' ');
   const text = html3 ? sichtbar(html3.join(' ')) : '';
-  const prefix429 = saetze.warten.replace(/\d+ Sekunden?\.$/, '');
-  pruefe('Voraussetzung: hilfeSchnellstart, hilfeFaq, hilfeHandbuch ausgeführt, Text gelesen; Wartesatz mit Zahl am Ende',
-    html3 !== null && text.length > 1000 && prefix429 !== saetze.warten);
+  // Die Hilfe zitiert den Wartesatz mit „…“ an der Stelle der Zahl; die Zahl
+  // (Anmeldung::WARTEZEIT_S) steht genau einmal im Satz.
+  const zahl429 = saetze.warten.match(/\d+/g) || [];
+  const zitat429 = saetze.warten.replace(/\d+/, '…');
+  pruefe('Voraussetzung: hilfeSchnellstart, hilfeFaq, hilfeHandbuch ausgeführt, Text gelesen; Wartesatz mit genau einer Zahl',
+    html3 !== null && text.length > 1000 && zahl429.length === 1 && zahl429[0] === String(saetze.wartezeit));
   pruefe('Hilfe zitiert „' + saetze.abgelehnt + '“ wie der Server', text.includes('„' + saetze.abgelehnt + '“'));
   pruefe('Hilfe zitiert „' + saetze.ausfall + '“ wie der Server', text.includes('„' + saetze.ausfall + '“'));
-  pruefe('Hilfe zitiert den Wartesatz „' + prefix429 + '… Sekunden.“ wie der Server',
-    text.includes('„' + prefix429 + '… Sekunden.“'));
+  pruefe('Hilfe zitiert den Wartesatz „' + zitat429 + '“ wie der Server',
+    text.includes('„' + zitat429 + '“'));
   const ZAHLWORT = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn', 'elf', 'zwölf'];
   const vorFehl = [...text.matchAll(/(\S+) Fehlversuch/gi)].map(m => m[1].toLowerCase());
   const zahlen = vorFehl.filter(w => ZAHLWORT.includes(w) || /^\d+$/.test(w));

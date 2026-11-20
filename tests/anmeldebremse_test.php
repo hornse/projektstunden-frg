@@ -13,7 +13,8 @@
  * Die 42 Prüfungen der früheren, projekteigenen Bremse (bis 0e80957) sind
  * EINZELN übertragen; ihre Nummer steht vorn im Namen (#1 … #42). Wo eine
  * nicht mehr zutraf, steht an ihrer Nummer, was an ihre Stelle trat (#1,
- * #7, #8, #10, #40). Neu sind V2, V3 und N1–N6.
+ * #7, #8, #10, #40). Neu sind V2, V3, N1–N6 und W1–W3 (der Wartesatz nach
+ * FALLSTRICKE 8, Auftrag A Paket 5).
  *
  * AUSGEFÜHRT gegen SQLite: die Bremse mit gestellter Uhr (JETZT liegt fest
  * und weit vom Schreibtag, REIHENREGELN 2), der Weg durch handle_auth mit
@@ -139,8 +140,19 @@ pruefe('#4 an der Schwelle (' . $S . '), gerade eben: warten, 60 Sekunden, der S
     $wartet($r, 60) && $da && str_contains(Anmeldung::satzWarten(60), '60 Sekunden'));
 $p = neue_db(); fehl($p, 'Vzq', array_fill(0, $S, 59)); $r59 = $beginnen($p, 'Vzq');
 $p = neue_db(); fehl($p, 'Vzq', array_fill(0, $S, 60)); $r60 = $beginnen($p, 'Vzq');
-pruefe('#5 auf der Grenze: 59 s nach dem letzten noch 1 Sekunde („1 Sekunde.“), nach 60 s durch',
-    $wartet($r59, 1) && $da && str_ends_with(Anmeldung::satzWarten(1), ' 1 Sekunde.') && $durch($r60));
+pruefe('#5 auf der Grenze: 59 s nach dem letzten noch 1 Sekunde, der Satz mit dieser Zahl sagt „in 1 Sekunde“, nach 60 s durch',
+    $wartet($r59, 1) && $da && str_contains(Anmeldung::satzWarten((int)$r59['sekunden']), ' in 1 Sekunde ') && $durch($r60));
+// W1–W3: der Wartesatz in der Form von FALLSTRICKE 8, ganz verglichen (die
+// Form des Ergebnisses, nicht nur ein Wort darin). 1 ist der einzige Wert mit
+// Einzahl; 2 liegt neben der Grenze. 0 tritt nicht auf: Die Bremse wartet nur
+// mit mindestens 1 Sekunde (#5: nach 60 s durch, nicht „0 Sekunden“).
+$W_SATZ = fn(string $n): string => "Zu viele Fehlversuche. Bitte in $n erneut versuchen.";
+pruefe('W1 Wartesatz wie FALLSTRICKE 8: „' . $W_SATZ('60 Sekunden') . '“',
+    $da && Anmeldung::satzWarten(60) === $W_SATZ('60 Sekunden'));
+pruefe('W2 bei 1 Sekunde Einzahl: „' . $W_SATZ('1 Sekunde') . '“',
+    $da && Anmeldung::satzWarten(1) === $W_SATZ('1 Sekunde'));
+pruefe('W3 bei 2 Sekunden Mehrzahl: „' . $W_SATZ('2 Sekunden') . '“',
+    $da && Anmeldung::satzWarten(2) === $W_SATZ('2 Sekunden'));
 $p = neue_db(); fehl($p, 'Vzq', array_fill(0, 30, 0));
 pruefe('#6 ohne Staffel: 30 Fehlversuche warten wie die Schwelle – 60 Sekunden', $wartet($beginnen($p, 'Vzq'), 60));
 pruefe('#7 Zählung gescheitert hat einen eigenen Satz, nicht „Ungültige Anmeldedaten“',
@@ -301,8 +313,15 @@ $gruende($p);
 $p = neue_db(); $benutzer($p);
 for ($i = 0; $i < $S; $i++) $login($p, 'ada@schule.example', 'falsch-' . $i);
 $r = $login($p, 'ada@schule.example', 'Das lokale Passwort');
-pruefe('#31 lokal, Schwelle erreicht gerade eben: auch das richtige Passwort wartet – 429 mit Sekunden, Verlauf „wartezeit“',
-    $r['status'] === 429 && preg_match('/ \d+ Sekunden?\.$/', $fehler_satz($r)) === 1 && (end($v($p))['grund'] ?? '') === 'wartezeit');
+// Der ganze Satz der Antwort gegen die eine Quelle, mit der Zahl aus der
+// Antwort – kein eigenes Muster auf den Wortlaut (das Muster auf das alte
+// Satzende fiel in Paket 5 als dritte Stelle auf, die den Satz zerlegte).
+// Den Wortlaut selbst halten W1–W3 gegen feste Zeichenketten.
+$satz31 = $fehler_satz($r);
+$zahl31 = preg_match('/\d+/', $satz31, $m31) === 1 ? (int)$m31[0] : null;
+$verlauf31 = $v($p);   // end() verlangt eine Variable
+pruefe('#31 lokal, Schwelle erreicht gerade eben: auch das richtige Passwort wartet – 429, Satz gleich Anmeldung::satzWarten(Zahl aus der Antwort), Verlauf „wartezeit“',
+    $r['status'] === 429 && $zahl31 !== null && $satz31 === Anmeldung::satzWarten($zahl31) && (end($verlauf31)['grund'] ?? '') === 'wartezeit');
 $gruende($p);
 $p = neue_db(); $benutzer($p);
 $r = $login($p, 'Vzq', 'irgendwas');

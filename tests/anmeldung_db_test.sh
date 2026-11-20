@@ -230,9 +230,13 @@ pr "$([ "$ALT_KONF" = 0 ] && [ "$ALT_CODE" = 200 ] && [ -n "$ALT_KENNUNG" ] && [
 # A9: probe.falsch hat 1 Fehlversuch; 7 weitere, dann der neunte Versuch
 for _ in 2 3 4 5 6 7 8; do anmelden probe.falsch x; done
 anmelden probe.falsch x
-N=$(printf '%s' "$SATZ" | sed -nE 's/.* ([0-9]+) Sekunden?\.$/\1/p')
-pr "$([ "$CODE" = 429 ] && [ -n "$N" ] && [ "$N" -ge 1 ] && [ "$N" -le 60 ] && echo 1 || echo 0)" \
-    "A9 neunter Versuch nach acht Fehlversuchen: 429, Satz endet mit 1–60 Sekunden" "bekam $CODE „$SATZ“"
+# Der ganze Satz in der Form von FALLSTRICKE 8; Zahl und Wort getrennt
+# gelesen, damit „1 Sekunden“ und „60 Sekunde“ rot werden.
+N=$(printf '%s' "$SATZ" | sed -nE 's/^Zu viele Fehlversuche\. Bitte in ([0-9]+) Sekunden? erneut versuchen\.$/\1/p')
+WORT=$(printf '%s' "$SATZ" | sed -nE 's/^Zu viele Fehlversuche\. Bitte in [0-9]+ (Sekunden?) erneut versuchen\.$/\1/p')
+SOLLWORT=Sekunden; [ "$N" = 1 ] && SOLLWORT=Sekunde
+pr "$([ "$CODE" = 429 ] && [ -n "$N" ] && [ "$N" -ge 1 ] && [ "$N" -le 60 ] && [ "$WORT" = "$SOLLWORT" ] && echo 1 || echo 0)" \
+    "A9 neunter Versuch nach acht Fehlversuchen: 429, „Zu viele Fehlversuche. Bitte in N Sekunden erneut versuchen.“ mit N 1–60" "bekam $CODE „$SATZ“"
 pr "$([ -n "$RETRY" ] && [ "$RETRY" = "$N" ] && echo 1 || echo 0)" \
     "A9 Retry-After nennt dieselben Sekunden wie der Satz" "Retry-After '$RETRY', Satz '$N'"
 

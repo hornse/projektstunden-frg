@@ -134,11 +134,11 @@ mut C6 $J 's/Eltern haben keinen Zugang, auch nicht mit einem WebUntis-Konto fü
   "Hilfe: kein Satz, den es nach FALLSTRICKE 8" node
 mut C7 $J 's/text: \x27Lehrkräfte: WebUntis-Kürzel und WebUntis-Passwort\..*?\x27 \},/text: \x27E-Mail-Adresse und Passwort eingeben. Bei Problemen an den Administrator wenden – dieser kann Konten anlegen und Passwörter zurücksetzen.\x27 },/s' \
   "Hilfe, Anmeldekarte" node
-mut C8 $J 's/„Zu viele Fehlversuche\. Erneut versuchen in noch … Sekunden\.“ Danach geht es wieder – gesperrt wird nichts\. Eine gelungene Anmeldung setzt die Zählung zurück\.\x27/„Zu viele Fehlversuche.“ Danach geht es wieder – gesperrt wird nichts. Eine gelungene Anmeldung setzt die Zählung zurück.\x27/' \
+mut C8 $J 's/„Zu viele Fehlversuche\. Bitte in … Sekunden erneut versuchen\.“ Danach geht es wieder – gesperrt wird nichts\. Eine gelungene Anmeldung setzt die Zählung zurück\.\x27/„Zu viele Fehlversuche.“ Danach geht es wieder – gesperrt wird nichts. Eine gelungene Anmeldung setzt die Zählung zurück.\x27/' \
   "Hilfe zitiert den Wartesatz" node
 mut C9 $D 's/2\. Anmelden – Lehrkräfte mit WebUntis-Kürzel.*?→ \*\*Anmelden\*\*/2. E-Mail und Passwort eingeben → **Anmelden**/s' \
   "Handbuch: Handbuch, Schnelleinstieg" suite
-mut C10 $D 's/„Zu viele\nFehlversuche\. Erneut versuchen in noch … Sekunden\.“/„Zu viele\nFehlversuche.“/' \
+mut C10 $D 's/„Zu viele\nFehlversuche\. Bitte in … Sekunden erneut versuchen\.“/„Zu viele\nFehlversuche.“/' \
   "Handbuch: Handbuch zitiert den Wartesatz" suite
 mut C11 $D 's/Eltern haben keinen Zugang, auch\nnicht mit einem WebUntis-Konto für Eltern\./Eltern haben keinen Zugang: Das Passwort stimmt,\naber der Kontotyp ist nicht freigeschaltet./' \
   "Handbuch: Handbuch: kein Satz, den es nach FALLSTRICKE 8" suite

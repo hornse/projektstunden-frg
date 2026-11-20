@@ -262,13 +262,13 @@ konkreten Erwartungen. Nur lesend – Änderungen über die Datenbank.
 
 ## Häufige Fragen (FAQ)
 
-<!-- Die Sätze in „…“ sind die der Anwendung (backend/auth/Anmeldebremse.php);
+<!-- Die Sätze in „…“ sind die der Anwendung (backend/auth/anmeldung.php);
      tests/handbuch_test.php hält sie gegen den Code. -->
 
 **Ich habe mich vertippt und muss jetzt warten – warum?**
 Bei falschem Benutzernamen oder Passwort zeigt die App „Ungültige
 Anmeldedaten.“ Nach acht Fehlversuchen heißt es 60 Sekunden warten: „Zu viele
-Fehlversuche. Erneut versuchen in noch … Sekunden.“ Danach geht es wieder –
+Fehlversuche. Bitte in … Sekunden erneut versuchen.“ Danach geht es wieder –
 gesperrt wird nichts. Eine gelungene Anmeldung setzt die Zählung zurück.
 
 **Die App meldet, dass WebUntis nicht erreichbar ist – was tun?**
