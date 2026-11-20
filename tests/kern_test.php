@@ -19,7 +19,8 @@
  *          byte-gleich aus git show 0e80957:backend/config.example.php)
  *   K5     die Probebäume anderer Prüfungen kopieren keine konfiguration.php
  *   K6     die Sitzung an genau einer Stelle: Name und Dauer in kern.php,
- *          kein session.save_path im Projekt, Router ohne die alte Fassung
+ *          kein session.save_path im Projekt, Router ohne die alte Fassung,
+ *          kein Code liest $_SERVER['HTTPS'] (Betriebsfassung, E68)
  *          (Quelltext – die Bäume entstehen in fremden Skripten)
  *
  * Werte, die hier stehen, sind ERFUNDEN.
@@ -193,6 +194,30 @@ function https_zuweisungen(string $quelle): int
         $d = naechster($t, $c + 1);
         if (($t[$a] ?? null) === '[' && is_array($t[$b] ?? null) && $t[$b][0] === T_CONSTANT_ENCAPSED_STRING
             && strtoupper(substr($t[$b][1], 1, -1)) === 'HTTPS' && ($t[$c] ?? null) === ']' && ($t[$d] ?? null) === '=') $zahl++;
+    }
+    return $zahl;
+}
+
+/**
+ * Lesestellen von HTTPS aus der Umgebung: $_SERVER['HTTPS'] ohne folgende
+ * Zuweisung (auch in isset/empty), array_key_exists('HTTPS', $_SERVER) und
+ * getenv('HTTPS'). Über den Tokenizer – Kommentare und Beschriftungen zählen
+ * nicht (REIHENREGELN 2).
+ */
+function https_lesestellen(string $quelle): int
+{
+    $t = token_get_all($quelle);
+    $https = fn($x) => is_array($x) && $x[0] === T_CONSTANT_ENCAPSED_STRING && strtoupper(substr($x[1], 1, -1)) === 'HTTPS';
+    $zahl = 0;
+    for ($i = 0, $n = count($t); $i < $n; $i++) {
+        if (!is_array($t[$i])) continue;
+        if ($t[$i][0] === T_VARIABLE && $t[$i][1] === '$_SERVER') {
+            $a = naechster($t, $i + 1); $b = naechster($t, $a + 1); $c = naechster($t, $b + 1); $d = naechster($t, $c + 1);
+            if (($t[$a] ?? null) === '[' && $https($t[$b] ?? null) && ($t[$c] ?? null) === ']' && ($t[$d] ?? null) !== '=') $zahl++;
+        } elseif ($t[$i][0] === T_STRING && in_array(strtolower($t[$i][1]), ['array_key_exists', 'getenv'], true)) {
+            $a = naechster($t, $i + 1); $b = naechster($t, $a + 1);
+            if (($t[$a] ?? null) === '(' && $https($t[$b] ?? null)) $zahl++;
+        }
     }
     return $zahl;
 }
@@ -407,6 +432,47 @@ if (!is_file($ABL)) {
     pruefe('K4 pruefen: setzt konfiguration.php session.save_path, hält es an und nennt es, ohne Wert',
         $sauber !== '' && $c !== 0 && str_contains($aus, 'session.save_path') && !str_contains($aus, '/probe/zweite'),
         "Exit $c; " . str_replace("\n", ' | ', trim($aus)));
+
+    // Betriebsfassung (E68): Lokal und auf dem Server trägt session_start_secure
+    // nach session_name() einen Block, der hinter dem Proxy $_SERVER['HTTPS']
+    // setzt. Wortlaut nach Sebastians Abschrift vom 20.11.2026 (diff der
+    // Funktion gegen 0e80957, ohne Werte) – NICHT aus der Datei kopiert; die
+    // Prüfsumme der echten Funktion hat Sebastian lokal gemessen, gleich.
+    // Die Ableitung kennt genau diese eine Fassung, an der Prüfsumme und nur
+    // für session_start_secure. Eine dritte Fassung bleibt HALT.
+    $BLOCK = "    // Uberspace terminiert SSL vor dem PHP-Server.\n"
+           . "    // Wir setzen secure=true damit der Browser den Cookie akzeptiert,\n"
+           . "    // aber PHP muss wissen dass wir hinter einem Proxy laufen.\n"
+           . "    if (isset(\$_SERVER['HTTP_X_FORWARDED_PROTO']) &&\n"
+           . "        \$_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {\n"
+           . "        \$_SERVER['HTTPS'] = 'on';\n"
+           . "    }\n";
+    $NACH_NAME = "    session_name(SESSION_NAME);\n";
+    $betrieb = str_replace($NACH_NAME, $NACH_NAME . $BLOCK, $quelle, $nb);
+    @unlink("$T/konfiguration.php");
+    file_put_contents("$T/config.php", $betrieb);
+    [$c, $aus] = lauf(['ableiten', "$T/config.php", "$T/konfiguration.php", $namen, $finger], false);
+    pruefe('K4 Betriebsfassung: session_start_secure mit dem Proxy-Block wird erkannt – „Betriebsfassung (E68)“, die übrigen sieben „gleich“',
+        $nb === 1 && $c === 0 && str_contains($aus, "  session_start_secure: Betriebsfassung (E68)\n")
+        && substr_count($aus, ': gleich') === 7,
+        "Eingepflanzt {$nb}×, Exit $c; " . str_replace("\n", ' | ', trim($aus)));
+
+    $dritte = str_replace("\$_SERVER['HTTPS'] = 'on';", "\$_SERVER['HTTPS'] = 'off';", $betrieb, $nd);
+    @unlink("$T/konfiguration.php");
+    file_put_contents("$T/config.php", $dritte);
+    [$c, $aus] = lauf(['ableiten', "$T/config.php", "$T/konfiguration.php", $namen, $finger], true);
+    pruefe('K4 dritte Fassung (Block mit \'off\'): hält an, keine Datei, nennt „session_start_secure: abweichend“',
+        $nd === 1 && $c !== 0 && !file_exists("$T/konfiguration.php") && str_contains($aus, 'session_start_secure: abweichend'),
+        "Ersetzung {$nd}×, Exit $c; " . str_replace("\n", ' | ', trim($aus)));
+
+    $KOPF_AUTH = "function require_auth(): array {\n";
+    $fremd = str_replace($KOPF_AUTH, $KOPF_AUTH . $BLOCK, $betrieb, $nf);
+    @unlink("$T/konfiguration.php");
+    file_put_contents("$T/config.php", $fremd);
+    [$c, $aus] = lauf(['ableiten', "$T/config.php", "$T/konfiguration.php", $namen, $finger], true);
+    pruefe('K4 derselbe Block in require_auth: hält an, keine Datei, nennt „require_auth: abweichend“ – die Betriebsfassung gilt nur für session_start_secure',
+        $nf === 1 && $c !== 0 && !file_exists("$T/konfiguration.php") && str_contains($aus, 'require_auth: abweichend'),
+        "Eingepflanzt {$nf}×, Exit $c; " . str_replace("\n", ' | ', trim($aus)));
 }
 foreach (glob("$T/*") ?: [] as $f) unlink($f);
 @rmdir($T);
@@ -464,5 +530,15 @@ $stellen = array_merge($wo(fn($q) => count(aufrufe($q, 'session_name'))),
                        $wo(fn($q) => count(aufrufe($q, 'session_set_cookie_params'))));
 pruefe('K6 session_name() und session_set_cookie_params() je einmal, nur in backend/kern.php',
     $stellen === ['backend/kern.php', 'backend/kern.php'], 'gefunden: ' . implode(', ', $stellen));
+// Der Proxy-Block der Betriebsfassung (E68) setzte $_SERVER['HTTPS'] – ohne
+// Wirkung, solange niemand es liest. Ein künftiger Leser hinge still vom
+// Proxy ab; diese Prüfung macht ihn sichtbar. Gelesen werden backend/ wie
+// oben und bin/ (frontend/ ist JavaScript und kennt $_SERVER nicht).
+$LESEN = $QUELLEN;
+foreach (glob("$W/bin/*.php") ?: [] as $x) $LESEN[substr($x, strlen($W) + 1)] = (string)file_get_contents($x);
+$stellen = [];
+foreach ($LESEN as $rel => $q) { $z = https_lesestellen($q); if ($z > 0) $stellen[] = "$rel ({$z}×)"; }
+pruefe('K6 kein Code liest $_SERVER[\'HTTPS\'] (' . count($LESEN) . ' Dateien unter backend/ und bin/, Tokenizer)',
+    count($LESEN) > count($QUELLEN) && $stellen === [], 'gelesen in: ' . implode(', ', $stellen));
 
 exit($fehler === 0 ? 0 : 1);

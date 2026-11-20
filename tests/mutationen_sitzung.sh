@@ -17,6 +17,10 @@
 #   M8  Ableitung: SESSION_NAME nicht mehr in der Liste              K4 Sitzungswerte
 #   M9  Ableitung: Doc-Kommentar auch vor Sitzungsanweisungen weg    K4 Kopfkommentar bleibt
 #   M10 pruefen: hält bei einem Sitzungswert nicht an                K4 pruefen SESSION_NAME
+#   M11 Ableitung: Betriebsfassung ohne Prüfsummenvergleich          K4 dritte Fassung
+#   M12 Ableitung: Betriebsfassung nicht an die Funktion gebunden     K4 Block in require_auth
+#   M13 Kern: liest isset($_SERVER['HTTPS'])                         K6 kein Code liest HTTPS
+#   M14 Router: liest array_key_exists('HTTPS', $_SERVER)            K6 kein Code liest HTTPS
 #   D1  Kern: benutzer_id 0 gilt als „nicht gesetzt“ (empty)         S2 id 0
 #   D2  Kern: secure => false                                        S1 Set-Cookie
 #   D3  Kern: SameSite Strict                                        S1 Set-Cookie
@@ -28,6 +32,7 @@
 #   E1  Ist die Anmeldeprüfung rot, muss tests-projektstunden.sh rot sein
 #   H1  Harmlos: die alte Fassung als KOMMENTAR im Router – grün
 #   H2  Harmlos: der Satz session_name('proj_session') als Zeichenkette – grün
+#   H3  Harmlos: isset($_SERVER['HTTPS']) als Kommentar im Kern – grün
 #
 # D5 macht auch S1 rot (kein proj_session im Set-Cookie); geprüft wird S5,
 # weil S5 sonst keine eigene Gegenprobe hätte. D8 macht auch die Prüfsumme
@@ -97,11 +102,15 @@ Z_K4_ORT="K4 Speicherort: die Beilage setzt ihn mit ini_set (1×), das Ergebnis 
 Z_K4_BED="K4 Speicherort in einer Bedingung (nicht entfernbar)"
 Z_K4_WERTE="K4 Sitzungswerte: SESSION_NAME und SESSION_LIFETIME"
 Z_K4_PRUEF="K4 pruefen: definiert konfiguration.php SESSION_NAME"
+Z_K4_DRITTE="K4 dritte Fassung (Block mit 'off')"
+Z_K4_FREMD="K4 derselbe Block in require_auth"
+Z_K4_BETRIEB="K4 Betriebsfassung: session_start_secure mit dem Proxy-Block wird erkannt"
+Z_LIEST="K6 kein Code liest \$_SERVER['HTTPS']"
 Z_S1="S1 Set-Cookie: proj_session mit secure, HttpOnly, SameSite=Lax"
 Z_S2="S2 Lehrkraft ohne lokalen Eintrag, erste Anfrage nach der Anmeldung"
 Z_S3="S3 Rücksetzung über den Router"
 Z_S5="S5 Ausliefern meldet niemanden ab"
-for z in "$Z_ALT" "$Z_NAME" "$Z_DAUER" "$Z_ORT" "$Z_K4_ORT" "$Z_K4_BED" "$Z_K4_WERTE" "$Z_K4_PRUEF"; do
+for z in "$Z_ALT" "$Z_NAME" "$Z_DAUER" "$Z_ORT" "$Z_K4_ORT" "$Z_K4_BED" "$Z_K4_WERTE" "$Z_K4_PRUEF" "$Z_K4_DRITTE" "$Z_K4_FREMD" "$Z_K4_BETRIEB" "$Z_LIEST"; do
   n=$(printf '%s\n' "$GRUEN_K" | grep -cF "✓ $z" || true)
   [ "$n" = 1 ] || { echo "ABBRUCH: „$z“ steht $n-mal in der grünen Ausgabe von kern_test.php, erwartet einmal"; exit 2; }
 done
@@ -126,6 +135,10 @@ mut M7  K $AB 's/    if \(\$rest !== \[\]\) halt\(/    if (false) halt(/' "$Z_K4
 mut M8  K $AB 's/const SITZUNG = \[\x27SESSION_LIFETIME\x27, \x27SESSION_NAME\x27\];/const SITZUNG = [\x27SESSION_LIFETIME\x27];/' "$Z_K4_WERTE"
 mut M9  K $AB 's/if \(in_array\(\$d, \$dekl, true\) && \$j >= 0/if (\$j >= 0/' "$Z_K4_ORT"
 mut M10 K $AB 's/    if \(\$sitz !== \[\]\) halt\(/    if (false) halt(/' "$Z_K4_PRUEF"
+mut M11 K $AB 's/\(BETRIEBSFASSUNGEN\[\$n\] \?\? null\) === \$gefunden\[\$n\]/isset(BETRIEBSFASSUNGEN[\$n])/' "$Z_K4_DRITTE"
+mut M12 K $AB 's/\(BETRIEBSFASSUNGEN\[\$n\] \?\? null\) === \$gefunden\[\$n\]/(BETRIEBSFASSUNGEN[\x27session_start_secure\x27] ?? null) === (\$gefunden[\x27session_start_secure\x27] ?? null)/' "$Z_K4_FREMD"
+mut M13 K $K 's/(function require_auth\(\): array \{\n)/$1    \$ueber_tls = isset(\$_SERVER[\x27HTTPS\x27]);\n/' "$Z_LIEST"
+mut M14 K $RT "${NACH_KOPF}\\\$ueber_tls = array_key_exists(\\x27HTTPS\\x27, \\\$_SERVER);\\n\$2/" "$Z_LIEST"
 mut D1  A $K 's/if \(!isset\(\$_SESSION\[\x27benutzer_id\x27\]\) \|\| \$_SESSION\[\x27benutzer_id\x27\] === null\)/if (empty(\$_SESSION[\x27benutzer_id\x27]))/' "$Z_S2"
 mut D2  A $K "s/\\x27secure\\x27   => true,/\\x27secure\\x27   => false,/" "$Z_S1"
 mut D3  A $K "s/\\x27samesite\\x27 => \\x27Lax\\x27,/\\x27samesite\\x27 => \\x27Strict\\x27,/" "$Z_S1"
@@ -163,9 +176,10 @@ harmlos() {       # NAME DATEI AUSDRUCK
   ruecknahme "$1" "$R/$2"
 }
 harmlos H1 $RT "${NACH_KOPF}\\/\\/ früher: \\\$_SERVER[\\x27HTTPS\\x27] = \\x27on\\x27; session_name(\\x27proj_session\\x27);\\n\$2/"
+harmlos H3 $K 's/(function require_auth\(\): array \{\n)/$1    \/\/ nicht so: isset(\$_SERVER[\x27HTTPS\x27])\n/'
 harmlos H2 $RT "${NACH_KOPF}\\\$frueher = \\x27session_name(\\x27 . \"\\x27proj_session\\x27);\";\\n\$2/"
 
 echo ""
-[ "$GELAUFEN" -ge 21 ] || { echo "FEHLER: nur $GELAUFEN Mutationen gelaufen, erwartet 21"; exit 1; }
+[ "$GELAUFEN" -ge 26 ] || { echo "FEHLER: nur $GELAUFEN Mutationen gelaufen, erwartet 26"; exit 1; }
 if [ "$FEHLT" -eq 0 ]; then echo "ALLE $GELAUFEN MUTATIONEN BELEGT"; exit 0; fi
 echo "$FEHLT VON $GELAUFEN MUTATION(EN) OHNE BELEG"; exit 1

@@ -30,6 +30,11 @@
  * Wertedatei, warnte PHP bei jeder Anfrage. Die Ausgabe nennt sie beim Namen;
  * steht danach noch einer im Ergebnis, ist das ein HALT. „pruefen“ hält an,
  * wenn eine Wertedatei einen davon setzt.
+ * Eine Ausnahme vom „abweichend“: die BETRIEBSFASSUNG von session_start_secure
+ * (E68), lokal und auf dem Server, mit einem Block, der hinter dem Proxy
+ * $_SERVER['HTTPS'] setzt – ohne Wirkung, denn kein Code liest es (K6) und
+ * secure steht fest in session_set_cookie_params. Erkannt an genau einer
+ * Prüfsumme und nur für diese Funktion; jede andere Fassung bleibt HALT.
  * ZIEL wird nie überschrieben. Geschrieben wird mit Rechten 0600.
  *
  * AUSGEGEBEN WERDEN NUR NAMEN UND ZAHLEN, NIE EIN WERT (REIHENREGELN 9).
@@ -97,6 +102,15 @@ function naechster(array $t, int $i): int
 
 /** Was seit Paket 4 der Kern definiert (E68). Der Speicherort kommt aus sessions.ini. */
 const SITZUNG = ['SESSION_LIFETIME', 'SESSION_NAME'];
+
+/**
+ * Bekannte Betriebsfassungen (E68): Funktionsname → Fingerabdruck. Gemessen
+ * lokal am 20.11.2026 (fingerabdruecke backend/config.php), gleich der aus
+ * der Abschrift nachgebauten; der Server trägt laut diff dieselbe Funktion.
+ * Keine allgemeine Ausnahme – je Funktion genau eine Prüfsumme.
+ */
+const BETRIEBSFASSUNGEN = ['session_start_secure' => '0a9cd10e251be449'];
+const BETRIEBSFASSUNG = 'Betriebsfassung (E68)';
 const SPEICHERORT = 'session.save_path';
 
 /**
@@ -293,9 +307,11 @@ if ($art === 'ableiten' && isset($argv[2], $argv[3], $argv[4], $argv[5])) {
         if (!isset($erwartet[$d['name']])) $halt[] = "unbekannte Funktion {$d['name']}";
     }
     foreach ($erwartet as $n => $h) {
-        $stand = !isset($gefunden[$n]) ? 'fehlt' : ($gefunden[$n] === $h ? 'gleich' : 'abweichend');
+        $stand = !isset($gefunden[$n]) ? 'fehlt'
+            : ($gefunden[$n] === $h ? 'gleich'
+            : ((BETRIEBSFASSUNGEN[$n] ?? null) === $gefunden[$n] ? BETRIEBSFASSUNG : 'abweichend'));
         echo "  $n: $stand\n";
-        if ($stand !== 'gleich') $halt[] = "$n: $stand";
+        if ($stand !== 'gleich' && $stand !== BETRIEBSFASSUNG) $halt[] = "$n: $stand";
     }
     if ($halt !== []) halt(implode('; ', $halt));
 
