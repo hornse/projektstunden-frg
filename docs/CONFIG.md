@@ -1,229 +1,146 @@
-# config.php einrichten – Schritt-für-Schritt
+# konfiguration.php einrichten – Schritt für Schritt
 
-Die Datei `backend/config.php` liegt **nicht in git** (steht in `.gitignore`).
-Sie muss nach jedem frischen Deployment manuell angelegt werden.
+Seit Auftrag A (E68) steht der **Code** der Konfiguration versioniert in
+`backend/kern.php`, die **Werte** in `backend/konfiguration.php`. Die
+Wertedatei liegt **nicht in git** (`.gitignore`) und wird beim Ausliefern
+nicht überschrieben. Vorlage: `backend/konfiguration.example.php`.
+
+Bis A hieß die Datei `backend/config.php` und trug Werte und Code. Der Code
+lädt sie nicht mehr.
+
+**Vor dem Anlegen** braucht jeder Rechner, auf dem eine Sitzung von Claude
+Code läuft, die Leseregeln `Read(//**/konfiguration.php)` und
+`Read(//**/konfiguration.php.*)` in `~/.claude/settings.json`. Die Datei
+trägt das Datenbankpasswort.
 
 ---
 
-## Schritt 1 – Datenbankpasswort herausfinden
-
-Das MariaDB-Passwort steht auf dem Uberspace-Server in `~/.my.cnf`:
+## Aus einer alten config.php ableiten (Server, Rechner)
 
 ```bash
-cat ~/.my.cnf
-# [client]
-# user = hornse
-# password = DAS_IST_DEIN_PASSWORT
+./bin/konfiguration-ableiten.sh server            # trocken
+SCHREIBEN=1 ./bin/konfiguration-ableiten.sh server
+./bin/konfiguration-ableiten.sh server-pruefen    # Namen gegen die Vorlage
 ```
 
----
+Am Rechner dasselbe mit `lokal` und `lokal-pruefen`. Ausgegeben werden nur
+Namen und Zahlen, nie ein Wert. Trocken ist der Standard; geschrieben wird
+mit Rechten 0600, eine vorhandene Datei wird nie überschrieben.
 
-## Schritt 2 – config.php anlegen
+Die Ableitung vergleicht jede Funktion der alten Datei gegen die Vorlage vom
+Stand vor A (`tests/daten/config.example-0e80957.php`) und **hält an**, wenn
+eine fehlt, abweicht oder unbekannt ist. Eine Ausnahme, an ihrer Prüfsumme:
+die Betriebsfassung von `session_start_secure` (E68, Abschnitt 2). Nicht
+übernommen werden `ini_set('session.save_path', …)`, `SESSION_NAME` und
+`SESSION_LIFETIME` – die Sitzung steht im Kern, der Speicherort in
+`~/etc/php.d/sessions.ini`. Die Reihenfolge am Server steht in
+`docs/AUSROLLEN-auftrag-A.md`.
+
+## Neu anlegen (Neuinstallation)
 
 ```bash
-cp /home/hornse/projektstunden/backend/config.example.php \
-   /home/hornse/projektstunden/backend/config.php
+cp backend/konfiguration.example.php backend/konfiguration.php
+chmod 600 backend/konfiguration.php
+nano backend/konfiguration.php
 ```
 
----
-
-## Schritt 3 – Datenbankpasswort eintragen
-
-```bash
-nano /home/hornse/projektstunden/backend/config.php
-```
-
-Zeile suchen und anpassen:
-```php
-define('DB_PASS', 'DEIN_DATENBANKPASSWORT');
-//                 ↑ durch echtes Passwort aus ~/.my.cnf ersetzen
-```
-
----
-
-## Schritt 4 – WebUntis konfigurieren
-
-Im selben Editor die WebUntis-Werte anpassen:
+Das Datenbankpasswort steht auf dem Server in `~/.my.cnf`. Einzutragen sind
+`DB_PASS` und die WebUntis-Werte:
 
 ```php
 define('WEBUNTIS_ENABLED', true);
 
 $WEBUNTIS_CONFIG = [
-    'base_url' => 'https://neilo.webuntis.com',  // ← Uberspace-Adresse deiner Schule
-    'school'   => 'frg-duesseldorf',              // ← Schulkürzel aus der WebUntis-URL
-    // z. B. https://neilo.webuntis.com/WebUntis/?school=frg-duesseldorf
+    'base_url'             => 'https://SERVERNAME.webuntis.com',  // ohne / am Ende
+    'school'               => 'SCHULKUERZEL',
     'client'               => 'ProjektstundenNRW',
-    'allowed_person_types' => [2, 16, 5],  // 2 Lehrkraft, 16 WebUntis-Admin, 5 Schüler – wie config.example.php
+    'allowed_person_types' => [2, 16, 5],  // 2 Lehrkraft, 16 WebUntis-Admin, 5 Schüler
     'connect_timeout'      => 5,
     'timeout'              => 10,
-    'lockout_minutes'      => 15,   // Zählfenster der Bremse, keine Sperre
+    'admin_kuerzel'        => ['Vzq'],      // erfunden
 ];
 ```
 
-**Die Schwelle der Anmeldebremse steht nicht hier**, sondern im Code:
-`Anmeldebremse::SCHWELLE = 8` (M56 der Reihe, seit S73). Ein Eintrag
-`max_failed_logins` in einer älteren `config.php` wird nicht mehr gelesen und
-kann entfallen.
+`base_url` und `school` stehen in der WebUntis-Adresse der Schule:
 
-WebUntis-URL deiner Schule findest du indem du dich im Browser bei WebUntis
-anmeldest und die URL anschaust:
 ```
 https://SERVERNAME.webuntis.com/WebUntis/?school=SCHULKUERZEL
-         ↑ base_url bis hier                    ↑ school
 ```
 
----
+**Nicht hier:** die Schwelle und Wartezeit der Anmeldebremse
+(`Anmeldung::SCHWELLE = 8`, `WARTEZEIT_S = 60`, M56; das Zählfenster im
+Modul), Name und Dauer der Sitzung (`backend/kern.php`), der Speicherort der
+Sitzungen (`sessions.ini`). Einträge `lockout_minutes` oder
+`max_failed_logins` aus einer älteren Datei werden nicht mehr gelesen.
 
-## Schritt 5 – session.save_path sicherstellen
+`mkdir -p ~/tmp/sessions` – der Speicherort aus `sessions.ini` muss
+existieren.
 
-```bash
-mkdir -p ~/tmp/sessions
-```
-
----
-
-## Schritt 6 – Lehrer mit WebUntis-Kürzel verknüpfen
-
-Damit ein Lehrer sich per WebUntis-Kürzel einloggen kann, muss das Kürzel
-in der Datenbank hinterlegt sein:
+## Lehrkräfte und Schüler mit WebUntis verknüpfen
 
 ```bash
-# Kürzel für deinen Account eintragen
+# Kürzel für ein Konto eintragen
 mysql hornse_projektstunden -e "
 UPDATE benutzer SET webuntis_user = 'Vzq'
 WHERE email = 'vorname.nachname@frg-duesseldorf.de';"
 
-# Prüfen
-mysql hornse_projektstunden -e "
-SELECT id, vorname, nachname, email, webuntis_user, rolle
-FROM benutzer WHERE schule_id = 1;"
-```
-
-Das Kürzel entspricht dem WebUntis-Anmeldename (meist Nachname-Kürzel,
-z. B. `Vzq` – erfunden).
-
----
-
-## Schritt 7 – Schüler mit WebUntis-Username verknüpfen (optional)
-
-Wenn Schüler sich per WebUntis einloggen sollen:
-
-```bash
-# Einzeln:
+# Schüler einzeln (optional)
 mysql hornse_projektstunden -e "
 UPDATE schueler SET webuntis_user = 'schueler.vorname'
 WHERE schild_id = 12345;"
-
-# Bulk per Import: webuntis_user kann beim CSV-Import ergänzt werden
-# (Spalte 'WebUntis-Benutzername' in der Schild-Exportdatei falls vorhanden)
 ```
 
----
-
-## Vollständige config.php – Referenz
-
-```php
-<?php
-/**
- * Projektstunden NRW – Konfiguration
- * NICHT in git versionieren!
- */
-
-ini_set('session.save_path', '/home/hornse/tmp/sessions');
-ini_set('display_errors', 0);
-error_reporting(E_ALL);
-
-// Datenbank
-define('DB_HOST',    '127.0.0.1');
-define('DB_PORT',    3306);
-define('DB_NAME',    'hornse_projektstunden');
-define('DB_USER',    'hornse');
-define('DB_PASS',    'PASSWORT_AUS_MY_CNF');  // ← anpassen!
-define('DB_CHARSET', 'utf8mb4');
-
-// Schule
-define('SCHULE_ID', 1);
-
-// Session
-define('SESSION_NAME',     'proj_session');
-define('SESSION_LIFETIME', 8 * 3600);
-
-// CORS
-define('ALLOWED_ORIGIN', 'https://projektstunden.hornse.de');
-
-// WebUntis
-define('WEBUNTIS_ENABLED', true);
-
-$WEBUNTIS_CONFIG = [
-    'base_url'             => 'https://neilo.webuntis.com',
-    'school'               => 'frg-duesseldorf',
-    'client'               => 'ProjektstundenNRW',
-    'allowed_person_types' => [2, 16, 5],
-    'connect_timeout'      => 5,
-    'timeout'              => 10,
-    'lockout_minutes'      => 15,   // Zählfenster der Bremse, keine Sperre
-];
-```
-
-> Den Rest der Datei (Funktionen `get_db`, `session_start_secure`, etc.)
-> aus `config.example.php` unverändert übernehmen.
+Kürzel und Namen hier sind erfunden.
 
 ---
 
 ## Troubleshooting
 
-**WebUntis-Login schlägt fehl obwohl Passwort korrekt:**
+**Jede API-Anfrage antwortet mit 500:** `konfiguration.php` fehlt
+(„Failed opening required …/backend/konfiguration.php“ im Fehlerprotokoll).
+Es gibt keinen Rückfall auf `config.php` – absichtlich (E68).
+
+**Warum kommt jemand nicht hinein:** Die Ablehnung ist nach außen
+einheitlich (FALLSTRICKE 8); der Grund steht im Verlauf. Nur zählen oder die
+eigene Kennung ansehen:
+
 ```bash
-# Login-Log prüfen
 mysql hornse_projektstunden -e "
-SELECT * FROM webuntis_login_log ORDER BY zeitpunkt DESC LIMIT 10;"
+SELECT erfolgreich, grund, COUNT(*) FROM anmeldeverlauf GROUP BY erfolgreich, grund;"
 ```
 
-**Kein Konto gefunden nach erfolgreichem WebUntis-Login:**
-Sicherstellen dass `webuntis_user` in der `benutzer`-Tabelle gesetzt ist
-(Schritt 6).
+Der Verlauf hält 30 Tage; `zeitpunkt` kommt aus der PHP-Uhr, nicht aus
+`NOW()` der Datenbank (FALLSTRICKE 4). `webuntis_login_log` gibt es seit `sql/24` nicht
+mehr.
 
-**WebUntis nicht erreichbar:**
-`WEBUNTIS_ENABLED` auf `false` setzen → nur noch E-Mail/Passwort-Login möglich.
+**WebUntis nicht erreichbar:** `WEBUNTIS_ENABLED` auf `false` → nur noch
+E-Mail und Passwort.
 
 ---
 
-## Abgleich mit `config.example.php`
+## Abgleich mit der Vorlage
 
-`backend/config.php` steht in `.gitignore`. Sie wird also nie mit ausgeliefert,
-nie mit zurückgeholt und von keinem Werkzeug verglichen — sie kann zwischen
-Arbeitsrechner und Server auseinanderlaufen, ohne dass etwas warnt. Genau das
-ist geschehen: Die lokale Fassung hing drei Änderungen hinter dem Server
-(`secure` auf `false` statt `true`, `SameSite=Strict` statt `Lax`,
-`require_auth()` noch mit `empty($_SESSION['benutzer_id'])`). Aufgefallen ist
-es zufällig, beim Nachlesen für einen anderen Auftrag.
+`konfiguration.php` wird nie mit ausgeliefert, nie zurückgeholt und von
+keinem `git diff` gesehen. Sie kann zwischen Rechner und Server
+auseinanderlaufen, ohne dass etwas warnt – das war der Anlass von A: Die
+lokale `config.php` hing drei Änderungen hinter dem Server (`secure`,
+`SameSite`, `empty()` in `require_auth`). **Seit A steht kein Code mehr
+darin**; was auseinanderlaufen kann, sind nur noch Werte.
 
-**`tests-projektstunden.sh` prüft seither die Struktur.** Die Prüfung liest die
-Namen aller Konstanten und globalen Variablen aus `config.example.php` und
-verlangt, dass jeder davon auch in `config.php` vorkommt. Fehlt `config.php`
-— an jedem Commit, in einem Klon oder `git worktree` —, wird die Prüfung
-**sichtbar übersprungen und gezählt**, ohne die Auslieferung anzuhalten
-(Auftrag B0 in `koordination`, Entscheidung vom 06.11.2026). Vorher war sie
-dort rot, und die Suite am committeten Stand war nie grün.
+**`tests-projektstunden.sh` prüft die Struktur:** jeder Name aus der
+Vorlage kommt in `konfiguration.php` vor, und sie enthält keine Funktion.
+Fehlt die Datei – an jedem Commit, in einem Klon oder `git worktree` –,
+wird die Prüfung **sichtbar übersprungen und gezählt**:
 
 ```
-–  ÜBERSPRUNGEN: keine backend/config.php (Baum ohne Konfiguration) – Struktur gegen backend/config.example.php nicht verglichen
+  –  ÜBERSPRUNGEN: keine backend/konfiguration.php (Baum ohne Konfiguration) – Struktur gegen backend/konfiguration.example.php nicht verglichen
 ```
 
 ```
-✓ config.php fuehrt alle 12 Namen aus config.example.php
+  ✓ konfiguration.php fuehrt alle 10 Namen aus konfiguration.example.php und keine Funktion
 ```
 
-**Nur Namen, keine Werte.** Die Datei enthält das Datenbankpasswort; sie wird
-gelesen, aber keine ihrer Zeilen wird ausgegeben. Gemeldet werden ausschliesslich
-die Namen aus der **Beispieldatei**, die in `config.php` fehlen.
-
-**Was die Prüfung nicht kann.** Sie sieht keine abweichenden Werte — und genau
-daran ist die Konfiguration zuletzt auseinandergelaufen. `secure => false`
-gegen `secure => true` ist für sie derselbe Eintrag. Dafür müsste sie den
-Inhalt bewerten, und das ist bei einer Datei mit Zugangsdaten der falsche Weg.
-
-**Was daraus folgt:** Wer `config.example.php` um einen Eintrag erweitert,
-bekommt beim nächsten Testlauf gesagt, dass `config.php` nachzuziehen ist. Wer
-einen **Wert** auf dem Server ändert, bekommt gar nichts gesagt — das muss
-weiterhin hier vermerkt werden, wie es `CLAUDE.md` verlangt.
+**Nur Namen, keine Werte.** Gemeldet werden ausschließlich Namen aus der
+Vorlage, die fehlen. Abweichende **Werte** sieht die Prüfung nicht; eine
+Wertänderung auf dem Server muss weiterhin hier oder in `CLAUDE.md` vermerkt
+werden.

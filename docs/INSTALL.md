@@ -115,25 +115,16 @@ done
 > mit `f4b1338`, ersetzt durch Seed 12). Die Schleife ist am 03.11.2026
 > nicht ausgeführt worden – sie ersetzt eine Liste, die bei 05 stehen blieb.
 
-### Schritt 10 – config.php prüfen
+### Schritt 10 – konfiguration.php anlegen
 
-Die Datei `backend/config.php` enthält die Datenbankzugangsdaten.
-Auf Uberspace sind die MariaDB-Zugangsdaten in `~/.my.cnf` hinterlegt:
+Die Werte (Datenbank, WebUntis) stehen in `backend/konfiguration.php`, nicht
+in git; der Code steht versioniert in `backend/kern.php` (E68). Anlegen aus
+der Vorlage, Rechte 0600 – Schritt für Schritt in `docs/CONFIG.md`. Das
+Datenbankpasswort steht auf Uberspace in `~/.my.cnf`.
 
-```bash
-cat ~/.my.cnf
-# [client]
-# user=hornse
-# password=DEIN_PASSWORT
-```
-
-In `backend/config.php` eintragen:
-```php
-define('DB_HOST', '127.0.0.1');
-define('DB_NAME', 'hornse_projektstunden');
-define('DB_USER', 'hornse');
-define('DB_PASS', 'DEIN_PASSWORT');
-```
+Bis Auftrag A hieß die Datei `backend/config.php`. Eine bestehende
+Installation zieht nicht über diese Anleitung um, sondern über
+`docs/AUSROLLEN-auftrag-A.md` (Ableitung aus der alten Datei).
 
 ### Schritt 11 – Ersten Admin anlegen
 
@@ -173,6 +164,14 @@ VALUES (1, 'Vorname', 'Nachname', 'deine@email.de', '$HASH', 'admin');"
 | `19_seed_englisch_klp.sql` | Englisch, Kernlehrplan Sek I (G9) |
 | `20_seed_franzoesisch_klp.sql` | Französisch, Kernlehrplan Sek I (G9) |
 | `21_seed_spanisch_klp.sql` | Spanisch, Kernlehrplan Sek I (G9) |
+| `22_anmeldebremse.sql` | Anmeldebremse, aus `webuntis-auth-php` v2.0.2 (E68) |
+| `23_migration_anmeldeverlauf.sql` | Verlauf der Anmeldungen, ohne Adresse (E68) |
+| `24_aufraeumen_nach_abnahme.sql` | `webuntis_login_log` und `audit_log.ip_adresse` entfallen (E68) |
+
+**`sql/24` an einer bestehenden Installation erst nach der Abnahme von
+Auftrag A** (`docs/AUSROLLEN-auftrag-A.md`, Schritt 6) – sie löscht, was der
+alte Code noch schreibt. Bei einer Neuinstallation läuft sie mit der
+Schleife oben.
 
 Die Inhalte stammen aus dem Kopf der jeweiligen Datei. Die Tabelle ist von
 Hand gepflegt: Kommt eine Migration dazu, gehört sie hierher.

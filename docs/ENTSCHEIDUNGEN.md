@@ -2750,3 +2750,167 @@ entschieden.
 
 **Was das nicht heißt:** Die Werte gelten für dieses Dokument. Für Spanisch
 GOSt ist die Rinne neu zu messen, und der Marker dort ist `U+F0FA`, nicht `à`.
+
+---
+
+## E68 — Anmeldung aus dem Modul, Kern versioniert, Fristen, Sitzung an einer Stelle (Auftrag A, 06.–20.11.2026)
+
+**Vorbemerkung zur Nummer:** Vor dem Anfügen nachgesehen, höchste vergebene
+Nummer war E67 (E30). Code und Ausgaben verweisen seit den Paketen 1–5 schon
+auf „E68“; mit diesem Eintrag löst sich der Verweis auf.
+
+**Anlass:** Auftrag A aus `koordination`
+(`docs/AUFTRAG-projektstunden-A-anmeldung-modul.md`, mit Nachtrag vom 12.11.),
+Befunde `BEFUND-2026-11-06-projektstunden-abgleich.md` §2 Z. 1–8 und
+`BEFUND-2026-11-04-personendaten.md` §11/§12. Umgesetzt in sechs Paketen,
+Commits `ebf9a2b` (1), `03e7015` (2), `ebed08e` (3), `710282f` (4),
+`83fc455` (5), `055c01d` (Betriebsfassung), `23b3147` (6).
+Prüfungen 289 → 393.
+
+### 1 — Der Code der Konfiguration ist versioniert
+
+Bis A standen acht Funktionen (`get_db`, `session_start_secure`,
+`require_auth`, `require_admin`, `json_response`, `json_error`, `clean`,
+`audit`) in der unversionierten `backend/config.php`. Dort liefen sie
+zwischen Rechner und Server auseinander, ohne dass etwas warnte: Im September
+hing die lokale Fassung drei Generationen hinter der des Servers (CONFIG.md,
+„Abgleich“).
+
+**Entschieden:** Der Code steht in `backend/kern.php` (versioniert), die
+Werte in `backend/konfiguration.php` (nicht versioniert, Vorlage
+`konfiguration.example.php`). Seit Paket 3 sind es neun Funktionen:
+`audit_grenze()` ist die Frist des `audit_log` und gehört zu `audit()` —
+die Festlegung „acht“ aus Schritt 2 ist damit bewusst geändert
+(`tests/kern_test.php` K1).
+
+**Neuer Name statt derselbe Name:** Der neue Code lädt `config.php` nicht
+mehr. Damit gibt es beim Ausliefern kein Fehlerfenster: Die neue Wertedatei
+liegt vorher bereit, die alte bleibt bis zur Abnahme liegen und wird erst
+danach gelöscht. **Kein Rückfall** auf `config.php` und kein
+`function_exists`-Schutz — fehlt `konfiguration.php`, antwortet jede
+API-Anfrage mit 500 (am Rechner so gewesen von Paket 1 bis zum 20.11.,
+als `konfiguration.php` dort abgeleitet wurde).
+
+**Die Ableitung** (`bin/konfiguration-ableiten.sh`, `.php`) erzeugt
+`konfiguration.php` aus der alten `config.php`: trocken als Standard,
+überschreibt nie, gibt nur Namen und Zahlen aus, nie einen Wert. Sie
+vergleicht jede Funktion der alten Datei gegen die Vorlage vom Stand vor A
+(`tests/daten/config.example-0e80957.php`, Fingerabdruck ohne Kommentare und
+Leerraum) und hält an, wenn eine fehlt oder abweicht: Trägt die alte Datei
+genau diesen Code, ändert der Umzug nur, was A ändern will. Übernommen wird
+alles außer den Funktionen und außer drei Anweisungen, die seit Paket 4 im
+Kern stehen oder nirgends (`ini_set('session.save_path', …)`,
+`SESSION_NAME`, `SESSION_LIFETIME`).
+
+### 2 — Betriebsfassung von `session_start_secure`
+
+Die Ableitung hielt am Rechner an: `session_start_secure: abweichend`. Die
+Fassung in beiden `config.php` — am Rechner und, nach Sebastians diff ohne
+Werte, Zeichen für Zeichen gleich auf dem Server — trägt nach
+`session_name()` einen Block, der hinter dem Proxy bei
+`X-Forwarded-Proto: https` `$_SERVER['HTTPS'] = 'on'` setzt. Die Vorlage
+0e80957 hat ihn nicht.
+
+**Der Block ist ohne Wirkung:**
+- Am HEAD liest kein Code `$_SERVER['HTTPS']` — gesucht mit dem Tokenizer
+  über `backend/` und `bin/`, auch `isset`, `array_key_exists`, `getenv`;
+  das Frontend ist JavaScript und sieht `$_SERVER` nicht.
+- `secure` steht fest in `session_set_cookie_params()` (FALLSTRICKE 1:
+  `$_SERVER['HTTPS']` hat darauf keinen Einfluss).
+- Das Cookie zeigt mit und ohne Block dieselben Attribute: S1 am Rechner
+  (ohne Block) und die Betriebsmessung vom 18.11. (mit Block, Logout-Abruf):
+  `proj_session`, `Max-Age=28800`, `secure; HttpOnly; SameSite=Lax`.
+
+Der fehlende Lax-Kommentar allein ändert den Fingerabdruck nicht (ohne
+Kommentare gebildet, ausgeführt).
+
+**Entschieden:** Die Ableitung kennt **genau eine** Betriebsfassung, für
+**genau diese Funktion**, an ihrer Prüfsumme:
+`BETRIEBSFASSUNGEN = ['session_start_secure' => '0a9cd10e251be449']`. Sie
+meldet dann `session_start_secure: Betriebsfassung (E68)` und geht weiter.
+Jede andere Fassung — auch derselbe Block mit `'off'`, auch derselbe Block in
+einer anderen Funktion — hält weiter an (`tests/kern_test.php` K4,
+Mutationen M11, M12). Keine allgemeine Ausnahme.
+
+**Gemessen ist die Prüfsumme nur am Rechner:** aus Sebastians Abschrift
+nachgebaut und von Sebastian an der lokalen `config.php` gemessen, gleich.
+Auf dem Server ist sie nicht gemessen; die Funktion ist dort laut diff
+gleich, also auch ihr Fingerabdruck. Der Trockenlauf der Ableitung auf dem
+Server ist der Beleg — zeigt er für `session_start_secure` etwas anderes als
+„Betriebsfassung (E68)“, wird angehalten (Ausrollanleitung).
+
+**Dazu eine Prüfung, dass es so bleibt:** K6 „kein Code liest
+`$_SERVER['HTTPS']`“ (Mutationen M13, M14). Liest künftig doch etwas den
+Wert, ist die Begründung oben hinfällig, und K6 wird rot, bevor das
+geschieht.
+
+### 3 — Anmeldebremse aus dem Modul, Verlauf ohne Adresse
+
+`backend/auth/Anmeldebremse.php` ist vendort aus `webuntis-auth-php` v2.0.2,
+mit `sql/22_anmeldebremse.sql` und der SQLite-Fassung, byte-gleich plus
+Vermerk (Prüfsummen in `tests/anmeldebremse_test.php`). Projekteigen ist
+`backend/auth/anmeldung.php`: Schwelle 8, Wartezeit 60 s, Ziel (`lokal` oder
+`webuntis:<host>`), die Sätze, der Verlauf.
+
+`WebUntisAuth.php` bleibt projekteigen. „Ohne Entscheid“ gilt nur bei
+Transportfehlern (cURL, HTTP 5xx, kein JSON); HTTP 4xx ist ein Fehlschlag
+(Befund Z. 8). `-8500` ist kein Fehlschlag: 503 mit eigenem Satz, zählt
+nicht, Grund im Verlauf (Z. 7, FALLSTRICKE 6).
+
+**Der Verlauf** steht in `anmeldeverlauf` (`sql/23`), ohne Adressspalte:
+Hinter dem Proxy war `REMOTE_ADDR` immer der Proxy. Er ist Protokoll und
+entscheidet über nichts; die Bremse zählt in ihrer eigenen Tabelle.
+
+### 4 — Fristen
+
+- **`audit_log`: „Schuljahr + 1“.** Ein Eintrag bleibt das laufende und das
+  vorige Schuljahr; Grenze ist der 01.08. des vorletzten Schuljahresbeginns.
+  Aufgeräumt wird bei jedem Eintrag, die Zeit kommt aus der PHP-Uhr
+  (FALLSTRICKE 4). Keine `ip_adresse` mehr. Der Nachtrag vom 12.11. hat
+  festgehalten, warum das Protokoll bleibt: Im September war es die einzige
+  Quelle für die Frage, wer Werkstätten geändert hatte (E54).
+- **`anmeldeverlauf`: 30 Tage**, über `modify('-30 days')`.
+- **`webuntis_login_log` entfällt ohne Übernahme** (`sql/24`): Nichts liest
+  sie, ihre Frist war 30 Tage, sie hält IP-Adressen. Ebenso
+  `audit_log.ip_adresse`. `sql/24` wird **erst nach der Abnahme**
+  eingespielt; der Code läuft vor und nach ihr (`tests/fristen_db_test.sh`).
+
+### 5 — Die Sitzung an einer Stelle
+
+Name und Dauer stehen in `backend/kern.php` und nirgends sonst
+(`SESSION_NAME = 'proj_session'`, `SESSION_LIFETIME = 8 * 3600` — die Werte
+des Betriebs, gemessen am Logout-Abruf; ein anderer Name meldete beim
+Ausliefern alle ab). Der Speicherort steht in keiner Datei des Projekts:
+maßgeblich ist `~/etc/php.d/sessions.ini`. Die alte `config.php` setzte ihn
+zusätzlich mit `ini_set`, auf Server und Rechner je einmal, auf dem Server
+mit demselben Wert (gezählt ohne Werte). Der Router setzt weder
+`$_SERVER['HTTPS']` noch `session_name()`.
+
+### 6 — Die Sätze
+
+Der Wartesatz folgt FALLSTRICKE 8: „Zu viele Fehlversuche. Bitte in N
+Sekunden erneut versuchen.“, bei 1 „Sekunde“. Eine Quelle,
+`Anmeldung::satzWarten()`; die Zahl im Satz ist die des `Retry-After`
+(ausgeführt, A9). Hilfe und Handbuch zitieren ihn.
+
+Gelernt dabei: Vor einer Satzänderung wird nach Mustern gesucht, die den
+Satz **zerlegen** (Satzende, Zahl, Präfix), nicht nur nach dem Wortlaut. Die
+Vorsuche fand das Muster in `tests/anmeldebremse_test.php` #31 nicht; die
+Prüfung wurde unbeabsichtigt rot.
+
+### 7 — Jeder übersprungene Schritt wird gezählt
+
+Seit B0 zählte nur die Konfigurationsprüfung, was sie übersprang. „node nicht
+vorhanden“, „php nicht vorhanden“, die beiden „node fehlt“, „kein Chromium“
+und die durchgereichten Zeilen der DB-Skripte gaben ihre Zeile selbst aus:
+Ohne node meldete die Suite „0 übersprungen“ (B0, G5). Jetzt geht jeder
+übersprungene Schritt durch `uebersprungen TEXT [pflicht]` in
+`tests-projektstunden.sh`; Pflichtschritte (mariadbd) zählen dort als
+Pflicht, die Schlusszeile nennt beide Zahlen getrennt, wie bisher. Eine
+Prüfung am Quelltext hält das Zeichen an dieser Stelle; die Wirkung belegen
+G5 und `tests/mutationen_uebersprungen.sh`.
+
+### Was nicht dazugehört
+
+Schülerdaten (Auftrag C); Gesundheitsabruf, Stand, Tags, Dienstdatei
+(Auftrag B). Die Schüleranmeldung (`personType 5`) schaltet A nicht ein.

@@ -141,7 +141,9 @@ uberspace web log access disable
 ├── backend/
 │   ├── api/
 │   │   └── index.php                 ← API-Router (alle Endpunkte)
-│   ├── config.php                    ← DB-Zugang, Session, WebUntis (nicht in git)
+│   ├── auth/                         ← Anmeldung, Anmeldebremse (Modul), WebUntis
+│   ├── kern.php                      ← Datenbank, Sitzung, Rechte, Protokoll (versioniert, E68)
+│   ├── konfiguration.php             ← DB-Zugang, WebUntis – nur Werte (nicht in git)
 │   └── router.php                    ← Router des PHP built-in server
 ├── frontend/
 │   ├── index.html                    ← Single Page App

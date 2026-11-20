@@ -160,7 +160,11 @@ roter Lauf ging durch `tail -3`, die rote Zeile lag oberhalb des Fensters, und
 
 ## Was nicht in git gehört
 
-`backend/config.php` steht in `.gitignore` und enthält das Datenbankpasswort
-und die WebUntis-Konfiguration. Sie wird beim Deploy **nicht** überschrieben.
-Änderungen daran müssen auf dem Server von Hand nachgezogen und hier vermerkt
-werden, sonst gehen sie beim nächsten Aufsetzen verloren.
+`backend/konfiguration.php` steht in `.gitignore` und enthält das
+Datenbankpasswort und die WebUntis-Konfiguration – nur Werte, der Code steht
+seit Auftrag A versioniert in `backend/kern.php` (E68). Sie wird beim Deploy
+**nicht** überschrieben. Änderungen daran müssen auf dem Server von Hand
+nachgezogen und hier vermerkt werden, sonst gehen sie beim nächsten Aufsetzen
+verloren. Vor Auftrag A hieß sie `config.php` und trug auch den Code; bis zur
+Abnahme liegt die alte Datei auf dem Server noch daneben
+(`docs/AUSROLLEN-auftrag-A.md`).

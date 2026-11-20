@@ -7,6 +7,36 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 
 ## [Unreleased]
 
+### Geändert – Anmeldung aus dem Modul, Kern versioniert (Auftrag A aus koordination, E68)
+- **Kern versioniert:** Die Funktionen der unversionierten `config.php`
+  stehen in `backend/kern.php` (neun, mit `audit_grenze()`), die Werte in
+  `backend/konfiguration.php` (Vorlage `konfiguration.example.php`). Kein
+  Rückfall auf `config.php`. Ableitung aus der alten Datei:
+  `bin/konfiguration-ableiten.sh` – trocken als Standard, nur Namen, hält
+  an bei abweichender Funktion; die Betriebsfassung von
+  `session_start_secure` erkennt sie an ihrer Prüfsumme, sonst keine.
+- **Anmeldebremse aus `webuntis-auth-php` v2.0.2** (vendort, `sql/22`),
+  Schwelle 8, Wartezeit 60 s, nie eine Sperre. HTTP 4xx von WebUntis ist ein
+  Fehlschlag (Z. 8); `-8500` ist 503 mit eigenem Satz und zählt nicht (Z. 7).
+  Verlauf in `anmeldeverlauf` (`sql/23`), ohne Adresse, 30 Tage.
+- **Fristen:** `audit_log` „Schuljahr + 1“, ohne `ip_adresse`;
+  `webuntis_login_log` entfällt ohne Übernahme (`sql/24`, erst nach der
+  Abnahme).
+- **Sitzung an einer Stelle:** Name und Dauer in `kern.php`, der Speicherort
+  allein in `sessions.ini`; der Router setzt weder `$_SERVER['HTTPS']` noch
+  `session_name()`.
+- **Wartesatz** nach FALLSTRICKE 8: „Zu viele Fehlversuche. Bitte in N
+  Sekunden erneut versuchen.“, bei 1 „Sekunde“; Zahl gleich `Retry-After`.
+  Hilfe und Handbuch nachgezogen.
+- **Suite:** Jeder übersprungene Schritt geht durch `uebersprungen()` und
+  wird gezählt – vorher meldete ein Lauf ohne node „0 übersprungen“.
+- Ausrollanleitung: `docs/AUSROLLEN-auftrag-A.md`.
+- **Prüfungen 289 → 393:** Paket 1 +20, Browsertest ±0, Paket 2 +39,
+  Paket 3 +22, Paket 4 +14, Paket 5 +3, Betriebsfassung +4, Strukturvergleich
+  wieder gezählt +1 (lokale `konfiguration.php` seit 20.11.), Paket 6 +1.
+  Paket 1 ist +21 Prüfungen −1 übersprungener Strukturvergleich.
+  Mutationsserien: `tests/mutationen_{anmeldebremse,anmeldung,fristen,sitzung,saetze,uebersprungen}.sh`.
+
 ### Hinzugefügt – Spanisch Sek I (Auftrag `docs/AUFTRAG-spanisch-sek1.md`, E67)
 - **`sql/21_seed_spanisch_klp.sql`** aus `sql/gen/gen_spanisch_klp.py`:
   Rahmen `SPA_KLP`, Präfix `ES_`, Anlage wie Französisch (E63) — drei
