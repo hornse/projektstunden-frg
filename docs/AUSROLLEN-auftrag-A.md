@@ -7,6 +7,34 @@ Sebastian**, nicht aus einer Sitzung. Begründung der Schritte: E68.
 Zahlen. Wo unten „erwartet“ steht und etwas anderes erscheint: **anhalten**,
 nichts weiter ausführen, melden.
 
+## Stand (21.11.2026)
+
+**Schritte 0–5 erledigt am 21.11.2026**, ausgeführt von Sebastian,
+ausgeliefert `e4f42c7..5d28d5c`. **Schritt 6 (Aufräumen) offen**, bewusst:
+geplant Mitte der Woche ab 23.11., nach echter Nutzung. Bis dahin ist der
+Rückweg der billige (unten).
+
+| Schritt | Gemeldet (nur Zahlen) |
+|---|---|
+| 0 | Suite 393/393, karg gleich; 11 Commits wie in der Tabelle; Rückweg-Stand `e4f42c7` |
+| 1 | `RUNNING`; Sitzungsdateien 100; `webuntis_login_log` 170; Vergleichssitzung über ein WebUntis-Kürzel, `id` 0 |
+| 2 | `anmeldebremse`, `anmeldeverlauf` angelegt |
+| 3 | Ableitung am Server: 12 Namen, sieben „gleich“, `session_start_secure`: Betriebsfassung (E68) – **die Prüfsumme ist damit am Server belegt** |
+| 4 | `deploy.sh` mit 393/393, Commit `5d28d5c` |
+| 5 | alles bestanden: Sitzung von vorher trägt mit `id` 0; Sitzungsdateien 111; Cookie-Attribute; `401` und `anmeldeverlauf` 0 → 1; `webuntis_login_log` unverändert; `app.js` enthält den neuen Satz |
+
+**Abweichung von der Anleitung:** `webuntis_login_log` stand nach dem
+Ausliefern bei 173 statt 170. Die drei Zeilen stammen von 09:23–09:24,
+**vor** dem Ausliefern – Anmeldungen unter dem alten Code zwischen Schritt 1
+und Schritt 4; seitdem keine. Die Vergleichszahl für Abnahme 5 wurde deshalb
+nach dem Ausliefern genommen (173). Die Schritte 4 und 5 unten sehen das seit
+diesem Stand so vor, ebenso Zugangsdaten über `read -s` und das Aufräumen
+der Cookie-Dateien.
+
+**Nebenbefund beim Ausliefern:** `frontend/index.html` lädt `app.js` ohne
+`?v=`; `deploy.sh` stempelt nur, was schon einen Stempel trägt. Beschrieben
+im `CHANGELOG.md` unter „Offen“, nicht behoben (eigener Auftrag).
+
 ## Was hinausgeht
 
 Alles zwischen dem ausgelieferten Stand und dem Commit dieser Anleitung. Der
@@ -64,18 +92,31 @@ ssh hornse@halimede.uberspace.de 'mysql -N hornse_projektstunden -e "SELECT COUN
 ```
 
 Notieren: Dienst `RUNNING`, Zahl der Sitzungsdateien, Zahl der Zeilen in
-`webuntis_login_log`. **Nur Zahlen.**
+`webuntis_login_log`. **Nur Zahlen.** Die Zahl aus `webuntis_login_log` ist
+hier nur ein Anhalt; die Vergleichszahl für Abnahme 5 wird direkt nach
+`deploy.sh` genommen (Schritt 4) – bis dahin schreibt der alte Code bei jeder
+Anmeldung weiter hinein (am 21.11.: 170 hier, 173 nach dem Ausliefern).
 
-Dazu eine Sitzung, die das Ausliefern überleben muss:
+Dazu eine Sitzung, die das Ausliefern überleben muss. Die Zugangsdaten
+werden mit `read -s` gelesen, nicht in den Befehl geschrieben (sonst stehen
+sie in der Shell-Historie und, als Argument von `curl`, in der
+Prozessliste); `printf` ist eingebaut und reicht sie über die
+Standardeingabe weiter:
 
 ```bash
-curl -s -X POST https://projektstunden.hornse.de/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"<mail>","passwort":"<pw>"}' -c /tmp/c-vorher.txt > /dev/null && \
+read -r -p 'Mail: ' PS_MAIL; read -r -s -p 'Passwort: ' PS_PW; echo
+printf '{"username":"%s","passwort":"%s"}' "$PS_MAIL" "$PS_PW" | \
+  curl -s -X POST https://projektstunden.hornse.de/api/auth/login \
+  -H "Content-Type: application/json" --data-binary @- \
+  -c /tmp/c-vorher.txt > /dev/null && \
 curl -s https://projektstunden.hornse.de/api/auth/me -b /tmp/c-vorher.txt
+unset PS_PW
 ```
 
-Erwartet: JSON mit `id`/`vorname`/`rolle`.
+Erwartet: JSON mit `id`/`vorname`/`rolle`. Ein Passwort mit `"` oder `\`
+geht so nicht als gültiges JSON hinüber – dann eine andere Vergleichssitzung
+nehmen. `/tmp/c-vorher.txt` trägt eine gültige Sitzung: Sie wird nach der
+Abnahme abgemeldet und gelöscht (Abnahme 7).
 
 ## 2 — Tabellen anlegen (`sql/22`, `sql/23`)
 
@@ -142,6 +183,16 @@ Betrieb nichts verändert.
 Erwartet: Suite in `deploy.sh` mit 393/393, 0 rot, 0 übersprungen; Push
 nach `github` und `uberspace`; „✓ Deploy erfolgreich auf Uberspace“.
 
+**Direkt danach** die Vergleichszahl für Abnahme 5 nehmen:
+
+```bash
+ssh hornse@halimede.uberspace.de 'mysql -N hornse_projektstunden -e "SELECT COUNT(*) FROM webuntis_login_log"'
+```
+
+Ab hier schreibt niemand mehr hinein. Weicht sie von Schritt 1 ab, ist das
+kein Halt: Es waren Anmeldungen unter dem alten Code dazwischen. Notieren,
+mit welcher Zahl verglichen wird.
+
 ## 5 — Abnahme
 
 1. **Dienst und Fehler:** die Prüfungen 1 und 4 aus `CLAUDE.md` („Vor jeder
@@ -164,11 +215,25 @@ nach `github` und `uberspace`; „✓ Deploy erfolgreich auf Uberspace“.
    ssh hornse@halimede.uberspace.de 'mysql -N hornse_projektstunden -e "SELECT COUNT(*) FROM webuntis_login_log"'
    ```
    Erwartet: `401`; `anmeldeverlauf` eine Zeile mehr; `webuntis_login_log`
-   **unverändert** gegen Schritt 1 (der neue Code schreibt nicht mehr hinein).
+   **unverändert** gegen die Zahl direkt nach `deploy.sh` (Schritt 4; der
+   neue Code schreibt nicht mehr hinein). „Eine Zeile mehr“ gilt nur, wenn
+   gerade niemand sonst sich anmeldet – jede gleichzeitige Anmeldung, auch
+   eine erfolgreiche, schreibt ebenfalls in `anmeldeverlauf`. Sind es mehr:
+   kein Halt, die Zählung einmal wiederholen; mindestens eine mehr muss es
+   sein.
 6. **Im Browser** (nicht offline messbar, REIHENREGELN 2): Anmelden mit der
    Eingabetaste; die Hilfe vor der Anmeldung zitiert „Zu viele
    Fehlversuche. Bitte in … Sekunden erneut versuchen.“; eine Lehrkraft per
    WebUntis kommt hinein und bleibt beim Seitenwechsel angemeldet.
+7. **Aufräumen am Rechner:** Die Cookie-Dateien tragen gültige Sitzungen –
+   erst abmelden, dann löschen:
+   ```bash
+   for c in /tmp/c-vorher.txt /tmp/c.txt; do
+     [ -f "$c" ] && curl -s -o /dev/null -X POST https://projektstunden.hornse.de/api/auth/logout -b "$c"
+   done
+   rm -f /tmp/c-vorher.txt /tmp/c.txt
+   ```
+   (`/tmp/c.txt` stammt aus Prüfung 2 in `CLAUDE.md`.)
 
 Die Wartezeit selbst (429 nach acht Fehlversuchen) ist ausgeführt geprüft
 (`tests/anmeldung_db_test.sh` A9); am Betrieb nicht nötig.

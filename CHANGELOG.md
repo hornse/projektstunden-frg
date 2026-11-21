@@ -7,6 +7,25 @@ Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0
 
 ## [Unreleased]
 
+### Offen
+- **`app.js` wird ohne Cache-Stempel geladen** (Befund beim Ausliefern von
+  Auftrag A, 21.11.2026; nicht behoben, eigener Auftrag mit Prüfung).
+  `frontend/index.html` lädt `<script src="/app.js">` ohne `?v=`; die sechs
+  anderen Verweise (`ci-tokens.css`, `ci-komponenten.css`, `ci-shell.css`,
+  `style.css`, `ci-icons.svg`, `ci-shell.js`) tragen ihn. Ursache, am Code
+  von `deploy.sh`: Der Stempel wird mit
+  `sed "s/?v=[^\"']*/?v=$STEMPEL/g"` **ersetzt, nie gesetzt** – ein Verweis
+  ohne `?v=` bleibt ohne. `app.js` hatte nie einen: Die Zeile kam mit
+  `cd25f38` (26.04.2026, „JS in app.js ausgelagert“) ohne Stempel hinein,
+  und `git log -G'app\.js'` zeigt seitdem keine Änderung an ihr. Keine
+  Prüfung fragt danach. Was das im Betrieb heißt, ist nicht gemessen: Der
+  Router schickt für jede Datei `Cache-Control: no-cache`, ohne `ETag` und
+  ohne `Last-Modified` – ein Browser muss also nachfragen; ob ein Zwischenspeicher
+  auf dem Weg das ebenso hält, ist nicht geprüft. Bei der Abnahme von A enthielt
+  das ausgelieferte `app.js` den neuen Satz. Abhilfe gehört in `deploy.sh`
+  oder eine Prüfung „jeder lokale Verweis in `index.html` trägt `?v=`“, mit
+  Gegenprobe.
+
 ### Geändert – Anmeldung aus dem Modul, Kern versioniert (Auftrag A aus koordination, E68)
 - **Kern versioniert:** Die Funktionen der unversionierten `config.php`
   stehen in `backend/kern.php` (neun, mit `audit_grenze()`), die Werte in

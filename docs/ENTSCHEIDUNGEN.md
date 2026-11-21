@@ -2914,3 +2914,15 @@ G5 und `tests/mutationen_uebersprungen.sh`.
 
 Schülerdaten (Auftrag C); Gesundheitsabruf, Stand, Tags, Dienstdatei
 (Auftrag B). Die Schüleranmeldung (`personType 5`) schaltet A nicht ein.
+
+### Nachtrag 21.11.2026 — Betriebsfassung am Server belegt
+
+Abschnitt 2 hielt fest, dass die Prüfsumme der Betriebsfassung von
+`session_start_secure` nur am Rechner gemessen war und der Lauf der
+Ableitung am Server ihr Beleg sein sollte. Am 21.11.2026 lief er (Schritt 3
+der Ausrollanleitung, ausgeführt von Sebastian): 12 Namen, sieben Funktionen
+„gleich“, `session_start_secure`: „Betriebsfassung (E68)“. **Damit ist die
+Prüfsumme am Server belegt.** Ausgeliefert wurde `e4f42c7..5d28d5c`, die
+Abnahme hat bestanden; das Aufräumen (Schritt 6, `sql/24`, Löschen der alten
+`config.php`) steht bewusst noch aus. Stand und die eine Abweichung:
+`docs/AUSROLLEN-auftrag-A.md`, Abschnitt „Stand“.
